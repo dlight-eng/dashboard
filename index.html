@@ -8,189 +8,191 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* ═══════════════════════════════════════════
-   ЗМІННА — ВСТАВТЕ ВАШ URL APPS SCRIPT
-   ═══════════════════════════════════════════ */
-/* API_URL задається в <script> нижче */
-
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --c-bg:#f0f2f7;
-  --c-surface:#ffffff;
-  --c-card:#f8f9fc;
-  --c-border:#e2e6f0;
-  --c-text:#1a1f36;
-  --c-muted:#6b7491;
-  --c-yellow:#d4a017;
-  --c-green:#1a9e5c;   --c-green-bg:#edf7f2;
-  --c-red:#c0392b;     --c-red-bg:#fdf0ee;
-  --c-orange:#c07010;  --c-orange-bg:#fef5e6;
-  --c-blue:#1a6fb5;    --c-blue-bg:#eaf2fb;
-  --font:'IBM Plex Sans',sans-serif;
-  --mono:'IBM Plex Mono',monospace;
-  --radius:8px;
-  --shadow:0 1px 4px rgba(0,0,0,.06);
+  --c-bg:#f0f2f7;--c-surface:#fff;--c-card:#f8f9fc;--c-border:#e2e6f0;
+  --c-text:#1a1f36;--c-muted:#6b7491;--c-yellow:#d4a017;
+  --c-green:#1a9e5c;--c-green-bg:#edf7f2;
+  --c-red:#c0392b;--c-red-bg:#fdf0ee;
+  --c-orange:#c07010;--c-orange-bg:#fef5e6;
+  --c-blue:#1a6fb5;--c-blue-bg:#eaf2fb;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,.06);
 }
 body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-size:13px;min-height:100vh}
 .dash{padding:14px;max-width:1400px;margin:0 auto}
 
-/* ── LOADING OVERLAY ── */
-#loadingOverlay{
-  position:fixed;inset:0;background:rgba(240,242,247,.92);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  z-index:9999;backdrop-filter:blur(4px);transition:opacity .4s;
-}
+/* LOADING */
+#loadingOverlay{position:fixed;inset:0;background:rgba(240,242,247,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);transition:opacity .3s}
 #loadingOverlay.hidden{opacity:0;pointer-events:none}
-.spinner{width:40px;height:40px;border:3px solid var(--c-border);
-  border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:14px}
+.spinner{width:38px;height:38px;border:3px solid var(--c-border);border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-text{font-family:var(--mono);font-size:12px;color:var(--c-muted)}
 
-/* ── ERROR BANNER ── */
-#errorBanner{
-  display:none;background:var(--c-red-bg);border:1px solid var(--c-red);
-  color:var(--c-red);padding:10px 16px;border-radius:var(--radius);
-  margin-bottom:10px;font-size:12px;font-family:var(--mono);
-  display:flex;align-items:center;justify-content:space-between;
-}
-#errorBanner.hidden{display:none}
+/* ERROR */
+#errorBanner{display:none;background:var(--c-red-bg);border:1px solid var(--c-red);color:var(--c-red);padding:10px 16px;border-radius:var(--radius);margin-bottom:10px;font-size:12px;font-family:var(--mono);align-items:center;justify-content:space-between}
 
-/* ── HEADER ── */
-.header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:11px 16px;background:var(--c-surface);border:1px solid var(--c-border);
-  border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);
-}
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow)}
 .header-left{display:flex;align-items:center;gap:12px}
-.logo{background:#1a1f36;color:#f5c518;font-family:var(--mono);font-weight:500;
-  font-size:12px;padding:4px 10px;border-radius:4px;letter-spacing:1px}
+.logo{background:#1a1f36;color:#f5c518;font-family:var(--mono);font-weight:500;font-size:12px;padding:4px 10px;border-radius:4px;letter-spacing:1px}
 .brand-name{font-family:var(--mono);font-size:15px;font-weight:500;color:#1a1f36;letter-spacing:2px}
-.month-badge{font-family:var(--mono);font-size:10px;color:var(--c-muted);
-  border:1px solid var(--c-border);padding:3px 10px;border-radius:4px;background:var(--c-card)}
+.month-badge{font-family:var(--mono);font-size:10px;color:var(--c-muted);border:1px solid var(--c-border);padding:3px 10px;border-radius:4px;background:var(--c-card)}
 .header-right{display:flex;gap:6px;align-items:center}
 .update-wrap{display:flex;align-items:center;gap:5px}
 .update-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:pulse 2s infinite}
 .update-dot.error{background:var(--c-red);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
-.refresh-btn{
-  font-family:var(--mono);font-size:11px;padding:5px 10px;
-  border-radius:4px;border:1px solid var(--c-border);
-  background:transparent;color:var(--c-muted);cursor:pointer;transition:.15s;
-}
-.refresh-btn:hover{border-color:#1a1f36;color:#1a1f36}
+.hdr-btn{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:4px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);cursor:pointer;transition:.15s}
+.hdr-btn:hover{border-color:#1a1f36;color:#1a1f36}
+.hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
+.hdr-btn.primary:hover{background:#2d3454}
 
-/* ── KPI STRIP ── */
+/* KPI */
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
-.kpi-card{
-  background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);
-  padding:12px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow);
-}
+.kpi-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,#1a1f36)}
-.kpi-label{font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.8px;
-  margin-bottom:4px;font-family:var(--mono)}
+.kpi-label{font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-family:var(--mono)}
 .kpi-val{font-size:26px;font-weight:500;font-family:var(--mono);color:var(--c-text);line-height:1}
-.kpi-delta{font-size:11px;font-family:var(--mono);padding:2px 6px;border-radius:3px;
-  display:inline-block;margin-top:5px}
+.kpi-delta{font-size:11px;font-family:var(--mono);padding:2px 6px;border-radius:3px;display:inline-block;margin-top:5px}
 .delta-up{background:var(--c-green-bg);color:var(--c-green)}
 .delta-dn{background:var(--c-red-bg);color:var(--c-red)}
 .delta-warn{background:var(--c-orange-bg);color:var(--c-orange)}
 
-/* ── SECTION ── */
-.section-title{
-  font-family:var(--mono);font-size:10px;color:var(--c-muted);
-  text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;
-  display:flex;align-items:center;gap:8px;
-}
+/* SECTION */
+.section-title{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .section-title span{color:#1a1f36}
 .section-title::after{content:'';flex:1;height:1px;background:var(--c-border)}
-.section{background:var(--c-surface);border:1px solid var(--c-border);
-  border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.section{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
 
-/* ── MISSION ── */
+/* MISSION */
 .mission-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .mission-inner{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mission-block{background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px}
-.mission-block-label{font-family:var(--mono);font-size:10px;color:var(--c-muted);
-  text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.mission-block-label{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
 .mission-text{font-size:12px;color:var(--c-text);line-height:1.6;font-style:italic}
 .values-list{list-style:none}
 .values-list li{font-size:12px;color:var(--c-text);padding:2px 0;display:flex;align-items:center;gap:6px}
-.values-list li::before{content:'';width:6px;height:6px;border-radius:50%;
-  background:var(--c-yellow);flex-shrink:0}
+.values-list li::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--c-yellow);flex-shrink:0}
 
-/* ── CHARTS ── */
-.main-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px;margin-bottom:10px}
+/* CHARTS */
 .chart-wrap{position:relative;width:100%;height:150px}
 
-/* ── TABLES ── */
+/* TABLES */
 .data-table{width:100%;border-collapse:collapse;font-size:12px}
-.data-table th{
-  font-family:var(--mono);font-size:10px;color:var(--c-muted);
-  text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;
-  text-align:left;border-bottom:1px solid var(--c-border);background:var(--c-card);
-}
-.data-table td{padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:top;line-height:1.4}
+.data-table th{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;text-align:left;border-bottom:1px solid var(--c-border);background:var(--c-card)}
+.data-table td{padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:middle;line-height:1.4}
 .data-table tr:last-child td{border-bottom:none}
 .data-table tr:hover td{background:#f5f7fc}
-.table-scroll{max-height:200px;overflow-y:auto}
+.table-scroll{max-height:220px;overflow-y:auto}
 .table-scroll::-webkit-scrollbar{width:3px}
 .table-scroll::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:2px}
 
-/* ── STATUS PILLS ── */
-.pill{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;white-space:nowrap}
+/* STATUS PILLS + INLINE SELECT */
+.pill{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;white-space:nowrap;cursor:default}
 .pill-done{background:var(--c-green-bg);color:var(--c-green)}
-.pill-wip {background:var(--c-blue-bg);color:var(--c-blue)}
+.pill-wip{background:var(--c-blue-bg);color:var(--c-blue)}
 .pill-over{background:var(--c-red-bg);color:var(--c-red)}
 .pill-wait{background:var(--c-orange-bg);color:var(--c-orange)}
+.status-select{font-size:10px;font-family:var(--mono);padding:2px 4px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);cursor:pointer;outline:none;transition:.15s}
+.status-select:hover{border-color:var(--c-muted)}
+.status-select.saving{opacity:.5}
 
-/* ── FILTERS ── */
+/* FILTERS */
 .filter-bar{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
-.chip{
-  font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;
-  border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer;transition:.15s;
-}
+.chip{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer;transition:.15s}
 .chip.active{border-color:#1a1f36;color:#1a1f36;background:#eef0f8}
 .chip:hover{border-color:var(--c-muted)}
 
-/* ── BOTTOM GRIDS ── */
+/* GRIDS */
+.two-col-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .bottom-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;margin-bottom:10px}
 .full-bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* ── PARTNERS ── */
+/* PARTNERS */
 .partner-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--c-border)}
 .partner-row:last-child{border:none}
 .partner-num{font-family:var(--mono);font-size:10px;color:var(--c-muted);width:16px}
 .partner-name{flex:1;font-size:12px;color:var(--c-text)}
 .partner-days{display:flex;gap:3px}
-.pday{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;
-  justify-content:center;font-size:9px;font-family:var(--mono);font-weight:500}
+.pday{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);font-weight:500}
 .pday-ok{background:var(--c-green-bg);color:var(--c-green)}
 .pday-no{background:var(--c-red-bg);color:var(--c-red)}
 
-/* ── COMMENTS ── */
-.comment-card{background:var(--c-card);border:1px solid var(--c-border);
-  border-radius:6px;padding:8px 10px;margin-bottom:6px}
+/* COMMENTS */
+.comment-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:8px 10px;margin-bottom:6px}
 .comment-card:last-child{margin-bottom:0}
-.comment-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.comment-source{font-family:var(--mono);font-size:10px;color:var(--c-blue);
-  background:var(--c-blue-bg);padding:2px 7px;border-radius:3px}
+.comment-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:6px;flex-wrap:wrap}
+.comment-source{font-family:var(--mono);font-size:10px;color:var(--c-blue);background:var(--c-blue-bg);padding:2px 7px;border-radius:3px}
 .comment-date{font-family:var(--mono);font-size:10px;color:var(--c-muted)}
 .comment-text{font-size:12px;color:var(--c-text);line-height:1.5}
 
-/* ── SKELETON LOADER ── */
-.skeleton{background:linear-gradient(90deg,#e8ebf4 25%,#f0f2f7 50%,#e8ebf4 75%);
-  background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* ══════════════════════════════════════════
+   МОДАЛЬНА ФОРМА ВВЕДЕННЯ
+══════════════════════════════════════════ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,17,30,.45);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-backdrop.open{opacity:1;pointer-events:all}
+.modal{background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;width:min(680px,95vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18);transform:translateY(12px);transition:transform .2s}
+.modal-backdrop.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0}
+.modal-title{font-family:var(--mono);font-size:13px;font-weight:500;color:#1a1f36}
+.modal-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;line-height:1}
+.modal-close:hover{background:var(--c-red-bg);color:var(--c-red);border-color:var(--c-red)}
 
-/* ── RESPONSIVE ── */
-@media(max-width:1100px){
-  .main-grid{grid-template-columns:1fr 1fr}
-  .kpi-strip{grid-template-columns:repeat(3,1fr)}
-}
+/* TABS */
+.modal-tabs{display:flex;gap:0;padding:12px 20px 0;border-bottom:1px solid var(--c-border)}
+.mtab{font-family:var(--mono);font-size:11px;padding:7px 16px;border:none;background:transparent;color:var(--c-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:.15s}
+.mtab.active{color:#1a1f36;border-bottom-color:#1a1f36}
+.mtab:hover{color:#1a1f36}
+
+/* FORM PANELS */
+.modal-body{padding:16px 20px;overflow-y:auto;flex:1}
+.form-panel{display:none}
+.form-panel.active{display:block}
+
+/* SUBTYPE SELECTOR */
+.subtype-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.stype-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:4px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer;transition:.15s}
+.stype-btn.active{border-color:#1a1f36;color:#1a1f36;background:#eef0f8}
+
+/* FORM FIELDS */
+.form-section{margin-bottom:16px}
+.form-section-label{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--c-border)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field.full{grid-column:1/-1}
+.field-label{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
+.field-input{font-size:12px;font-family:var(--font);padding:7px 10px;border:1px solid var(--c-border);border-radius:5px;background:var(--c-card);color:var(--c-text);outline:none;transition:.15s;width:100%}
+.field-input:focus{border-color:#1a1f36;background:#fff}
+.field-input[type=number]{-moz-appearance:textfield}
+textarea.field-input{resize:vertical;min-height:64px;line-height:1.5}
+select.field-input{cursor:pointer}
+
+/* FORM FOOTER */
+.modal-footer{padding:12px 20px;border-top:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.form-msg{font-family:var(--mono);font-size:11px;color:var(--c-muted)}
+.form-msg.success{color:var(--c-green)}
+.form-msg.error{color:var(--c-red)}
+.submit-btn{font-family:var(--mono);font-size:12px;padding:8px 20px;border-radius:5px;border:none;background:#1a1f36;color:#f5c518;cursor:pointer;transition:.15s;white-space:nowrap}
+.submit-btn:hover{background:#2d3454}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* FAB */
+.fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:#1a1f36;color:#f5c518;border:none;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);transition:.2s;z-index:500}
+.fab:hover{background:#2d3454;transform:scale(1.08)}
+
+/* SAVE STATUS TOAST */
+.toast{position:fixed;bottom:90px;right:24px;background:#1a1f36;color:#fff;font-family:var(--mono);font-size:12px;padding:8px 16px;border-radius:6px;z-index:600;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--c-green)}
+.toast.error{background:var(--c-red)}
+
 @media(max-width:768px){
-  .main-grid,.mission-row,.bottom-grid,.full-bottom{grid-template-columns:1fr}
+  .two-col-grid,.mission-row,.bottom-grid,.full-bottom{grid-template-columns:1fr}
   .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .form-grid,.form-grid-3{grid-template-columns:1fr}
   .mission-inner{grid-template-columns:1fr}
 }
 </style>
@@ -203,14 +205,281 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
   <div class="loading-text">Завантаження даних...</div>
 </div>
 
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     МОДАЛЬНА ФОРМА ВВЕДЕННЯ
+══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Введення даних</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- TABS -->
+    <div class="modal-tabs">
+      <button class="mtab active" onclick="switchTab('data',this)">Дані</button>
+      <button class="mtab" onclick="switchTab('comments',this)">Зауваження</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- ── ВКЛАДКА: ДАНІ ── -->
+      <div class="form-panel active" id="panel-data">
+
+        <!-- ПІДТИП -->
+        <div class="subtype-row">
+          <button class="stype-btn active" onclick="switchSubtype('daily',this)">Щоденні</button>
+          <button class="stype-btn" onclick="switchSubtype('monthly',this)">Ефективність</button>
+          <button class="stype-btn" onclick="switchSubtype('weekly',this)">Тижневі</button>
+          <button class="stype-btn" onclick="switchSubtype('problem',this)">Проблема</button>
+          <button class="stype-btn" onclick="switchSubtype('escalation',this)">Ескалація</button>
+          <button class="stype-btn" onclick="switchSubtype('partner',this)">Угода</button>
+        </div>
+
+        <!-- Щоденні показники -->
+        <div class="data-subpanel" id="sub-daily">
+          <div class="form-section">
+            <div class="form-section-label">Щоденні показники</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Дата</label>
+                <input class="field-input" type="date" id="d_date">
+              </div>
+              <div class="form-field">
+                <label class="field-label">МЛ виконано вчасно %</label>
+                <input class="field-input" type="number" id="d_fact" min="0" max="100" placeholder="87">
+              </div>
+              <div class="form-field">
+                <label class="field-label">МЛ план %</label>
+                <input class="field-input" type="number" id="d_plan" min="0" max="100" placeholder="85">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Нормо/годин виконано</label>
+                <input class="field-input" type="number" id="d_mvfact" min="0" placeholder="320">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Нормо/годин план</label>
+                <input class="field-input" type="number" id="d_mvplan" min="0" placeholder="350">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Місячна ефективність -->
+        <div class="data-subpanel" id="sub-monthly" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Ефективність по місяцях</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Місяць</label>
+                <select class="field-input" id="m_month">
+                  <option>Січень</option><option>Лютий</option><option>Березень</option>
+                  <option>Квітень</option><option>Травень</option><option>Червень</option>
+                  <option>Липень</option><option>Серпень</option><option>Вересень</option>
+                  <option>Жовтень</option><option>Листопад</option><option>Грудень</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Факт %</label>
+                <input class="field-input" type="number" id="m_fact" min="0" max="100" placeholder="87">
+              </div>
+              <div class="form-field">
+                <label class="field-label">План %</label>
+                <input class="field-input" type="number" id="m_plan" min="0" max="100" placeholder="85">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Щотижневі -->
+        <div class="data-subpanel" id="sub-weekly" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Щотижневі показники</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Тиждень</label>
+                <select class="field-input" id="w_week">
+                  <option>Тиждень 1</option><option>Тиждень 2</option>
+                  <option>Тиждень 3</option><option>Тиждень 4</option><option>Тиждень 5</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Якість (кількість зауважень)</label>
+                <input class="field-input" type="number" id="w_quality" min="0" placeholder="3">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Ліміт якості</label>
+                <input class="field-input" type="number" id="w_qlimit" min="0" placeholder="15">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Безпека (зауваження)</label>
+                <input class="field-input" type="number" id="w_safety" min="0" placeholder="1">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Дисципліна (зауваження)</label>
+                <input class="field-input" type="number" id="w_discipline" min="0" placeholder="0">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Ліміт безпеки</label>
+                <input class="field-input" type="number" id="w_slimit" min="0" placeholder="2">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Нова проблема -->
+        <div class="data-subpanel" id="sub-problem" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Нова проблема</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Дата виявлення</label>
+                <input class="field-input" type="date" id="p_date">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Відповідальний</label>
+                <input class="field-input" type="text" id="p_resp" placeholder="Прізвище">
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Опис проблеми</label>
+                <textarea class="field-input" id="p_desc" placeholder="Детальний опис..."></textarea>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Кроки вирішення</label>
+                <textarea class="field-input" id="p_steps" placeholder="Плановані дії..."></textarea>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Статус</label>
+                <select class="field-input" id="p_status">
+                  <option value="wip">В роботі</option>
+                  <option value="wait">Очікує</option>
+                  <option value="done">Вирішено</option>
+                  <option value="over">Прострочено</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ескалація -->
+        <div class="data-subpanel" id="sub-escalation" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Ескалована проблема</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Дата</label>
+                <input class="field-input" type="date" id="e_date">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Статус</label>
+                <select class="field-input" id="e_status">
+                  <option value="wip">В роботі</option>
+                  <option value="wait">Очікує</option>
+                  <option value="done">Вирішено</option>
+                  <option value="over">Прострочено</option>
+                </select>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Опис проблеми</label>
+                <textarea class="field-input" id="e_desc" placeholder="Що ескаловано..."></textarea>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Дії рівня 2</label>
+                <textarea class="field-input" id="e_action" placeholder="Які дії вжито..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Партнерська угода -->
+        <div class="data-subpanel" id="sub-partner" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Нова партнерська угода</div>
+            <div class="form-grid">
+              <div class="form-field full">
+                <label class="field-label">Назва партнера / відділу</label>
+                <input class="field-input" type="text" id="pr_name" placeholder="Назва партнера">
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Статуси по днях тижня (Пн–Сб)</label>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Пн<input type="checkbox" id="pr_d0" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Вт<input type="checkbox" id="pr_d1" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Ср<input type="checkbox" id="pr_d2" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Чт<input type="checkbox" id="pr_d3" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Пт<input type="checkbox" id="pr_d4" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Сб<input type="checkbox" id="pr_d5" style="width:16px;height:16px"></label>
+                </div>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Коментар</label>
+                <input class="field-input" type="text" id="pr_comment" placeholder="Додатково...">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ВКЛАДКА: ЗАУВАЖЕННЯ ── -->
+      <div class="form-panel" id="panel-comments">
+        <div class="form-section">
+          <div class="form-section-label">Нове зауваження від дільниці</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label">Дата</label>
+              <input class="field-input" type="date" id="c_date">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Від кого / Дільниця</label>
+              <input class="field-input" type="text" id="c_source" placeholder="Козловий — Навантажувачі">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Автор</label>
+              <input class="field-input" type="text" id="c_author" placeholder="Прізвище">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Статус</label>
+              <select class="field-input" id="c_status">
+                <option value="wait">Очікує</option>
+                <option value="wip">В роботі</option>
+                <option value="done">Вирішено</option>
+                <option value="over">Прострочено</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label class="field-label">Зміст зауваження</label>
+              <textarea class="field-input" id="c_text" style="min-height:80px" placeholder="Детальний опис зауваження..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <div class="form-msg" id="formMsg"></div>
+      <div style="display:flex;gap:8px">
+        <button class="hdr-btn" onclick="closeModal()">Скасувати</button>
+        <button class="submit-btn" onclick="submitForm()" id="submitBtn">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal()" title="Додати дані">＋</button>
+
+<!-- ══════════════════════════════════
+     ДАШБОРД
+══════════════════════════════════ -->
 <div class="dash">
 
-  <!-- ERROR -->
-  <div id="errorBanner" class="hidden">
+  <div id="errorBanner">
     <span id="errorText">Помилка завантаження</span>
-    <button onclick="loadData()" style="font-family:var(--mono);font-size:11px;padding:3px 10px;
-      border:1px solid var(--c-red);background:transparent;color:var(--c-red);
-      border-radius:3px;cursor:pointer">Повторити</button>
+    <button onclick="loadData()" style="font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--c-red);background:transparent;color:var(--c-red);border-radius:3px;cursor:pointer">Повторити</button>
   </div>
 
   <!-- HEADER -->
@@ -225,7 +494,8 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
         <div class="update-dot" id="statusDot"></div>
         <span class="update-time" id="updateTime">—</span>
       </div>
-      <button class="refresh-btn" onclick="loadData()">↻ Оновити</button>
+      <button class="hdr-btn" onclick="loadData()">↻ Оновити</button>
+      <button class="hdr-btn primary" onclick="openModal()">+ Додати</button>
     </div>
   </div>
 
@@ -290,34 +560,54 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
     </div>
   </div>
 
-  <!-- CHARTS + PROBLEMS -->
-  <div class="main-grid">
+  <!-- МІСЯЧНА ЕФЕКТИВНІСТЬ -->
+  <div class="section" style="margin-bottom:10px">
+    <div class="section-title"><span>Ефективність по місяцях (%)</span></div>
+    <div class="chart-wrap" style="height:160px"><canvas id="monthlyChart"></canvas></div>
+  </div>
+
+  <!-- ЩОДЕННІ — 2 графіки -->
+  <div class="two-col-grid" style="margin-bottom:10px">
     <div class="section">
-      <div class="section-title"><span>Щоденні показники (ефективність %)</span></div>
-      <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+      <div class="section-title"><span>Щоденні — нормо/годин виконано</span></div>
+      <div class="chart-wrap" style="height:160px"><canvas id="dailyNormChart"></canvas></div>
     </div>
     <div class="section">
-      <div class="section-title"><span>Щотижневі — якість / безпека</span></div>
-      <div class="chart-wrap"><canvas id="weeklyChart"></canvas></div>
-    </div>
-    <div class="section">
-      <div class="section-title"><span>Трекер проблем</span></div>
-      <div class="filter-bar">
-        <button class="chip active" onclick="filterProbs('all',this)">Всі</button>
-        <button class="chip" onclick="filterProbs('wip',this)">В роботі</button>
-        <button class="chip" onclick="filterProbs('over',this)">Прострочено</button>
-        <button class="chip" onclick="filterProbs('done',this)">Вирішено</button>
-      </div>
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead><tr><th>Дата</th><th>Опис</th><th>Відп.</th><th>Статус</th></tr></thead>
-          <tbody id="probBody"></tbody>
-        </table>
-      </div>
+      <div class="section-title"><span>Щоденні — відношення МЛ вчасно / всього (%)</span></div>
+      <div class="chart-wrap" style="height:160px"><canvas id="dailyMlChart"></canvas></div>
     </div>
   </div>
 
-  <!-- ESCALATIONS + PARTNERS -->
+  <!-- ЩОТИЖНЕВІ — 2 графіки -->
+  <div class="two-col-grid" style="margin-bottom:10px">
+    <div class="section">
+      <div class="section-title"><span>Щотижневі — якість, кількість зауважень</span></div>
+      <div class="chart-wrap" style="height:150px"><canvas id="weeklyQualityChart"></canvas></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Щотижневі — безпека та дисципліна, кількість зауважень</span></div>
+      <div class="chart-wrap" style="height:150px"><canvas id="weeklySafetyChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ТРЕКЕР ПРОБЛЕМ -->
+  <div class="section" style="margin-bottom:10px">
+    <div class="section-title"><span>Трекер проблем</span></div>
+    <div class="filter-bar">
+      <button class="chip active" onclick="filterProbs('all',this)">Всі</button>
+      <button class="chip" onclick="filterProbs('wip',this)">В роботі</button>
+      <button class="chip" onclick="filterProbs('over',this)">Прострочено</button>
+      <button class="chip" onclick="filterProbs('done',this)">Вирішено</button>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Дата</th><th>Опис</th><th>Кроки</th><th>Відп.</th><th>Статус</th></tr></thead>
+        <tbody id="probBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ЕСКАЛАЦІЇ + ПАРТНЕРИ -->
   <div class="bottom-grid">
     <div class="section">
       <div class="section-title"><span>Ескаловані проблеми</span></div>
@@ -334,8 +624,8 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
     </div>
   </div>
 
-  <!-- COMMENTS + CORRECTIVE -->
-  <div class="full-bottom">
+  <!-- ЗАУВАЖЕННЯ + КОРИГУЮЧІ ДІЇ -->
+  <div class="full-bottom" style="margin-top:10px">
     <div class="section">
       <div class="section-title"><span>Зауваження від дільниць — споживачів</span></div>
       <div class="table-scroll" id="commentsList"></div>
@@ -355,64 +645,64 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 
 <script>
 // ═══════════════════════════════════════════════════
-//  ▼▼▼  ВСТАВТЕ ВАШ URL ПІСЛЯ ДЕПЛОЮ APPS SCRIPT  ▼▼▼
-// ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbyrEQzteAXNZtEr5XdIYz2LqTryjT4lZJZAamyolkCzDVmHigbsfQji7eLE_uiXd7d4/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx9VAcH35XD95hfK4_OW5X9Oqnal7gMGbzOOI-d7lVSMR_zQ5otVZRvMU3Vlh1hxduN/exec';
 // ═══════════════════════════════════════════════════
 
-const REFRESH_INTERVAL = 5 * 60 * 1000; // автооновлення кожні 5 хвилин
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 const DAYS_UK = ['Пн','Вт','Ср','Чт','Пт','Сб'];
+const STATUS_LABELS = { done:'Вирішено', wip:'В роботі', over:'Прострочено', wait:'Очікує' };
 
-let allProblems = [];
-let dailyChartInst = null;
-let weeklyChartInst = null;
+let allProblems = [], allEscalations = [], allCorrective = [], allComments = [];
+let currentTab = 'data', currentSubtype = 'daily';
 let refreshTimer = null;
+let charts = {};
 
-// ── ГОЛОВНА ФУНКЦІЯ ЗАВАНТАЖЕННЯ ──────────────────
+// ════════════════════════════════════════════════
+// ЗАВАНТАЖЕННЯ ДАНИХ
+// ════════════════════════════════════════════════
 async function loadData() {
-  showLoading(true);
-  hideError();
-
+  showLoading(true); hideError();
   try {
     const res = await fetch(API_URL + '?action=all');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-
     renderAll(data);
     setUpdateTime(new Date());
     setDotOk();
-
-  } catch (err) {
-    showError('Помилка: ' + err.message + '. Перевір URL Apps Script.');
+  } catch(err) {
+    showError('Помилка: ' + err.message);
     setDotError();
-    console.error(err);
   } finally {
     showLoading(false);
   }
-
-  // Перезапускаємо таймер
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(loadData, REFRESH_INTERVAL);
 }
 
-// ── РЕНДЕР ВСІХ СЕКЦІЙ ────────────────────────────
 function renderAll(data) {
-  const { meta, daily, weekly, problems, corrective, escalations, partners, comments } = data;
-
+  const { meta, daily, monthly, weekly, problems, corrective, escalations, partners, comments } = data;
   renderMeta(meta);
   renderKPI(daily, problems, partners, comments);
-  renderDailyChart(daily);
-  renderWeeklyChart(weekly);
-  allProblems = problems || [];
+  renderMonthlyChart(monthly || daily);
+  renderDailyNormChart(daily);
+  renderDailyMlChart(daily);
+  renderWeeklyQualityChart(weekly);
+  renderWeeklySafetyChart(weekly);
+  allProblems    = problems    || [];
+  allEscalations = escalations || [];
+  allCorrective  = corrective  || [];
+  allComments    = comments    || [];
   renderProblems(allProblems, 'all');
-  renderEscalations(escalations || []);
+  renderEscalations(allEscalations);
   renderPartners(partners || []);
-  renderComments(comments || []);
-  renderCorrective(corrective || []);
+  renderComments(allComments);
+  renderCorrective(allCorrective);
 }
 
-// ── META / МІСІЯ ──────────────────────────────────
+// ════════════════════════════════════════════════
+// META
+// ════════════════════════════════════════════════
 function renderMeta(meta) {
   if (!meta) return;
   setText('hTeamName', meta.teamName || '«ТОЙОТА»');
@@ -420,273 +710,370 @@ function renderMeta(meta) {
   setText('companyMission', meta.companyMission || '');
   setText('teamMission', meta.teamMission || '');
   setText('teamGoal', meta.teamGoal || '');
-
   renderValuesList('companyValues', meta.companyValues);
   renderValuesList('teamValues', meta.teamValues);
 }
-
 function renderValuesList(id, valStr) {
   const el = document.getElementById(id);
   if (!el || !valStr) return;
-  const vals = String(valStr).split(',').map(v => v.trim()).filter(Boolean);
-  el.innerHTML = vals.map(v => `<li>${v}</li>`).join('');
+  el.innerHTML = String(valStr).split(',').map(v=>v.trim()).filter(Boolean).map(v=>`<li>${v}</li>`).join('');
 }
 
-// ── KPI ───────────────────────────────────────────
+// ════════════════════════════════════════════════
+// KPI
+// ════════════════════════════════════════════════
 function renderKPI(daily, problems, partners, comments) {
-  // Ефективність — середнє за останні 7 днів
   if (daily && daily.length) {
     const last7 = daily.slice(-7);
-    const avgFact = avg(last7.map(d => d.fact));
-    const avgPlan = avg(last7.map(d => d.plan)) || 85;
+    const avgFact = avg(last7.map(d=>d.fact));
+    const avgPlan = avg(last7.map(d=>d.plan)) || 85;
     const diff = +(avgFact - avgPlan).toFixed(1);
     setText('kpiEff', Math.round(avgFact) + '%');
     setDelta('kpiEffDelta', diff >= 0 ? `+${diff}% до плану` : `${diff}% до плану`, diff >= 0 ? 'up' : 'dn');
-
-    // МВ — сума за поточний місяць
-    const mvFact = daily.reduce((s,d) => s + (d.mvFact||0), 0);
-    const mvPlan = daily.reduce((s,d) => s + (d.mvPlan||0), 0);
+    const mvFact = daily.reduce((s,d)=>s+(d.mvFact||0),0);
+    const mvPlan = daily.reduce((s,d)=>s+(d.mvPlan||0),0);
     const mvDiff = mvPlan ? Math.round((mvFact/mvPlan-1)*100) : 0;
     setText('kpiMV', mvFact);
-    setDelta('kpiMVDelta', `план: ${mvPlan} / ${mvDiff >= 0 ? '+' : ''}${mvDiff}%`, mvDiff >= 0 ? 'up' : 'dn');
+    setDelta('kpiMVDelta', `план: ${mvPlan} / ${mvDiff>=0?'+':''}${mvDiff}%`, mvDiff>=0?'up':'dn');
   }
-
-  // Проблеми
   if (problems) {
-    const open = problems.filter(p => p.status !== 'done').length;
-    const escal = problems.filter(p => p.status === 'over').length;
+    const open = problems.filter(p=>p.status!=='done').length;
+    const over = problems.filter(p=>p.status==='over').length;
     setText('kpiProblems', open);
-    setDelta('kpiProblemsDelta', `${escal} прострочено`, escal > 0 ? 'dn' : 'up');
+    setDelta('kpiProblemsDelta', `${over} прострочено`, over>0?'dn':'up');
   }
-
-  // Партнери
   if (partners) {
-    const pending = partners.filter(p => p.days && p.days.includes(0)).length;
+    const pending = partners.filter(p=>p.days&&p.days.includes(0)).length;
     setText('kpiPartners', partners.length);
-    setDelta('kpiPartnersDelta', pending > 0 ? `${pending} не підписано` : 'всі підписано', pending > 0 ? 'warn' : 'up');
+    setDelta('kpiPartnersDelta', pending>0?`${pending} не підписано`:'всі підписано', pending>0?'warn':'up');
   }
-
-  // Зауваження
   if (comments) {
-    const done = comments.filter(c => c.status === 'done').length;
+    const done = comments.filter(c=>c.status==='done').length;
     setText('kpiComments', comments.length);
-    setDelta('kpiCommentsDelta', `${done} вирішено`, done === comments.length ? 'up' : 'warn');
+    setDelta('kpiCommentsDelta', `${done} вирішено`, done===comments.length?'up':'warn');
   }
 }
 
-// ── ГРАФІКИ ───────────────────────────────────────
-function renderDailyChart(daily) {
-  if (!daily || !daily.length) return;
-
-  const labels = daily.map(d => d.date);
-  const facts  = daily.map(d => d.fact);
-  const plans  = daily.map(d => d.plan || 85);
-
-  if (dailyChartInst) dailyChartInst.destroy();
-
-  dailyChartInst = new Chart(document.getElementById('dailyChart'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Факт',
-          data: facts,
-          backgroundColor: 'rgba(26,31,54,0.72)',
-          borderRadius: 3,
-        },
-        {
-          label: 'План',
-          data: plans,
-          type: 'line',
-          borderColor: 'rgba(192,57,43,0.7)',
-          borderDash: [4,4],
-          borderWidth: 1.5,
-          pointRadius: 0,
-          fill: false,
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, maxRotation:45 },
-             grid: { color:'rgba(226,230,240,.8)' } },
-        y: { min:50, max:100,
-             ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, callback:v=>v+'%' },
-             grid: { color:'rgba(226,230,240,.8)' } }
-      }
-    }
-  });
+// ════════════════════════════════════════════════
+// ГРАФІКИ
+// ════════════════════════════════════════════════
+const CO = { gc:'rgba(226,230,240,.8)', tc:'#6b7491', tf:{size:10,family:'IBM Plex Mono'} };
+function cScales(yMin, yMax, yCb) {
+  return {
+    x:{ticks:{color:CO.tc,font:CO.tf,maxRotation:45,autoSkip:true,maxTicksLimit:15},grid:{color:CO.gc}},
+    y:{min:yMin,max:yMax,ticks:{color:CO.tc,font:CO.tf,callback:yCb||(v=>v)},grid:{color:CO.gc}}
+  };
+}
+function mkChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
 }
 
-function renderWeeklyChart(weekly) {
-  if (!weekly || !weekly.length) return;
-
-  const labels   = weekly.map(w => w.week);
-  const quality  = weekly.map(w => w.quality);
-  const safety   = weekly.map(w => w.safety);
-
-  if (weeklyChartInst) weeklyChartInst.destroy();
-
-  weeklyChartInst = new Chart(document.getElementById('weeklyChart'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label:'Якість',  data:quality, backgroundColor:'rgba(26,111,181,0.7)', borderRadius:3 },
-        { label:'Безпека', data:safety,  backgroundColor:'rgba(192,57,43,0.7)',  borderRadius:3 },
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'} },
-             grid: { color:'rgba(226,230,240,.8)' } },
-        y: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, stepSize:1 },
-             grid: { color:'rgba(226,230,240,.8)' } }
-      }
-    }
-  });
+function renderMonthlyChart(data) {
+  if (!data||!data.length) return;
+  mkChart('monthlyChart',{type:'bar',data:{labels:data.map(d=>d.month||d.date),datasets:[
+    {label:'Факт %',data:data.map(d=>d.fact),backgroundColor:'rgba(26,111,181,0.72)',borderRadius:3},
+    {label:'План',data:data.map(d=>d.plan||85),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,100,v=>v+'%')}});
+}
+function renderDailyNormChart(data) {
+  if (!data||!data.length) return;
+  mkChart('dailyNormChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
+    {label:'Факт н/год',data:data.map(d=>d.mvFact||0),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
+    {label:'План',data:data.map(d=>d.mvPlan||0),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined)}});
+}
+function renderDailyMlChart(data) {
+  if (!data||!data.length) return;
+  mkChart('dailyMlChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
+    {label:'МЛ %',data:data.map(d=>d.fact||0),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
+    {label:'План',data:data.map(d=>d.plan||85),type:'line',borderColor:'rgba(192,57,43,0.75)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,100,v=>v+'%')}});
+}
+function renderWeeklyQualityChart(data) {
+  if (!data||!data.length) return;
+  mkChart('weeklyQualityChart',{type:'bar',data:{labels:data.map(w=>w.week),datasets:[
+    {label:'Зауваження',data:data.map(w=>w.quality),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
+    {label:'Ліміт',data:data.map(w=>w.qualityLimit||null),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,spanGaps:true}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined,v=>Math.round(v))}});
+}
+function renderWeeklySafetyChart(data) {
+  if (!data||!data.length) return;
+  mkChart('weeklySafetyChart',{type:'bar',data:{labels:data.map(w=>w.week),datasets:[
+    {label:'Безпека',data:data.map(w=>w.safety),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
+    {label:'Дисципліна',data:data.map(w=>w.discipline||0),backgroundColor:'rgba(192,57,43,0.60)',borderRadius:3},
+    {label:'Ліміт',data:data.map(w=>w.safetyLimit||null),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,spanGaps:true}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined,v=>Math.round(v))}});
 }
 
-// ── ТРЕКЕР ПРОБЛЕМ ────────────────────────────────
+// ════════════════════════════════════════════════
+// ТАБЛИЦІ З INLINE ЗМІНОЮ СТАТУСУ
+// ════════════════════════════════════════════════
+function statusSelect(rowIndex, section, currentStatus) {
+  return `<select class="status-select" onchange="changeStatus(${rowIndex},'${section}',this)" title="Змінити статус">
+    ${['done','wip','over','wait'].map(s=>`<option value="${s}"${s===currentStatus?' selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+  </select>`;
+}
+
+async function changeStatus(rowIndex, section, selectEl) {
+  const newStatus = selectEl.value;
+  selectEl.classList.add('saving');
+  selectEl.disabled = true;
+  try {
+    const res = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'update', section, data:{ rowIndex, status: newStatus }, token: getToken() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Статус оновлено', 'success');
+      // Оновлюємо локальний масив
+      const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
+      if (maps[section] && maps[section][rowIndex]) maps[section][rowIndex].status = newStatus;
+    } else {
+      showToast('Помилка: ' + data.error, 'error');
+    }
+  } catch(e) {
+    showToast('Помилка збереження', 'error');
+  } finally {
+    selectEl.classList.remove('saving');
+    selectEl.disabled = false;
+  }
+}
+
 function renderProblems(problems, filter) {
-  const filtered = filter === 'all' ? problems : problems.filter(p => p.status === filter);
-  document.getElementById('probBody').innerHTML = filtered.map(p => `
-    <tr>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
-      <td style="max-width:130px">${p.desc}</td>
-      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${p.resp}</td>
-      <td>${pill(p.status)}</td>
-    </tr>`).join('') || emptyRow(4, 'Немає записів');
+  const filtered = filter==='all' ? problems : problems.filter(p=>p.status===filter);
+  document.getElementById('probBody').innerHTML = filtered.map((p,i)=>`<tr>
+    <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
+    <td style="max-width:140px">${p.desc}</td>
+    <td style="font-size:11px;color:var(--c-muted);max-width:120px">${p.steps||''}</td>
+    <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${p.resp}</td>
+    <td>${statusSelect(i,'problems',p.status)}</td>
+  </tr>`).join('') || emptyRow(5,'Немає записів');
 }
 
 function filterProbs(filter, btn) {
-  document.querySelectorAll('.filter-bar .chip').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.filter-bar .chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderProblems(allProblems, filter);
 }
 
-// ── ЕСКАЛАЦІЇ ─────────────────────────────────────
 function renderEscalations(escalations) {
-  document.getElementById('escalBody').innerHTML = escalations.map(e => `
-    <tr>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
-      <td style="font-size:11px;max-width:160px">${e.desc}</td>
-      <td style="font-size:11px;color:var(--c-muted);max-width:140px">${e.action}</td>
-      <td>${pill(e.status)}</td>
-    </tr>`).join('') || emptyRow(4, 'Немає записів');
+  document.getElementById('escalBody').innerHTML = escalations.map((e,i)=>`<tr>
+    <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
+    <td style="font-size:11px;max-width:160px">${e.desc}</td>
+    <td style="font-size:11px;color:var(--c-muted);max-width:140px">${e.action}</td>
+    <td>${statusSelect(i,'escalations',e.status)}</td>
+  </tr>`).join('') || emptyRow(4,'Немає записів');
 }
 
-// ── ПАРТНЕРИ ──────────────────────────────────────
 function renderPartners(partners) {
-  document.getElementById('partnerList').innerHTML = partners.map((p, i) => `
+  document.getElementById('partnerList').innerHTML = partners.map((p,i)=>`
     <div class="partner-row">
-      <span class="partner-num">${p.n || i+1}</span>
+      <span class="partner-num">${p.n||i+1}</span>
       <span class="partner-name">${p.name}</span>
-      <div class="partner-days">
-        ${DAYS_UK.map((d, j) => `
-          <div class="pday ${(p.days||[])[j] ? 'pday-ok' : 'pday-no'}" title="${d}">${d[0]}</div>
-        `).join('')}
-      </div>
+      <div class="partner-days">${DAYS_UK.map((d,j)=>`<div class="pday ${(p.days||[])[j]?'pday-ok':'pday-no'}" title="${d}">${d[0]}</div>`).join('')}</div>
     </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає даних</div>';
 }
 
-// ── ЗАУВАЖЕННЯ ────────────────────────────────────
 function renderComments(comments) {
-  document.getElementById('commentsList').innerHTML = comments.map(c => `
+  document.getElementById('commentsList').innerHTML = comments.map((c,i)=>`
     <div class="comment-card">
       <div class="comment-meta">
         <span class="comment-source">${c.source}</span>
-        <span style="display:flex;align-items:center;gap:6px">
+        <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="comment-date">${c.date}</span>
-          ${pill(c.status)}
+          ${statusSelect(i,'comments',c.status)}
         </span>
       </div>
       <div class="comment-text">${c.text}</div>
     </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає записів</div>';
 }
 
-// ── КОРИГУЮЧІ ДІЇ ─────────────────────────────────
 function renderCorrective(corrective) {
-  document.getElementById('corrBody').innerHTML = corrective.map(r => `
-    <tr>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n}</td>
-      <td style="font-size:11px;max-width:130px">${r.desc}</td>
-      <td style="font-size:11px;color:var(--c-muted);max-width:110px">${r.action}</td>
-      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${r.resp}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
-      <td>${pill(r.status)}</td>
-    </tr>`).join('') || emptyRow(6, 'Немає записів');
+  document.getElementById('corrBody').innerHTML = corrective.map((r,i)=>`<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n}</td>
+    <td style="font-size:11px;max-width:130px">${r.desc}</td>
+    <td style="font-size:11px;color:var(--c-muted);max-width:110px">${r.action}</td>
+    <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${r.resp}</td>
+    <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
+    <td>${statusSelect(i,'corrective',r.status)}</td>
+  </tr>`).join('') || emptyRow(6,'Немає записів');
+}
+
+// ════════════════════════════════════════════════
+// МОДАЛЬНА ФОРМА
+// ════════════════════════════════════════════════
+function openModal() {
+  // встановити сьогоднішню дату в полях дат
+  const today = new Date().toISOString().slice(0,10);
+  ['d_date','p_date','e_date','c_date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = today;
+  });
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('formMsg').textContent = '';
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modalBackdrop')) closeModal();
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.form-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.getElementById('formMsg').textContent = '';
+}
+
+function switchSubtype(type, btn) {
+  currentSubtype = type;
+  document.querySelectorAll('.stype-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.data-subpanel').forEach(p=>p.style.display='none');
+  document.getElementById('sub-' + type).style.display = 'block';
+}
+
+async function submitForm() {
+  const btn = document.getElementById('submitBtn');
+  const msg = document.getElementById('formMsg');
+  btn.disabled = true;
+  msg.textContent = 'Збереження...';
+  msg.className = 'form-msg';
+
+  try {
+    let section, data;
+
+    if (currentTab === 'comments') {
+      section = 'comments';
+      data = {
+        text:   document.getElementById('c_text').value.trim(),
+        source: document.getElementById('c_source').value.trim(),
+        author: document.getElementById('c_author').value.trim(),
+        date:   document.getElementById('c_date').value,
+        status: document.getElementById('c_status').value,
+      };
+      if (!data.text) throw new Error('Введіть текст зауваження');
+    } else {
+      section = currentSubtype === 'monthly' ? 'monthly' : currentSubtype;
+      if (currentSubtype === 'daily') {
+        data = {
+          date:    document.getElementById('d_date').value,
+          fact:    +document.getElementById('d_fact').value || 0,
+          plan:    +document.getElementById('d_plan').value || 85,
+          mvFact:  +document.getElementById('d_mvfact').value || 0,
+          mvPlan:  +document.getElementById('d_mvplan').value || 0,
+        };
+        if (!data.date) throw new Error('Оберіть дату');
+      } else if (currentSubtype === 'monthly') {
+        data = {
+          month: document.getElementById('m_month').value,
+          fact:  +document.getElementById('m_fact').value || 0,
+          plan:  +document.getElementById('m_plan').value || 85,
+        };
+        section = 'monthly';
+      } else if (currentSubtype === 'weekly') {
+        data = {
+          week:       document.getElementById('w_week').value,
+          quality:    +document.getElementById('w_quality').value || 0,
+          qualityLimit: +document.getElementById('w_qlimit').value || null,
+          safety:     +document.getElementById('w_safety').value || 0,
+          discipline: +document.getElementById('w_discipline').value || 0,
+          safetyLimit:+document.getElementById('w_slimit').value || null,
+        };
+        section = 'weekly';
+      } else if (currentSubtype === 'problem') {
+        data = {
+          date:   document.getElementById('p_date').value,
+          desc:   document.getElementById('p_desc').value.trim(),
+          steps:  document.getElementById('p_steps').value.trim(),
+          resp:   document.getElementById('p_resp').value.trim(),
+          status: document.getElementById('p_status').value,
+        };
+        section = 'problems';
+        if (!data.desc) throw new Error('Введіть опис проблеми');
+      } else if (currentSubtype === 'escalation') {
+        data = {
+          date:   document.getElementById('e_date').value,
+          desc:   document.getElementById('e_desc').value.trim(),
+          action: document.getElementById('e_action').value.trim(),
+          status: document.getElementById('e_status').value,
+        };
+        section = 'escalations';
+        if (!data.desc) throw new Error('Введіть опис ескалації');
+      } else if (currentSubtype === 'partner') {
+        data = {
+          name: document.getElementById('pr_name').value.trim(),
+          days: [0,1,2,3,4,5].map(i => document.getElementById('pr_d'+i).checked ? 1 : 0),
+          comment: document.getElementById('pr_comment').value.trim(),
+        };
+        section = 'partners';
+        if (!data.name) throw new Error('Введіть назву партнера');
+      }
+    }
+
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'add', section, data, token: getToken() })
+    });
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Помилка сервера');
+
+    msg.textContent = '✓ Збережено!';
+    msg.className = 'form-msg success';
+    showToast('Дані збережено', 'success');
+    setTimeout(() => { closeModal(); loadData(); }, 1200);
+
+  } catch(err) {
+    msg.textContent = '✕ ' + err.message;
+    msg.className = 'form-msg error';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function getToken() {
+  return localStorage.getItem('dashToken') || '';
 }
 
 // ════════════════════════════════════════════════
 // УТИЛІТИ
 // ════════════════════════════════════════════════
-function pill(status) {
-  const map = {
-    done: ['pill-done','Вирішено'],
-    wip:  ['pill-wip', 'В роботі'],
-    over: ['pill-over','Прострочено'],
-    wait: ['pill-wait','Очікує'],
-  };
-  const [cls, lbl] = map[status] || ['pill-wait', status || '—'];
-  return `<span class="pill ${cls}">${lbl}</span>`;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
 }
-
+function setText(id, val) { const e=document.getElementById(id); if(e) e.textContent=val; }
 function setDelta(id, text, type) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = text;
-  el.className = 'kpi-delta ' + ({up:'delta-up', dn:'delta-dn', warn:'delta-warn'}[type] || 'delta-warn');
+  const e=document.getElementById(id); if(!e) return;
+  e.textContent=text;
+  e.className='kpi-delta '+({up:'delta-up',dn:'delta-dn',warn:'delta-warn'}[type]||'delta-warn');
 }
-
-function setText(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-
-function avg(arr) {
-  if (!arr.length) return 0;
-  return arr.reduce((s,v) => s + (v||0), 0) / arr.length;
-}
-
-function emptyRow(cols, msg) {
-  return `<tr><td colspan="${cols}" style="text-align:center;color:var(--c-muted);padding:12px;font-size:12px">${msg}</td></tr>`;
-}
-
-function showLoading(show) {
-  document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
-}
-
+function avg(arr) { return arr.length ? arr.reduce((s,v)=>s+(v||0),0)/arr.length : 0; }
+function emptyRow(cols, msg) { return `<tr><td colspan="${cols}" style="text-align:center;color:var(--c-muted);padding:12px;font-size:12px">${msg}</td></tr>`; }
+function showLoading(show) { document.getElementById('loadingOverlay').classList.toggle('hidden',!show); }
 function showError(msg) {
-  const b = document.getElementById('errorBanner');
-  b.classList.remove('hidden');
-  b.style.display = 'flex';
-  document.getElementById('errorText').textContent = msg;
+  const b=document.getElementById('errorBanner'); b.style.display='flex';
+  document.getElementById('errorText').textContent=msg;
 }
+function hideError() { document.getElementById('errorBanner').style.display='none'; }
+function setUpdateTime(d) { setText('updateTime',`оновлено ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`); }
+function setDotOk()    { document.getElementById('statusDot').className='update-dot'; }
+function setDotError() { document.getElementById('statusDot').className='update-dot error'; }
 
-function hideError() {
-  const b = document.getElementById('errorBanner');
-  b.classList.add('hidden');
-  b.style.display = 'none';
-}
+// Закрити по Escape
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
 
-function setUpdateTime(date) {
-  const h = String(date.getHours()).padStart(2,'0');
-  const m = String(date.getMinutes()).padStart(2,'0');
-  setText('updateTime', `оновлено ${h}:${m}`);
-}
-
-function setDotOk()    { document.getElementById('statusDot').className = 'update-dot'; }
-function setDotError() { document.getElementById('statusDot').className = 'update-dot error'; }
-
-// ── СТАРТ ─────────────────────────────────────────
 loadData();
 </script>
 </body>
