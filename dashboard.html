@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   ЗМІННА — ВСТАВТЕ ВАШ URL APPS SCRIPT
+   ═══════════════════════════════════════════ */
+/* API_URL задається в <script> нижче */
+
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c-bg:#f0f2f7;
+  --c-surface:#ffffff;
+  --c-card:#f8f9fc;
+  --c-border:#e2e6f0;
+  --c-text:#1a1f36;
+  --c-muted:#6b7491;
+  --c-yellow:#d4a017;
+  --c-green:#1a9e5c;   --c-green-bg:#edf7f2;
+  --c-red:#c0392b;     --c-red-bg:#fdf0ee;
+  --c-orange:#c07010;  --c-orange-bg:#fef5e6;
+  --c-blue:#1a6fb5;    --c-blue-bg:#eaf2fb;
+  --font:'IBM Plex Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+  --radius:8px;
+  --shadow:0 1px 4px rgba(0,0,0,.06);
+}
+body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-size:13px;min-height:100vh}
+.dash{padding:14px;max-width:1400px;margin:0 auto}
+
+/* ── LOADING OVERLAY ── */
+#loadingOverlay{
+  position:fixed;inset:0;background:rgba(240,242,247,.92);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:9999;backdrop-filter:blur(4px);transition:opacity .4s;
+}
+#loadingOverlay.hidden{opacity:0;pointer-events:none}
+.spinner{width:40px;height:40px;border:3px solid var(--c-border);
+  border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:var(--mono);font-size:12px;color:var(--c-muted)}
+
+/* ── ERROR BANNER ── */
+#errorBanner{
+  display:none;background:var(--c-red-bg);border:1px solid var(--c-red);
+  color:var(--c-red);padding:10px 16px;border-radius:var(--radius);
+  margin-bottom:10px;font-size:12px;font-family:var(--mono);
+  display:flex;align-items:center;justify-content:space-between;
+}
+#errorBanner.hidden{display:none}
+
+/* ── HEADER ── */
+.header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;background:var(--c-surface);border:1px solid var(--c-border);
+  border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow);
+}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{background:#1a1f36;color:#f5c518;font-family:var(--mono);font-weight:500;
+  font-size:12px;padding:4px 10px;border-radius:4px;letter-spacing:1px}
+.brand-name{font-family:var(--mono);font-size:15px;font-weight:500;color:#1a1f36;letter-spacing:2px}
+.month-badge{font-family:var(--mono);font-size:10px;color:var(--c-muted);
+  border:1px solid var(--c-border);padding:3px 10px;border-radius:4px;background:var(--c-card)}
+.header-right{display:flex;gap:6px;align-items:center}
+.update-wrap{display:flex;align-items:center;gap:5px}
+.update-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:pulse 2s infinite}
+.update-dot.error{background:var(--c-red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
+.refresh-btn{
+  font-family:var(--mono);font-size:11px;padding:5px 10px;
+  border-radius:4px;border:1px solid var(--c-border);
+  background:transparent;color:var(--c-muted);cursor:pointer;transition:.15s;
+}
+.refresh-btn:hover{border-color:#1a1f36;color:#1a1f36}
+
+/* ── KPI STRIP ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.kpi-card{
+  background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);
+  padding:12px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,#1a1f36)}
+.kpi-label{font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.8px;
+  margin-bottom:4px;font-family:var(--mono)}
+.kpi-val{font-size:26px;font-weight:500;font-family:var(--mono);color:var(--c-text);line-height:1}
+.kpi-delta{font-size:11px;font-family:var(--mono);padding:2px 6px;border-radius:3px;
+  display:inline-block;margin-top:5px}
+.delta-up{background:var(--c-green-bg);color:var(--c-green)}
+.delta-dn{background:var(--c-red-bg);color:var(--c-red)}
+.delta-warn{background:var(--c-orange-bg);color:var(--c-orange)}
+
+/* ── SECTION ── */
+.section-title{
+  font-family:var(--mono);font-size:10px;color:var(--c-muted);
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-title span{color:#1a1f36}
+.section-title::after{content:'';flex:1;height:1px;background:var(--c-border)}
+.section{background:var(--c-surface);border:1px solid var(--c-border);
+  border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+
+/* ── MISSION ── */
+.mission-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.mission-inner{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mission-block{background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px}
+.mission-block-label{font-family:var(--mono);font-size:10px;color:var(--c-muted);
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.mission-text{font-size:12px;color:var(--c-text);line-height:1.6;font-style:italic}
+.values-list{list-style:none}
+.values-list li{font-size:12px;color:var(--c-text);padding:2px 0;display:flex;align-items:center;gap:6px}
+.values-list li::before{content:'';width:6px;height:6px;border-radius:50%;
+  background:var(--c-yellow);flex-shrink:0}
+
+/* ── CHARTS ── */
+.main-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px;margin-bottom:10px}
+.chart-wrap{position:relative;width:100%;height:150px}
+
+/* ── TABLES ── */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{
+  font-family:var(--mono);font-size:10px;color:var(--c-muted);
+  text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;
+  text-align:left;border-bottom:1px solid var(--c-border);background:var(--c-card);
+}
+.data-table td{padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:top;line-height:1.4}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:#f5f7fc}
+.table-scroll{max-height:200px;overflow-y:auto}
+.table-scroll::-webkit-scrollbar{width:3px}
+.table-scroll::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:2px}
+
+/* ── STATUS PILLS ── */
+.pill{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:3px;white-space:nowrap}
+.pill-done{background:var(--c-green-bg);color:var(--c-green)}
+.pill-wip {background:var(--c-blue-bg);color:var(--c-blue)}
+.pill-over{background:var(--c-red-bg);color:var(--c-red)}
+.pill-wait{background:var(--c-orange-bg);color:var(--c-orange)}
+
+/* ── FILTERS ── */
+.filter-bar{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+.chip{
+  font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;
+  border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer;transition:.15s;
+}
+.chip.active{border-color:#1a1f36;color:#1a1f36;background:#eef0f8}
+.chip:hover{border-color:var(--c-muted)}
+
+/* ── BOTTOM GRIDS ── */
+.bottom-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:10px;margin-bottom:10px}
+.full-bottom{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── PARTNERS ── */
+.partner-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--c-border)}
+.partner-row:last-child{border:none}
+.partner-num{font-family:var(--mono);font-size:10px;color:var(--c-muted);width:16px}
+.partner-name{flex:1;font-size:12px;color:var(--c-text)}
+.partner-days{display:flex;gap:3px}
+.pday{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-family:var(--mono);font-weight:500}
+.pday-ok{background:var(--c-green-bg);color:var(--c-green)}
+.pday-no{background:var(--c-red-bg);color:var(--c-red)}
+
+/* ── COMMENTS ── */
+.comment-card{background:var(--c-card);border:1px solid var(--c-border);
+  border-radius:6px;padding:8px 10px;margin-bottom:6px}
+.comment-card:last-child{margin-bottom:0}
+.comment-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.comment-source{font-family:var(--mono);font-size:10px;color:var(--c-blue);
+  background:var(--c-blue-bg);padding:2px 7px;border-radius:3px}
+.comment-date{font-family:var(--mono);font-size:10px;color:var(--c-muted)}
+.comment-text{font-size:12px;color:var(--c-text);line-height:1.5}
+
+/* ── SKELETON LOADER ── */
+.skeleton{background:linear-gradient(90deg,#e8ebf4 25%,#f0f2f7 50%,#e8ebf4 75%);
+  background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){
+  .main-grid{grid-template-columns:1fr 1fr}
+  .kpi-strip{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:768px){
+  .main-grid,.mission-row,.bottom-grid,.full-bottom{grid-template-columns:1fr}
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  .mission-inner{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Завантаження даних...</div>
+</div>
+
+<div class="dash">
+
+  <!-- ERROR -->
+  <div id="errorBanner" class="hidden">
+    <span id="errorText">Помилка завантаження</span>
+    <button onclick="loadData()" style="font-family:var(--mono);font-size:11px;padding:3px 10px;
+      border:1px solid var(--c-red);background:transparent;color:var(--c-red);
+      border-radius:3px;cursor:pointer">Повторити</button>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">DLight</div>
+      <div class="brand-name" id="hTeamName">«ТОЙОТА»</div>
+      <div class="month-badge" id="hMonth">БЕРЕЗЕНЬ 2025</div>
+    </div>
+    <div class="header-right">
+      <div class="update-wrap">
+        <div class="update-dot" id="statusDot"></div>
+        <span class="update-time" id="updateTime">—</span>
+      </div>
+      <button class="refresh-btn" onclick="loadData()">↻ Оновити</button>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-strip">
+    <div class="kpi-card" style="--accent:var(--c-green)">
+      <div class="kpi-label">Ефективність</div>
+      <div class="kpi-val" id="kpiEff">—</div>
+      <div class="kpi-delta" id="kpiEffDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-yellow)">
+      <div class="kpi-label">Виконано МВ</div>
+      <div class="kpi-val" id="kpiMV">—</div>
+      <div class="kpi-delta" id="kpiMVDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-red)">
+      <div class="kpi-label">Відкриті проблеми</div>
+      <div class="kpi-val" id="kpiProblems">—</div>
+      <div class="kpi-delta" id="kpiProblemsDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-blue)">
+      <div class="kpi-label">Партнерські угоди</div>
+      <div class="kpi-val" id="kpiPartners">—</div>
+      <div class="kpi-delta" id="kpiPartnersDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-orange)">
+      <div class="kpi-label">Зауваження</div>
+      <div class="kpi-val" id="kpiComments">—</div>
+      <div class="kpi-delta" id="kpiCommentsDelta">завантаження...</div>
+    </div>
+  </div>
+
+  <!-- MISSION -->
+  <div class="mission-row">
+    <div class="section">
+      <div class="section-title"><span>Цінності та місія компанії</span></div>
+      <div class="mission-inner">
+        <div class="mission-block">
+          <div class="mission-block-label">Місія</div>
+          <div class="mission-text" id="companyMission">...</div>
+        </div>
+        <div class="mission-block">
+          <div class="mission-block-label">Наші цінності</div>
+          <ul class="values-list" id="companyValues"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Цінності та місія команди</span></div>
+      <div class="mission-inner">
+        <div class="mission-block">
+          <div class="mission-block-label">Місія команди</div>
+          <div class="mission-text" id="teamMission">...</div>
+          <div class="mission-block-label" style="margin-top:8px">Наша мета</div>
+          <div class="mission-text" id="teamGoal">...</div>
+        </div>
+        <div class="mission-block">
+          <div class="mission-block-label">Наші цінності</div>
+          <ul class="values-list" id="teamValues"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS + PROBLEMS -->
+  <div class="main-grid">
+    <div class="section">
+      <div class="section-title"><span>Щоденні показники (ефективність %)</span></div>
+      <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Щотижневі — якість / безпека</span></div>
+      <div class="chart-wrap"><canvas id="weeklyChart"></canvas></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Трекер проблем</span></div>
+      <div class="filter-bar">
+        <button class="chip active" onclick="filterProbs('all',this)">Всі</button>
+        <button class="chip" onclick="filterProbs('wip',this)">В роботі</button>
+        <button class="chip" onclick="filterProbs('over',this)">Прострочено</button>
+        <button class="chip" onclick="filterProbs('done',this)">Вирішено</button>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Дата</th><th>Опис</th><th>Відп.</th><th>Статус</th></tr></thead>
+          <tbody id="probBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESCALATIONS + PARTNERS -->
+  <div class="bottom-grid">
+    <div class="section">
+      <div class="section-title"><span>Ескаловані проблеми</span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Дата</th><th>Проблема</th><th>Дії рівня 2</th><th>Статус</th></tr></thead>
+          <tbody id="escalBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Партнерські угоди</span></div>
+      <div id="partnerList"></div>
+    </div>
+  </div>
+
+  <!-- COMMENTS + CORRECTIVE -->
+  <div class="full-bottom">
+    <div class="section">
+      <div class="section-title"><span>Зауваження від дільниць — споживачів</span></div>
+      <div class="table-scroll" id="commentsList"></div>
+    </div>
+    <div class="section">
+      <div class="section-title"><span>Список коригуючих дій</span></div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Опис</th><th>Коригуюча дія</th><th>Відп.</th><th>Дата</th><th>Статус</th></tr></thead>
+          <tbody id="corrBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dash -->
+
+<script>
+// ═══════════════════════════════════════════════════
+//  ▼▼▼  ВСТАВТЕ ВАШ URL ПІСЛЯ ДЕПЛОЮ APPS SCRIPT  ▼▼▼
+// ═══════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbyrEQzteAXNZtEr5XdIYz2LqTryjT4lZJZAamyolkCzDVmHigbsfQji7eLE_uiXd7d4/exec';
+// ═══════════════════════════════════════════════════
+
+const REFRESH_INTERVAL = 5 * 60 * 1000; // автооновлення кожні 5 хвилин
+const DAYS_UK = ['Пн','Вт','Ср','Чт','Пт','Сб'];
+
+let allProblems = [];
+let dailyChartInst = null;
+let weeklyChartInst = null;
+let refreshTimer = null;
+
+// ── ГОЛОВНА ФУНКЦІЯ ЗАВАНТАЖЕННЯ ──────────────────
+async function loadData() {
+  showLoading(true);
+  hideError();
+
+  try {
+    const res = await fetch(API_URL + '?action=all');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    renderAll(data);
+    setUpdateTime(new Date());
+    setDotOk();
+
+  } catch (err) {
+    showError('Помилка: ' + err.message + '. Перевір URL Apps Script.');
+    setDotError();
+    console.error(err);
+  } finally {
+    showLoading(false);
+  }
+
+  // Перезапускаємо таймер
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(loadData, REFRESH_INTERVAL);
+}
+
+// ── РЕНДЕР ВСІХ СЕКЦІЙ ────────────────────────────
+function renderAll(data) {
+  const { meta, daily, weekly, problems, corrective, escalations, partners, comments } = data;
+
+  renderMeta(meta);
+  renderKPI(daily, problems, partners, comments);
+  renderDailyChart(daily);
+  renderWeeklyChart(weekly);
+  allProblems = problems || [];
+  renderProblems(allProblems, 'all');
+  renderEscalations(escalations || []);
+  renderPartners(partners || []);
+  renderComments(comments || []);
+  renderCorrective(corrective || []);
+}
+
+// ── META / МІСІЯ ──────────────────────────────────
+function renderMeta(meta) {
+  if (!meta) return;
+  setText('hTeamName', meta.teamName || '«ТОЙОТА»');
+  setText('hMonth', meta.month || '');
+  setText('companyMission', meta.companyMission || '');
+  setText('teamMission', meta.teamMission || '');
+  setText('teamGoal', meta.teamGoal || '');
+
+  renderValuesList('companyValues', meta.companyValues);
+  renderValuesList('teamValues', meta.teamValues);
+}
+
+function renderValuesList(id, valStr) {
+  const el = document.getElementById(id);
+  if (!el || !valStr) return;
+  const vals = String(valStr).split(',').map(v => v.trim()).filter(Boolean);
+  el.innerHTML = vals.map(v => `<li>${v}</li>`).join('');
+}
+
+// ── KPI ───────────────────────────────────────────
+function renderKPI(daily, problems, partners, comments) {
+  // Ефективність — середнє за останні 7 днів
+  if (daily && daily.length) {
+    const last7 = daily.slice(-7);
+    const avgFact = avg(last7.map(d => d.fact));
+    const avgPlan = avg(last7.map(d => d.plan)) || 85;
+    const diff = +(avgFact - avgPlan).toFixed(1);
+    setText('kpiEff', Math.round(avgFact) + '%');
+    setDelta('kpiEffDelta', diff >= 0 ? `+${diff}% до плану` : `${diff}% до плану`, diff >= 0 ? 'up' : 'dn');
+
+    // МВ — сума за поточний місяць
+    const mvFact = daily.reduce((s,d) => s + (d.mvFact||0), 0);
+    const mvPlan = daily.reduce((s,d) => s + (d.mvPlan||0), 0);
+    const mvDiff = mvPlan ? Math.round((mvFact/mvPlan-1)*100) : 0;
+    setText('kpiMV', mvFact);
+    setDelta('kpiMVDelta', `план: ${mvPlan} / ${mvDiff >= 0 ? '+' : ''}${mvDiff}%`, mvDiff >= 0 ? 'up' : 'dn');
+  }
+
+  // Проблеми
+  if (problems) {
+    const open = problems.filter(p => p.status !== 'done').length;
+    const escal = problems.filter(p => p.status === 'over').length;
+    setText('kpiProblems', open);
+    setDelta('kpiProblemsDelta', `${escal} прострочено`, escal > 0 ? 'dn' : 'up');
+  }
+
+  // Партнери
+  if (partners) {
+    const pending = partners.filter(p => p.days && p.days.includes(0)).length;
+    setText('kpiPartners', partners.length);
+    setDelta('kpiPartnersDelta', pending > 0 ? `${pending} не підписано` : 'всі підписано', pending > 0 ? 'warn' : 'up');
+  }
+
+  // Зауваження
+  if (comments) {
+    const done = comments.filter(c => c.status === 'done').length;
+    setText('kpiComments', comments.length);
+    setDelta('kpiCommentsDelta', `${done} вирішено`, done === comments.length ? 'up' : 'warn');
+  }
+}
+
+// ── ГРАФІКИ ───────────────────────────────────────
+function renderDailyChart(daily) {
+  if (!daily || !daily.length) return;
+
+  const labels = daily.map(d => d.date);
+  const facts  = daily.map(d => d.fact);
+  const plans  = daily.map(d => d.plan || 85);
+
+  if (dailyChartInst) dailyChartInst.destroy();
+
+  dailyChartInst = new Chart(document.getElementById('dailyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Факт',
+          data: facts,
+          backgroundColor: 'rgba(26,31,54,0.72)',
+          borderRadius: 3,
+        },
+        {
+          label: 'План',
+          data: plans,
+          type: 'line',
+          borderColor: 'rgba(192,57,43,0.7)',
+          borderDash: [4,4],
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, maxRotation:45 },
+             grid: { color:'rgba(226,230,240,.8)' } },
+        y: { min:50, max:100,
+             ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, callback:v=>v+'%' },
+             grid: { color:'rgba(226,230,240,.8)' } }
+      }
+    }
+  });
+}
+
+function renderWeeklyChart(weekly) {
+  if (!weekly || !weekly.length) return;
+
+  const labels   = weekly.map(w => w.week);
+  const quality  = weekly.map(w => w.quality);
+  const safety   = weekly.map(w => w.safety);
+
+  if (weeklyChartInst) weeklyChartInst.destroy();
+
+  weeklyChartInst = new Chart(document.getElementById('weeklyChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Якість',  data:quality, backgroundColor:'rgba(26,111,181,0.7)', borderRadius:3 },
+        { label:'Безпека', data:safety,  backgroundColor:'rgba(192,57,43,0.7)',  borderRadius:3 },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'} },
+             grid: { color:'rgba(226,230,240,.8)' } },
+        y: { ticks: { color:'#6b7491', font:{size:10,family:'IBM Plex Mono'}, stepSize:1 },
+             grid: { color:'rgba(226,230,240,.8)' } }
+      }
+    }
+  });
+}
+
+// ── ТРЕКЕР ПРОБЛЕМ ────────────────────────────────
+function renderProblems(problems, filter) {
+  const filtered = filter === 'all' ? problems : problems.filter(p => p.status === filter);
+  document.getElementById('probBody').innerHTML = filtered.map(p => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
+      <td style="max-width:130px">${p.desc}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${p.resp}</td>
+      <td>${pill(p.status)}</td>
+    </tr>`).join('') || emptyRow(4, 'Немає записів');
+}
+
+function filterProbs(filter, btn) {
+  document.querySelectorAll('.filter-bar .chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderProblems(allProblems, filter);
+}
+
+// ── ЕСКАЛАЦІЇ ─────────────────────────────────────
+function renderEscalations(escalations) {
+  document.getElementById('escalBody').innerHTML = escalations.map(e => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
+      <td style="font-size:11px;max-width:160px">${e.desc}</td>
+      <td style="font-size:11px;color:var(--c-muted);max-width:140px">${e.action}</td>
+      <td>${pill(e.status)}</td>
+    </tr>`).join('') || emptyRow(4, 'Немає записів');
+}
+
+// ── ПАРТНЕРИ ──────────────────────────────────────
+function renderPartners(partners) {
+  document.getElementById('partnerList').innerHTML = partners.map((p, i) => `
+    <div class="partner-row">
+      <span class="partner-num">${p.n || i+1}</span>
+      <span class="partner-name">${p.name}</span>
+      <div class="partner-days">
+        ${DAYS_UK.map((d, j) => `
+          <div class="pday ${(p.days||[])[j] ? 'pday-ok' : 'pday-no'}" title="${d}">${d[0]}</div>
+        `).join('')}
+      </div>
+    </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає даних</div>';
+}
+
+// ── ЗАУВАЖЕННЯ ────────────────────────────────────
+function renderComments(comments) {
+  document.getElementById('commentsList').innerHTML = comments.map(c => `
+    <div class="comment-card">
+      <div class="comment-meta">
+        <span class="comment-source">${c.source}</span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span class="comment-date">${c.date}</span>
+          ${pill(c.status)}
+        </span>
+      </div>
+      <div class="comment-text">${c.text}</div>
+    </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає записів</div>';
+}
+
+// ── КОРИГУЮЧІ ДІЇ ─────────────────────────────────
+function renderCorrective(corrective) {
+  document.getElementById('corrBody').innerHTML = corrective.map(r => `
+    <tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n}</td>
+      <td style="font-size:11px;max-width:130px">${r.desc}</td>
+      <td style="font-size:11px;color:var(--c-muted);max-width:110px">${r.action}</td>
+      <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${r.resp}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
+      <td>${pill(r.status)}</td>
+    </tr>`).join('') || emptyRow(6, 'Немає записів');
+}
+
+// ════════════════════════════════════════════════
+// УТИЛІТИ
+// ════════════════════════════════════════════════
+function pill(status) {
+  const map = {
+    done: ['pill-done','Вирішено'],
+    wip:  ['pill-wip', 'В роботі'],
+    over: ['pill-over','Прострочено'],
+    wait: ['pill-wait','Очікує'],
+  };
+  const [cls, lbl] = map[status] || ['pill-wait', status || '—'];
+  return `<span class="pill ${cls}">${lbl}</span>`;
+}
+
+function setDelta(id, text, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'kpi-delta ' + ({up:'delta-up', dn:'delta-dn', warn:'delta-warn'}[type] || 'delta-warn');
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function avg(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((s,v) => s + (v||0), 0) / arr.length;
+}
+
+function emptyRow(cols, msg) {
+  return `<tr><td colspan="${cols}" style="text-align:center;color:var(--c-muted);padding:12px;font-size:12px">${msg}</td></tr>`;
+}
+
+function showLoading(show) {
+  document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+}
+
+function showError(msg) {
+  const b = document.getElementById('errorBanner');
+  b.classList.remove('hidden');
+  b.style.display = 'flex';
+  document.getElementById('errorText').textContent = msg;
+}
+
+function hideError() {
+  const b = document.getElementById('errorBanner');
+  b.classList.add('hidden');
+  b.style.display = 'none';
+}
+
+function setUpdateTime(date) {
+  const h = String(date.getHours()).padStart(2,'0');
+  const m = String(date.getMinutes()).padStart(2,'0');
+  setText('updateTime', `оновлено ${h}:${m}`);
+}
+
+function setDotOk()    { document.getElementById('statusDot').className = 'update-dot'; }
+function setDotError() { document.getElementById('statusDot').className = 'update-dot error'; }
+
+// ── СТАРТ ─────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
