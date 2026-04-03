@@ -645,7 +645,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbze3CqV6jPVLN9r9lB782gyClBYxTROtdUJ9h4c216bH3d5liv34UwnA3pBtMumgfc/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyrgkoANPUlQntydryb81vV48AxCqojJM7IQAoffbF5ZDlUwYwqZGF6KOlBRlcACZQ9/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -820,19 +820,16 @@ async function changeStatus(rowIndex, section, selectEl) {
   selectEl.classList.add('saving');
   selectEl.disabled = true;
   try {
-    const res = await fetch(API_URL, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'update', section, data:{ rowIndex, status: newStatus }, token: getToken() })
-    });
-    const data = await res.json();
-    if (data.success) {
+    const data = { rowIndex, status: newStatus };
+    const url = `${API_URL}?action=update&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (result.success) {
       showToast('Статус оновлено', 'success');
-      // Оновлюємо локальний масив
       const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
       if (maps[section] && maps[section][rowIndex]) maps[section][rowIndex].status = newStatus;
     } else {
-      showToast('Помилка: ' + data.error, 'error');
+      showToast('Помилка: ' + (result.error || 'невідома'), 'error');
     }
   } catch(e) {
     showToast('Помилка збереження', 'error');
@@ -1019,11 +1016,8 @@ async function submitForm() {
       }
     }
 
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'add', section, data, token: getToken() })
-    });
+    const url = `${API_URL}?action=add&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
     const result = await res.json();
     if (!result.success) throw new Error(result.error || 'Помилка сервера');
 
