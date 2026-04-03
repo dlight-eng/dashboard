@@ -44,7 +44,8 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .update-dot.error{background:var(--c-red);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
-.hdr-btn{font-family:var(--mono);font-size:11px;padding:5px 11px;border-radius:4px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);cursor:pointer;transition:.15s}
+.month-select{font-family:var(--mono);font-size:11px;color:var(--c-text);border:1px solid var(--c-border);padding:4px 10px;border-radius:4px;background:var(--c-card);cursor:pointer;outline:none;transition:.15s}
+.month-select:hover,.month-select:focus{border-color:#1a1f36}
 .hdr-btn:hover{border-color:#1a1f36;color:#1a1f36}
 .hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
 .hdr-btn.primary:hover{background:#2d3454}
@@ -487,7 +488,13 @@ select.field-input{cursor:pointer}
     <div class="header-left">
       <div class="logo">DLight</div>
       <div class="brand-name" id="hTeamName">«ТОЙОТА»</div>
-      <div class="month-badge" id="hMonth">БЕРЕЗЕНЬ 2025</div>
+      <select class="month-select" id="monthSelect" onchange="onMonthChange()">
+        <option value="">Всі місяці</option>
+        <option>Січень</option><option>Лютий</option><option>Березень</option>
+        <option>Квітень</option><option>Травень</option><option>Червень</option>
+        <option>Липень</option><option>Серпень</option><option>Вересень</option>
+        <option>Жовтень</option><option>Листопад</option><option>Грудень</option>
+      </select>
     </div>
     <div class="header-right">
       <div class="update-wrap">
@@ -681,37 +688,87 @@ async function loadData() {
 }
 
 function renderAll(data) {
-  const { meta, daily, monthly, weekly, problems, corrective, escalations, partners, comments } = data;
-  renderMeta(meta);
-  renderKPI(daily, problems, partners, comments);
-  renderMonthlyChart(monthly || daily);
+  fullData = data;
+  renderMeta(data.meta);
+  applyMonthFilter(data);
+}
+
+// ── МІСЯЦЬ → номер (для фільтрації дат) ──────────
+const MONTH_MAP = {
+  'Січень':1,'Лютий':2,'Березень':3,'Квітень':4,'Травень':5,'Червень':6,
+  'Липень':7,'Серпень':8,'Вересень':9,'Жовтень':10,'Листопад':11,'Грудень':12
+};
+
+let fullData = null; // зберігаємо всі дані для фільтрації
+
+function onMonthChange() {
+  if (fullData) applyMonthFilter(fullData);
+}
+
+function getSelectedMonth() {
+  return document.getElementById('monthSelect').value; // '' = всі
+}
+
+function applyMonthFilter(data) {
+  const month = getSelectedMonth();
+  const mNum  = MONTH_MAP[month];
+
+  function filterByDate(arr) {
+    if (!arr || !month) return arr || [];
+    return arr.filter(r => {
+      // дата може бути "dd.MM.yyyy" або "dd.MM.yy"
+      const parts = String(r.date || '').split('.');
+      if (parts.length < 2) return true;
+      return parseInt(parts[1], 10) === mNum;
+    });
+  }
+
+  // Щоденні — фільтруємо по даті
+  const daily    = filterByDate(data.daily);
+  const weekly   = data.weekly || []; // тижневі не мають дати — показуємо всі
+  const problems = filterByDate(data.problems);
+  const escals   = filterByDate(data.escalations);
+  const corr     = filterByDate(data.corrective);
+  const comments = filterByDate(data.comments);
+  // Місячні — фільтруємо по назві місяця
+  const monthly  = month
+    ? (data.monthly || []).filter(m => m.month === month)
+    : (data.monthly || []);
+
+  renderKPI(daily, problems, data.partners, comments);
+  renderMonthlyChart(monthly.length ? monthly : data.monthly);
   renderDailyNormChart(daily);
   renderDailyMlChart(daily);
   renderWeeklyQualityChart(weekly);
   renderWeeklySafetyChart(weekly);
-  allProblems    = problems    || [];
-  allEscalations = escalations || [];
-  allCorrective  = corrective  || [];
-  allComments    = comments    || [];
+
+  allProblems    = problems;
+  allEscalations = escals;
+  allCorrective  = corr;
+  allComments    = comments;
   renderProblems(allProblems, 'all');
+  document.querySelectorAll('.filter-bar .chip').forEach((b,i)=>b.classList.toggle('active',i===0));
   renderEscalations(allEscalations);
-  renderPartners(partners || []);
+  renderPartners(data.partners || []);
   renderComments(allComments);
   renderCorrective(allCorrective);
 }
-
-// ════════════════════════════════════════════════
-// META
-// ════════════════════════════════════════════════
 function renderMeta(meta) {
   if (!meta) return;
   setText('hTeamName', meta.teamName || '«ТОЙОТА»');
-  setText('hMonth', meta.month || '');
   setText('companyMission', meta.companyMission || '');
   setText('teamMission', meta.teamMission || '');
   setText('teamGoal', meta.teamGoal || '');
   renderValuesList('companyValues', meta.companyValues);
   renderValuesList('teamValues', meta.teamValues);
+  // Встановлюємо місяць у дропдауні якщо ще не обраний
+  const sel = document.getElementById('monthSelect');
+  if (sel && !sel.value && meta.month) {
+    const name = Object.keys(MONTH_MAP).find(m =>
+      meta.month.toUpperCase().includes(m.toUpperCase())
+    );
+    if (name) sel.value = name;
+  }
 }
 function renderValuesList(id, valStr) {
   const el = document.getElementById(id);
