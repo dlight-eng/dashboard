@@ -574,26 +574,28 @@ select.field-input{cursor:pointer}
   </div>
 
   <!-- ЩОДЕННІ — 2 графіки -->
-  <div class="two-col-grid" style="margin-bottom:10px">
-    <div class="section">
-      <div class="section-title"><span>Щоденні — нормо/годин виконано</span></div>
-      <div class="chart-wrap" style="height:160px"><canvas id="dailyNormChart"></canvas></div>
-    </div>
-    <div class="section">
-      <div class="section-title"><span>Щоденні — відношення МЛ вчасно / всього (%)</span></div>
-      <div class="chart-wrap" style="height:160px"><canvas id="dailyMlChart"></canvas></div>
+  <div class="section" style="margin-bottom:10px">
+    <div class="section-title"><span>Щоденні показники</span></div>
+    <div class="two-col-grid">
+      <div>
+        <div class="chart-wrap" style="height:160px"><canvas id="dailyNormChart"></canvas></div>
+      </div>
+      <div>
+        <div class="chart-wrap" style="height:160px"><canvas id="dailyMlChart"></canvas></div>
+      </div>
     </div>
   </div>
 
   <!-- ЩОТИЖНЕВІ — 2 графіки -->
-  <div class="two-col-grid" style="margin-bottom:10px">
-    <div class="section">
-      <div class="section-title"><span>Щотижневі — якість, кількість зауважень</span></div>
-      <div class="chart-wrap" style="height:150px"><canvas id="weeklyQualityChart"></canvas></div>
-    </div>
-    <div class="section">
-      <div class="section-title"><span>Щотижневі — безпека та дисципліна, кількість зауважень</span></div>
-      <div class="chart-wrap" style="height:150px"><canvas id="weeklySafetyChart"></canvas></div>
+  <div class="section" style="margin-bottom:10px">
+    <div class="section-title"><span>Щотижневі показники</span></div>
+    <div class="two-col-grid">
+      <div>
+        <div class="chart-wrap" style="height:150px"><canvas id="weeklyQualityChart"></canvas></div>
+      </div>
+      <div>
+        <div class="chart-wrap" style="height:150px"><canvas id="weeklySafetyChart"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -652,7 +654,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbyrgkoANPUlQntydryb81vV48AxCqojJM7IQAoffbF5ZDlUwYwqZGF6KOlBRlcACZQ9/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwBbMNy1S_PxDqrg1ziAxpI_EuoVLTXULYu3-5msQ7Nb6veq2HiZ9vW2vvjgz-Im0o0/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
