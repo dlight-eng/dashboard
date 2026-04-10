@@ -838,16 +838,26 @@ function renderMonthlyChart(data) {
 function renderDailyNormChart(data) {
   if (!data||!data.length) return;
   mkChart('dailyNormChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
-    {label:'Факт н/год',data:data.map(d=>d.mvFact||0),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
+    {label:'Кількість задач',data:data.map(d=>d.mvFact||0),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
     {label:'План',data:data.map(d=>d.mvPlan||0),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined)}});
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}%`}}
+    },
+    scales:cScales(0,100,v=>v+'%')}});
 }
 function renderDailyMlChart(data) {
   if (!data||!data.length) return;
   mkChart('dailyMlChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
-    {label:'МЛ %',data:data.map(d=>d.fact||0),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
+    {label:'Кількість зауважень',data:data.map(d=>d.fact||0),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
     {label:'План',data:data.map(d=>d.plan||85),type:'line',borderColor:'rgba(192,57,43,0.75)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,100,v=>v+'%')}});
+  ]},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}`}}
+    },
+    scales:cScales(0,100,v=>v+'%')}});
 }
 function renderWeeklyQualityChart(data) {
   if (!data||!data.length) return;
