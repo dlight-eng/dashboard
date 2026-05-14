@@ -253,107 +253,13 @@ select.field-input{cursor:pointer}
 
         <!-- ПІДТИП -->
         <div class="subtype-row">
-          <button class="stype-btn active" onclick="switchSubtype('daily',this)">Щоденні</button>
-          <button class="stype-btn" onclick="switchSubtype('monthly',this)">Ефективність</button>
-          <button class="stype-btn" onclick="switchSubtype('weekly',this)">Тижневі</button>
-          <button class="stype-btn" onclick="switchSubtype('problem',this)">Проблема</button>
+          <button class="stype-btn active" onclick="switchSubtype('problem',this)">Проблема</button>
           <button class="stype-btn" onclick="switchSubtype('escalation',this)">Ескалація</button>
           <button class="stype-btn" onclick="switchSubtype('partner',this)">Угода</button>
         </div>
 
-        <!-- Щоденні показники -->
-        <div class="data-subpanel" id="sub-daily">
-          <div class="form-section">
-            <div class="form-section-label">Щоденні показники</div>
-            <div class="form-grid">
-              <div class="form-field">
-                <label class="field-label">Дата</label>
-                <input class="field-input" type="date" id="d_date">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Дані графік 1</label>
-                <input class="field-input" type="number" id="d_fact" min="0" max="100" placeholder="87">
-              </div>
-              <div class="form-field">
-                <label class="field-label">План графік 1</label>
-                <input class="field-input" type="number" id="d_plan" min="0" max="100" placeholder="85">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Дані графік 2</label>
-                <input class="field-input" type="number" id="d_mvfact" min="0" placeholder="320">
-              </div>
-              <div class="form-field">
-                <label class="field-label">План графік 2</label>
-                <input class="field-input" type="number" id="d_mvplan" min="0" placeholder="350">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Місячна ефективність -->
-        <div class="data-subpanel" id="sub-monthly" style="display:none">
-          <div class="form-section">
-            <div class="form-section-label">Ефективність по місяцях</div>
-            <div class="form-grid">
-              <div class="form-field">
-                <label class="field-label">Місяць</label>
-                <select class="field-input" id="m_month">
-                  <option>Січень</option><option>Лютий</option><option>Березень</option>
-                  <option>Квітень</option><option>Травень</option><option>Червень</option>
-                  <option>Липень</option><option>Серпень</option><option>Вересень</option>
-                  <option>Жовтень</option><option>Листопад</option><option>Грудень</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label class="field-label">Факт %</label>
-                <input class="field-input" type="number" id="m_fact" min="0" max="100" placeholder="87">
-              </div>
-              <div class="form-field">
-                <label class="field-label">План %</label>
-                <input class="field-input" type="number" id="m_plan" min="0" max="100" placeholder="85">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Щотижневі -->
-        <div class="data-subpanel" id="sub-weekly" style="display:none">
-          <div class="form-section">
-            <div class="form-section-label">Щотижневі показники</div>
-            <div class="form-grid">
-              <div class="form-field">
-                <label class="field-label">Тиждень</label>
-                <select class="field-input" id="w_week">
-                  <option>Тиждень 1</option><option>Тиждень 2</option>
-                  <option>Тиждень 3</option><option>Тиждень 4</option><option>Тиждень 5</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label class="field-label">Якість (кількість зауважень)</label>
-                <input class="field-input" type="number" id="w_quality" min="0" placeholder="3">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Ліміт якості</label>
-                <input class="field-input" type="number" id="w_qlimit" min="0" placeholder="15">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Безпека (зауваження)</label>
-                <input class="field-input" type="number" id="w_safety" min="0" placeholder="1">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Дисципліна (зауваження)</label>
-                <input class="field-input" type="number" id="w_discipline" min="0" placeholder="0">
-              </div>
-              <div class="form-field">
-                <label class="field-label">Ліміт безпеки</label>
-                <input class="field-input" type="number" id="w_slimit" min="0" placeholder="2">
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Нова проблема -->
-        <div class="data-subpanel" id="sub-problem" style="display:none">
+        <div class="data-subpanel" id="sub-problem">
           <div class="form-section">
             <div class="form-section-label">Нова проблема</div>
             <div class="form-grid">
@@ -766,7 +672,7 @@ const DAYS_UK = ['Пн','Вт','Ср','Чт','Пт','Сб'];
 const STATUS_LABELS = { done:'Вирішено', wip:'В роботі', over:'Прострочено', wait:'Очікує' };
 
 let allProblems = [], allEscalations = [], allCorrective = [], allComments = [];
-let currentTab = 'data', currentSubtype = 'daily';
+let currentTab = 'data', currentSubtype = 'problem';
 let refreshTimer = null;
 let charts = {};
 
@@ -1426,34 +1332,8 @@ async function submitForm() {
       };
       if (!data.text) throw new Error('Введіть текст зауваження');
     } else {
-      section = currentSubtype === 'monthly' ? 'monthly' : currentSubtype;
-      if (currentSubtype === 'daily') {
-        data = {
-          date:    document.getElementById('d_date').value,
-          fact:    +document.getElementById('d_fact').value || 0,
-          plan:    +document.getElementById('d_plan').value || 85,
-          mvFact:  +document.getElementById('d_mvfact').value || 0,
-          mvPlan:  +document.getElementById('d_mvplan').value || 0,
-        };
-        if (!data.date) throw new Error('Оберіть дату');
-      } else if (currentSubtype === 'monthly') {
-        data = {
-          month: document.getElementById('m_month').value,
-          fact:  +document.getElementById('m_fact').value || 0,
-          plan:  +document.getElementById('m_plan').value || 85,
-        };
-        section = 'monthly';
-      } else if (currentSubtype === 'weekly') {
-        data = {
-          week:       document.getElementById('w_week').value,
-          quality:    +document.getElementById('w_quality').value || 0,
-          qualityLimit: +document.getElementById('w_qlimit').value || null,
-          safety:     +document.getElementById('w_safety').value || 0,
-          discipline: +document.getElementById('w_discipline').value || 0,
-          safetyLimit:+document.getElementById('w_slimit').value || null,
-        };
-        section = 'weekly';
-      } else if (currentSubtype === 'problem') {
+      section = currentSubtype;
+      if (currentSubtype === 'problem') {
         data = {
           date:   document.getElementById('p_date').value,
           desc:   document.getElementById('p_desc').value.trim(),
@@ -1731,116 +1611,6 @@ async function submitQuickAdd() {
   }
 }
 
-// ── ДОДАВАННЯ ДАНИХ З ГРАФІКА ────────────────────
-// Мапи: джерело даних → секція і поля форми
-const SOURCE_TO_SECTION = {
-  daily_fact:  'daily', daily_plan:  'daily',
-  daily_fact2: 'daily', daily_plan2: 'daily',
-  monthly_fact:'monthly', monthly_plan:'monthly',
-  weekly_qual: 'weekly', weekly_safe: 'weekly',
-  weekly_disc: 'weekly', weekly_qlim: 'weekly', weekly_slim: 'weekly',
-};
-
-const SECTION_FORMS = {
-  daily: {
-    title: 'Щоденні показники',
-    section: 'daily',
-    fields: () => `
-      <div class="form-grid">
-        <div class="form-field"><label class="field-label">Дата</label>
-          <input class="field-input" type="date" id="cd_date" value="${today()}"></div>
-        <div class="form-field"><label class="field-label">Дані графік 1</label>
-          <input class="field-input" type="number" id="cd_fact" placeholder="87"></div>
-        <div class="form-field"><label class="field-label">План графік 1</label>
-          <input class="field-input" type="number" id="cd_plan" placeholder="85"></div>
-        <div class="form-field"><label class="field-label">Дані графік 2</label>
-          <input class="field-input" type="number" id="cd_mvfact" placeholder="320"></div>
-        <div class="form-field"><label class="field-label">План графік 2</label>
-          <input class="field-input" type="number" id="cd_mvplan" placeholder="350"></div>
-      </div>`,
-    collect: () => ({
-      date: document.getElementById('cd_date').value,
-      fact: +document.getElementById('cd_fact').value||0,
-      plan: +document.getElementById('cd_plan').value||85,
-      mvFact: +document.getElementById('cd_mvfact').value||0,
-      mvPlan: +document.getElementById('cd_mvplan').value||0,
-    }),
-    validate: d => !d.date ? 'Оберіть дату' : null,
-  },
-  monthly: {
-    title: 'Ефективність по місяцях',
-    section: 'monthly',
-    fields: () => `
-      <div class="form-grid">
-        <div class="form-field"><label class="field-label">Місяць</label>
-          <select class="field-input" id="cd_month">
-            ${['Січень','Лютий','Березень','Квітень','Травень','Червень',
-               'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень']
-              .map(m=>`<option>${m}</option>`).join('')}
-          </select></div>
-        <div class="form-field"><label class="field-label">Факт %</label>
-          <input class="field-input" type="number" id="cd_fact" min="0" max="100" placeholder="87"></div>
-        <div class="form-field"><label class="field-label">План %</label>
-          <input class="field-input" type="number" id="cd_plan" min="0" max="100" placeholder="85"></div>
-      </div>`,
-    collect: () => ({
-      month: document.getElementById('cd_month').value,
-      fact: +document.getElementById('cd_fact').value||0,
-      plan: +document.getElementById('cd_plan').value||85,
-    }),
-    validate: () => null,
-  },
-  weekly: {
-    title: 'Щотижневі показники',
-    section: 'weekly',
-    fields: () => `
-      <div class="form-grid">
-        <div class="form-field"><label class="field-label">Тиждень</label>
-          <select class="field-input" id="cd_week">
-            <option>Тиждень 1</option><option>Тиждень 2</option>
-            <option>Тиждень 3</option><option>Тиждень 4</option><option>Тиждень 5</option>
-          </select></div>
-        <div class="form-field"><label class="field-label">Якість (зауваження)</label>
-          <input class="field-input" type="number" id="cd_quality" min="0" placeholder="3"></div>
-        <div class="form-field"><label class="field-label">Ліміт якості</label>
-          <input class="field-input" type="number" id="cd_qlimit" min="0" placeholder="15"></div>
-        <div class="form-field"><label class="field-label">Безпека</label>
-          <input class="field-input" type="number" id="cd_safety" min="0" placeholder="1"></div>
-        <div class="form-field"><label class="field-label">Дисципліна</label>
-          <input class="field-input" type="number" id="cd_discipline" min="0" placeholder="0"></div>
-        <div class="form-field"><label class="field-label">Ліміт безпеки</label>
-          <input class="field-input" type="number" id="cd_slimit" min="0" placeholder="2"></div>
-      </div>`,
-    collect: () => ({
-      week: document.getElementById('cd_week').value,
-      quality: +document.getElementById('cd_quality').value||0,
-      qualityLimit: +document.getElementById('cd_qlimit').value||null,
-      safety: +document.getElementById('cd_safety').value||0,
-      discipline: +document.getElementById('cd_discipline').value||0,
-      safetyLimit: +document.getElementById('cd_slimit').value||null,
-    }),
-    validate: () => null,
-  },
-};
-
-function openChartDataAdd(chartIdx) {
-  const cfg = chartConfigs[chartIdx];
-  const sourceType = SOURCE_TO_SECTION[cfg?.dataSource] || 'daily';
-  const formCfg = SECTION_FORMS[sourceType];
-  if (!formCfg) return;
-
-  // Використовуємо quickAdd модал
-  currentQuickSection = '__chart__' + sourceType;
-  setText('quickAddTitle', '+ Дані: ' + (cfg?.title || ('Графік ' + (chartIdx+1))));
-  document.getElementById('quickAddBody').innerHTML = `<div class="form-section">${formCfg.fields()}</div>`;
-  document.getElementById('quickAddMsg').textContent = '';
-
-  // Перевизначаємо submitQuickAdd для цього типу
-  window.__chartFormCfg = formCfg;
-
-  document.getElementById('quickAddBackdrop').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
 
 // ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
 function loadTeamName() {
