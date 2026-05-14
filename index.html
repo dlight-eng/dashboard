@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight «ТОЙОТА» — Дашборд команди</title>
+<title>DLight «1» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -48,8 +48,24 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .update-dot.error{background:var(--c-red);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
+.write-btn{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;border:1px dashed var(--c-border);background:transparent;color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap}
+.write-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
 .add-inline-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
 .add-inline-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
+.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text)}
+.cell-val:hover{background:var(--c-blue-bg);color:var(--c-blue)}
+.edit-cell{min-width:120px;vertical-align:top;padding:4px 8px!important}
+.inline-input{width:100%;font-family:var(--font);font-size:12px;padding:4px 7px;border:1px solid var(--c-blue);border-radius:4px;outline:none;background:#fff;color:var(--c-text);resize:vertical}
+.inline-actions{display:flex;gap:4px;margin-top:4px}
+.inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
+.inline-cancel{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer}
+.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text)}
+.cell-val:hover{background:var(--c-blue-bg);color:var(--c-blue)}
+.edit-cell{min-width:120px;vertical-align:top;padding:4px 8px!important}
+.inline-input{width:100%;font-family:var(--font);font-size:12px;padding:4px 7px;border:1px solid var(--c-blue);border-radius:4px;outline:none;background:#fff;color:var(--c-text);resize:vertical}
+.inline-actions{display:flex;gap:4px;margin-top:4px}
+.inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
+.inline-cancel{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer}
 .month-select:hover,.month-select:focus{border-color:#1a1f36}
 .hdr-btn:hover{border-color:#1a1f36;color:#1a1f36}
 .hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
@@ -588,30 +604,35 @@ select.field-input{cursor:pointer}
     <div class="section" id="chartBox0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle0">Графік 1</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(0)">+ Дані</button>
       </div>
       <div class="chart-wrap" style="height:160px"><canvas id="userChart0"></canvas></div>
     </div>
     <div class="section" id="chartBox1">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle1">Графік 2</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(1)">+ Дані</button>
       </div>
       <div class="chart-wrap" style="height:160px"><canvas id="userChart1"></canvas></div>
     </div>
     <div class="section" id="chartBox2">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle2">Графік 3</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(2)">+ Дані</button>
       </div>
       <div class="chart-wrap" style="height:160px"><canvas id="userChart2"></canvas></div>
     </div>
     <div class="section" id="chartBox3">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle3">Графік 4</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(3)">+ Дані</button>
       </div>
       <div class="chart-wrap" style="height:160px"><canvas id="userChart3"></canvas></div>
     </div>
     <div class="section" style="grid-column:1/-1" id="chartBox4">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle4">Графік 5</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(4)">+ Дані</button>
       </div>
       <div class="chart-wrap" style="height:160px"><canvas id="userChart4"></canvas></div>
     </div>
@@ -737,7 +758,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwBbMNy1S_PxDqrg1ziAxpI_EuoVLTXULYu3-5msQ7Nb6veq2HiZ9vW2vvjgz-Im0o0/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyptvRJBodo6vRIS25jtWTXh7ncfj3yRgovrp7tNHzyxz_NWOEf_w-JuIdoS8S7-7QO/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -773,8 +794,8 @@ async function loadData() {
 }
 
 function renderAll(data) {
-  fullData = data;
-  cachedFullData = data;
+  fullData = data;          // завжди повні дані
+  cachedFullData = data;    // початково = повні, потім = відфільтровані
   renderMeta(data.meta);
   applyMonthFilter(data);
 }
@@ -785,7 +806,8 @@ const MONTH_MAP = {
   'Липень':7,'Серпень':8,'Вересень':9,'Жовтень':10,'Листопад':11,'Грудень':12
 };
 
-let fullData = null;
+let fullData = null;       // повні дані з API (ніколи не фільтруються)
+let cachedFullData = null; // відфільтровані дані для графіків
 
 function onMonthChange() {
   if (fullData) applyMonthFilter(fullData);
@@ -818,13 +840,12 @@ function applyMonthFilter(data) {
     ? (data.monthly || []).filter(m => m.month === month)
     : (data.monthly || []);
 
-  // Передаємо відфільтровані дані в кеш для графіків
-  const filteredData = { ...data, daily, weekly, problems, escalations: escals,
-    corrective: corr, comments, monthly };
-  cachedFullData = filteredData;
+  // cachedFullData = відфільтровані дані для графіків
+  cachedFullData = { ...data, daily, weekly, problems,
+    escalations: escals, corrective: corr, comments, monthly };
 
   renderKPI(daily, problems, data.partners, comments);
-  renderAllUserCharts(filteredData);
+  renderAllUserCharts(cachedFullData);
 
   allProblems    = problems;
   allEscalations = escals;
@@ -1183,17 +1204,22 @@ function saveChartSettings() {
   };
   saveChartConfigsToStorage();
 
-  // Оновити назву вкладки
-  document.querySelectorAll('#chartTabRow .mtab')[idx].textContent =
-    chartConfigs[idx].title || ('Графік ' + (idx+1));
+  const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
 
-  // Перемалювати графік
-  if (cachedFullData) renderUserChart(idx, cachedFullData);
+  // Оновити назву вкладки в налаштуваннях
+  document.querySelectorAll('#chartTabRow .mtab')[idx].textContent = newTitle;
+
+  // Оновити назву і кнопку прямо на дашборді
+  setText('chartTitle' + idx, newTitle);
+
+  // Перемалювати графік — беремо відфільтровані або повні дані
+  const dataToUse = cachedFullData || fullData;
+  if (dataToUse) renderUserChart(idx, dataToUse);
 
   const msg = document.getElementById('chartSettingsMsg');
-  msg.textContent = '✓ Збережено!';
+  msg.textContent = '✓ Збережено! Графік оновлено.';
   msg.className = 'form-msg success';
-  setTimeout(() => { msg.textContent = ''; }, 2000);
+  setTimeout(() => { msg.textContent = ''; }, 2500);
 }
 
 function resetChartSettings() {
@@ -1245,13 +1271,88 @@ async function changeStatus(rowIndex, section, selectEl) {
   }
 }
 
+// ── INLINE EDIT CELL ─────────────────────────────
+function editCell(rowIndex, section, field, currentVal, label) {
+  return `<td class="edit-cell" id="cell_${section}_${rowIndex}_${field}">
+    ${currentVal
+      ? `<span class="cell-val" onclick="activateEdit('${section}',${rowIndex},'${field}','${escQ(currentVal)}','${label}')">${currentVal}</span>`
+      : `<button class="write-btn" onclick="activateEdit('${section}',${rowIndex},'${field}','','${label}')">✎ ${label}</button>`
+    }
+  </td>`;
+}
+
+function escQ(str) {
+  return String(str).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+}
+
+function activateEdit(section, rowIndex, field, currentVal, label) {
+  const cellId = `cell_${section}_${rowIndex}_${field}`;
+  const cell = document.getElementById(cellId);
+  if (!cell) return;
+  const isMultiline = ['steps','action','desc','text'].includes(field);
+  cell.innerHTML = isMultiline
+    ? `<textarea class="inline-input" id="inp_${cellId}" rows="3" style="width:100%;min-width:140px">${currentVal}</textarea>
+       <div class="inline-actions">
+         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${label}')">✓</button>
+         <button class="inline-cancel" onclick="cancelInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escQ(currentVal)}','${label}')">✕</button>
+       </div>`
+    : `<input class="inline-input" id="inp_${cellId}" type="text" value="${currentVal}" style="width:100%;min-width:120px">
+       <div class="inline-actions">
+         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${label}')">✓</button>
+         <button class="inline-cancel" onclick="cancelInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escQ(currentVal)}','${label}')">✕</button>
+       </div>`;
+  const inp = document.getElementById('inp_' + cellId);
+  if (inp) { inp.focus(); inp.select && inp.select(); }
+}
+
+async function saveInlineEdit(section, rowIndex, field, cellId, label) {
+  const inp = document.getElementById('inp_' + cellId);
+  if (!inp) return;
+  const newVal = inp.value.trim();
+
+  const cell = document.getElementById(cellId);
+  if (cell) cell.innerHTML = '<span style="color:var(--c-muted);font-size:11px">Збереження...</span>';
+
+  try {
+    const url = `${API_URL}?action=update&section=${section}&data=${encodeURIComponent(JSON.stringify({rowIndex, field, value: newVal}))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    // Оновлюємо локальний масив
+    const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
+    if (maps[section]?.[rowIndex]) maps[section][rowIndex][field] = newVal;
+
+    showToast('Збережено', 'success');
+    // Перерендер
+    rerenderSection(section);
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+    rerenderSection(section);
+  }
+}
+
+function cancelInlineEdit(section, rowIndex, field, cellId, oldVal, label) {
+  rerenderSection(section);
+}
+
+function rerenderSection(section) {
+  if (section === 'problems')    renderProblems(allProblems, currentProbFilter);
+  if (section === 'escalations') renderEscalations(allEscalations);
+  if (section === 'corrective')  renderCorrective(allCorrective);
+  if (section === 'comments')    renderComments(allComments);
+}
+
+let currentProbFilter = 'all';
+
 function renderProblems(problems, filter) {
-  const filtered = filter==='all' ? problems : problems.filter(p=>p.status===filter);
+  currentProbFilter = filter || 'all';
+  const filtered = currentProbFilter==='all' ? problems : problems.filter(p=>p.status===currentProbFilter);
   document.getElementById('probBody').innerHTML = filtered.map((p,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
-    <td style="max-width:140px">${p.desc}</td>
-    <td style="font-size:11px;color:var(--c-muted);max-width:120px">${p.steps||''}</td>
-    <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${p.resp}</td>
+    <td style="max-width:160px;font-size:12px">${p.desc||'—'}</td>
+    ${editCell(i,'problems','steps', p.steps||'', 'Написати кроки')}
+    ${editCell(i,'problems','resp',  p.resp||'',  'Відп.')}
     <td>${statusSelect(i,'problems',p.status)}</td>
   </tr>`).join('') || emptyRow(5,'Немає записів');
 }
@@ -1265,8 +1366,8 @@ function filterProbs(filter, btn) {
 function renderEscalations(escalations) {
   document.getElementById('escalBody').innerHTML = escalations.map((e,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
-    <td style="font-size:11px;max-width:160px">${e.desc}</td>
-    <td style="font-size:11px;color:var(--c-muted);max-width:140px">${e.action}</td>
+    <td style="font-size:11px;max-width:160px">${e.desc||'—'}</td>
+    ${editCell(i,'escalations','action', e.action||'', 'Написати дію')}
     <td>${statusSelect(i,'escalations',e.status)}</td>
   </tr>`).join('') || emptyRow(4,'Немає записів');
 }
@@ -1290,16 +1391,19 @@ function renderComments(comments) {
           ${statusSelect(i,'comments',c.status)}
         </span>
       </div>
-      <div class="comment-text">${c.text}</div>
+      <div class="comment-text">${c.text||'—'}</div>
+      <div style="margin-top:6px" id="cell_comments_${i}_text">
+        <button class="write-btn" onclick="activateEdit('comments',${i},'text','${escQ(c.text||'')}','Редагувати текст')">✎ Редагувати</button>
+      </div>
     </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає записів</div>';
 }
 
 function renderCorrective(corrective) {
   document.getElementById('corrBody').innerHTML = corrective.map((r,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n}</td>
-    <td style="font-size:11px;max-width:130px">${r.desc}</td>
-    <td style="font-size:11px;color:var(--c-muted);max-width:110px">${r.action}</td>
-    <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${r.resp}</td>
+    <td style="font-size:11px;max-width:120px">${r.desc||'—'}</td>
+    ${editCell(i,'corrective','action', r.action||'', 'Написати дію')}
+    ${editCell(i,'corrective','resp',   r.resp||'',   'Відп.')}
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
     <td>${statusSelect(i,'corrective',r.status)}</td>
   </tr>`).join('') || emptyRow(6,'Немає записів');
@@ -1669,6 +1773,155 @@ async function submitQuickAdd() {
     btn.disabled = false;
   }
 }
+
+// ── ДОДАВАННЯ ДАНИХ З ГРАФІКА ────────────────────
+// Мапи: джерело даних → секція і поля форми
+const SOURCE_TO_SECTION = {
+  daily_fact:  'daily', daily_plan:  'daily',
+  daily_fact2: 'daily', daily_plan2: 'daily',
+  monthly_fact:'monthly', monthly_plan:'monthly',
+  weekly_qual: 'weekly', weekly_safe: 'weekly',
+  weekly_disc: 'weekly', weekly_qlim: 'weekly', weekly_slim: 'weekly',
+};
+
+const SECTION_FORMS = {
+  daily: {
+    title: 'Щоденні показники',
+    section: 'daily',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Дата</label>
+          <input class="field-input" type="date" id="cd_date" value="${today()}"></div>
+        <div class="form-field"><label class="field-label">Дані графік 1</label>
+          <input class="field-input" type="number" id="cd_fact" placeholder="87"></div>
+        <div class="form-field"><label class="field-label">План графік 1</label>
+          <input class="field-input" type="number" id="cd_plan" placeholder="85"></div>
+        <div class="form-field"><label class="field-label">Дані графік 2</label>
+          <input class="field-input" type="number" id="cd_mvfact" placeholder="320"></div>
+        <div class="form-field"><label class="field-label">План графік 2</label>
+          <input class="field-input" type="number" id="cd_mvplan" placeholder="350"></div>
+      </div>`,
+    collect: () => ({
+      date: document.getElementById('cd_date').value,
+      fact: +document.getElementById('cd_fact').value||0,
+      plan: +document.getElementById('cd_plan').value||85,
+      mvFact: +document.getElementById('cd_mvfact').value||0,
+      mvPlan: +document.getElementById('cd_mvplan').value||0,
+    }),
+    validate: d => !d.date ? 'Оберіть дату' : null,
+  },
+  monthly: {
+    title: 'Ефективність по місяцях',
+    section: 'monthly',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Місяць</label>
+          <select class="field-input" id="cd_month">
+            ${['Січень','Лютий','Березень','Квітень','Травень','Червень',
+               'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень']
+              .map(m=>`<option>${m}</option>`).join('')}
+          </select></div>
+        <div class="form-field"><label class="field-label">Факт %</label>
+          <input class="field-input" type="number" id="cd_fact" min="0" max="100" placeholder="87"></div>
+        <div class="form-field"><label class="field-label">План %</label>
+          <input class="field-input" type="number" id="cd_plan" min="0" max="100" placeholder="85"></div>
+      </div>`,
+    collect: () => ({
+      month: document.getElementById('cd_month').value,
+      fact: +document.getElementById('cd_fact').value||0,
+      plan: +document.getElementById('cd_plan').value||85,
+    }),
+    validate: () => null,
+  },
+  weekly: {
+    title: 'Щотижневі показники',
+    section: 'weekly',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Тиждень</label>
+          <select class="field-input" id="cd_week">
+            <option>Тиждень 1</option><option>Тиждень 2</option>
+            <option>Тиждень 3</option><option>Тиждень 4</option><option>Тиждень 5</option>
+          </select></div>
+        <div class="form-field"><label class="field-label">Якість (зауваження)</label>
+          <input class="field-input" type="number" id="cd_quality" min="0" placeholder="3"></div>
+        <div class="form-field"><label class="field-label">Ліміт якості</label>
+          <input class="field-input" type="number" id="cd_qlimit" min="0" placeholder="15"></div>
+        <div class="form-field"><label class="field-label">Безпека</label>
+          <input class="field-input" type="number" id="cd_safety" min="0" placeholder="1"></div>
+        <div class="form-field"><label class="field-label">Дисципліна</label>
+          <input class="field-input" type="number" id="cd_discipline" min="0" placeholder="0"></div>
+        <div class="form-field"><label class="field-label">Ліміт безпеки</label>
+          <input class="field-input" type="number" id="cd_slimit" min="0" placeholder="2"></div>
+      </div>`,
+    collect: () => ({
+      week: document.getElementById('cd_week').value,
+      quality: +document.getElementById('cd_quality').value||0,
+      qualityLimit: +document.getElementById('cd_qlimit').value||null,
+      safety: +document.getElementById('cd_safety').value||0,
+      discipline: +document.getElementById('cd_discipline').value||0,
+      safetyLimit: +document.getElementById('cd_slimit').value||null,
+    }),
+    validate: () => null,
+  },
+};
+
+function openChartDataAdd(chartIdx) {
+  const cfg = chartConfigs[chartIdx];
+  const sourceType = SOURCE_TO_SECTION[cfg?.dataSource] || 'daily';
+  const formCfg = SECTION_FORMS[sourceType];
+  if (!formCfg) return;
+
+  // Використовуємо quickAdd модал
+  currentQuickSection = '__chart__' + sourceType;
+  setText('quickAddTitle', '+ Дані: ' + (cfg?.title || ('Графік ' + (chartIdx+1))));
+  document.getElementById('quickAddBody').innerHTML = `<div class="form-section">${formCfg.fields()}</div>`;
+  document.getElementById('quickAddMsg').textContent = '';
+
+  // Перевизначаємо submitQuickAdd для цього типу
+  window.__chartFormCfg = formCfg;
+
+  document.getElementById('quickAddBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// Перевантажуємо submitQuickAdd щоб підтримував графіки
+const _origSubmitQuickAdd = window.submitQuickAdd;
+window.submitQuickAdd = async function() {
+  if (!currentQuickSection?.startsWith('__chart__')) {
+    return _origSubmitQuickAdd?.();
+  }
+  const formCfg = window.__chartFormCfg;
+  if (!formCfg) return;
+
+  const btn = document.getElementById('quickAddBtn');
+  const msg = document.getElementById('quickAddMsg');
+  const data = formCfg.collect();
+  const err  = formCfg.validate(data);
+
+  if (err) { msg.textContent = '✕ ' + err; msg.className = 'form-msg error'; return; }
+
+  btn.disabled = true;
+  msg.textContent = 'Збереження...';
+  msg.className = 'form-msg';
+
+  try {
+    const url = `${API_URL}?action=add&section=${formCfg.section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Помилка сервера');
+
+    msg.textContent = '✓ Збережено!';
+    msg.className = 'form-msg success';
+    showToast('Дані збережено', 'success');
+    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message;
+    msg.className = 'form-msg error';
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 // ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
 function loadTeamName() {
