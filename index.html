@@ -48,7 +48,8 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .update-dot.error{background:var(--c-red);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
-.month-select{font-family:var(--mono);font-size:11px;color:var(--c-text);border:1px solid var(--c-border);padding:4px 10px;border-radius:4px;background:var(--c-card);cursor:pointer;outline:none;transition:.15s}
+.add-inline-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
+.add-inline-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
 .month-select:hover,.month-select:focus{border-color:#1a1f36}
 .hdr-btn:hover{border-color:#1a1f36;color:#1a1f36}
 .hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
@@ -650,7 +651,10 @@ select.field-input{cursor:pointer}
 
   <!-- ТРЕКЕР ПРОБЛЕМ -->
   <div class="section" style="margin-bottom:10px">
-    <div class="section-title"><span>Трекер проблем</span></div>
+    <div class="section-title">
+      <span>Трекер проблем</span>
+      <button class="add-inline-btn" onclick="openQuickAdd('problem')">+ Додати</button>
+    </div>
     <div class="filter-bar">
       <button class="chip active" onclick="filterProbs('all',this)">Всі</button>
       <button class="chip" onclick="filterProbs('wip',this)">В роботі</button>
@@ -668,7 +672,10 @@ select.field-input{cursor:pointer}
   <!-- ЕСКАЛАЦІЇ + ПАРТНЕРИ -->
   <div class="bottom-grid">
     <div class="section">
-      <div class="section-title"><span>Ескаловані проблеми</span></div>
+      <div class="section-title">
+        <span>Ескаловані проблеми</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('escalation')">+ Додати</button>
+      </div>
       <div class="table-scroll">
         <table class="data-table">
           <thead><tr><th>Дата</th><th>Проблема</th><th>Дії рівня 2</th><th>Статус</th></tr></thead>
@@ -677,7 +684,10 @@ select.field-input{cursor:pointer}
       </div>
     </div>
     <div class="section">
-      <div class="section-title"><span>Партнерські угоди</span></div>
+      <div class="section-title">
+        <span>Партнерські угоди</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('partner')">+ Додати</button>
+      </div>
       <div id="partnerList"></div>
     </div>
   </div>
@@ -685,16 +695,40 @@ select.field-input{cursor:pointer}
   <!-- ЗАУВАЖЕННЯ + КОРИГУЮЧІ ДІЇ -->
   <div class="full-bottom" style="margin-top:10px">
     <div class="section">
-      <div class="section-title"><span>Зауваження від дільниць — споживачів</span></div>
+      <div class="section-title">
+        <span>Зауваження від дільниць — споживачів</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('comment')">+ Додати</button>
+      </div>
       <div class="table-scroll" id="commentsList"></div>
     </div>
     <div class="section">
-      <div class="section-title"><span>Список коригуючих дій</span></div>
+      <div class="section-title">
+        <span>Список коригуючих дій</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('corrective')">+ Додати</button>
+      </div>
       <div class="table-scroll">
         <table class="data-table">
           <thead><tr><th>#</th><th>Опис</th><th>Коригуюча дія</th><th>Відп.</th><th>Дата</th><th>Статус</th></tr></thead>
           <tbody id="corrBody"></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK ADD MODAL -->
+  <div class="modal-backdrop" id="quickAddBackdrop" onclick="closeQuickAddOutside(event)">
+    <div class="modal" style="width:min(560px,95vw)">
+      <div class="modal-header">
+        <div class="modal-title" id="quickAddTitle">Додати запис</div>
+        <button class="modal-close" onclick="closeQuickAdd()">✕</button>
+      </div>
+      <div class="modal-body" id="quickAddBody"></div>
+      <div class="modal-footer">
+        <div class="form-msg" id="quickAddMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="closeQuickAdd()">Скасувати</button>
+          <button class="submit-btn" id="quickAddBtn" onclick="submitQuickAdd()">Зберегти</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1437,6 +1471,205 @@ function setUpdateTime(d) { setText('updateTime',`оновлено ${String(d.ge
 function setDotOk()    { document.getElementById('statusDot').className='update-dot'; }
 function setDotError() { document.getElementById('statusDot').className='update-dot error'; }
 
+// ════════════════════════════════════════════════
+// QUICK ADD — додавання з блоків таблиць
+// ════════════════════════════════════════════════
+let currentQuickSection = null;
+
+const QUICK_FORMS = {
+  problem: {
+    title: 'Додати проблему',
+    section: 'problems',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Дата</label>
+          <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
+        <div class="form-field"><label class="field-label">Відповідальний</label>
+          <input class="field-input" type="text" id="qa_resp" placeholder="Прізвище"></div>
+        <div class="form-field full"><label class="field-label">Опис проблеми</label>
+          <textarea class="field-input" id="qa_desc" placeholder="Детальний опис..."></textarea></div>
+        <div class="form-field full"><label class="field-label">Кроки вирішення</label>
+          <textarea class="field-input" id="qa_steps" placeholder="Плановані дії..."></textarea></div>
+        <div class="form-field"><label class="field-label">Статус</label>
+          <select class="field-input" id="qa_status">
+            <option value="wip">В роботі</option><option value="wait">Очікує</option>
+            <option value="done">Вирішено</option><option value="over">Прострочено</option>
+          </select></div>
+      </div>`,
+    collect: () => ({
+      date: v('qa_date'), desc: v('qa_desc'), steps: v('qa_steps'),
+      resp: v('qa_resp'), status: v('qa_status'),
+    }),
+    validate: d => !d.desc ? 'Введіть опис проблеми' : null,
+  },
+  escalation: {
+    title: 'Додати ескалацію',
+    section: 'escalations',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Дата</label>
+          <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
+        <div class="form-field"><label class="field-label">Статус</label>
+          <select class="field-input" id="qa_status">
+            <option value="wip">В роботі</option><option value="wait">Очікує</option>
+            <option value="done">Вирішено</option><option value="over">Прострочено</option>
+          </select></div>
+        <div class="form-field full"><label class="field-label">Опис проблеми</label>
+          <textarea class="field-input" id="qa_desc" placeholder="Що ескаловано..."></textarea></div>
+        <div class="form-field full"><label class="field-label">Дії рівня 2</label>
+          <textarea class="field-input" id="qa_action" placeholder="Які дії вжито..."></textarea></div>
+      </div>`,
+    collect: () => ({
+      date: v('qa_date'), desc: v('qa_desc'),
+      action: v('qa_action'), status: v('qa_status'),
+    }),
+    validate: d => !d.desc ? 'Введіть опис ескалації' : null,
+  },
+  partner: {
+    title: 'Додати партнерську угоду',
+    section: 'partners',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Назва партнера / відділу</label>
+          <input class="field-input" type="text" id="qa_name" placeholder="Назва партнера"></div>
+        <div class="form-field full"><label class="field-label">Статуси по днях (Пн–Сб)</label>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            ${['Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`
+            <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">
+              ${d}<input type="checkbox" id="qa_d${i}" ${i<5?'checked':''} style="width:16px;height:16px">
+            </label>`).join('')}
+          </div>
+        </div>
+        <div class="form-field full"><label class="field-label">Коментар</label>
+          <input class="field-input" type="text" id="qa_comment" placeholder="Додатково..."></div>
+      </div>`,
+    collect: () => ({
+      name: v('qa_name'),
+      days: [0,1,2,3,4,5].map(i => document.getElementById('qa_d'+i)?.checked ? 1 : 0),
+      comment: v('qa_comment'),
+    }),
+    validate: d => !d.name ? 'Введіть назву партнера' : null,
+  },
+  comment: {
+    title: 'Додати зауваження',
+    section: 'comments',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Дата</label>
+          <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
+        <div class="form-field"><label class="field-label">Від кого / Дільниця</label>
+          <input class="field-input" type="text" id="qa_source" placeholder="Козловий — Навантажувачі"></div>
+        <div class="form-field"><label class="field-label">Автор</label>
+          <input class="field-input" type="text" id="qa_author" placeholder="Прізвище"></div>
+        <div class="form-field"><label class="field-label">Статус</label>
+          <select class="field-input" id="qa_status">
+            <option value="wait">Очікує</option><option value="wip">В роботі</option>
+            <option value="done">Вирішено</option><option value="over">Прострочено</option>
+          </select></div>
+        <div class="form-field full"><label class="field-label">Зміст зауваження</label>
+          <textarea class="field-input" id="qa_text" style="min-height:80px" placeholder="Детальний опис..."></textarea></div>
+      </div>`,
+    collect: () => ({
+      date: v('qa_date'), source: v('qa_source'),
+      author: v('qa_author'), status: v('qa_status'), text: v('qa_text'),
+    }),
+    validate: d => !d.text ? 'Введіть текст зауваження' : null,
+  },
+  corrective: {
+    title: 'Додати коригуючу дію',
+    section: 'corrective',
+    fields: () => `
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Дата</label>
+          <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
+        <div class="form-field"><label class="field-label">Відповідальний</label>
+          <input class="field-input" type="text" id="qa_resp" placeholder="Прізвище"></div>
+        <div class="form-field full"><label class="field-label">Опис проблеми</label>
+          <textarea class="field-input" id="qa_desc" placeholder="Опис..."></textarea></div>
+        <div class="form-field full"><label class="field-label">Коригуюча дія</label>
+          <textarea class="field-input" id="qa_action" placeholder="Що зробити..."></textarea></div>
+        <div class="form-field"><label class="field-label">Статус</label>
+          <select class="field-input" id="qa_status">
+            <option value="wip">В роботі</option><option value="wait">Очікує</option>
+            <option value="done">Вирішено</option><option value="over">Прострочено</option>
+          </select></div>
+      </div>`,
+    collect: () => ({
+      date: v('qa_date'), desc: v('qa_desc'),
+      action: v('qa_action'), resp: v('qa_resp'), status: v('qa_status'),
+    }),
+    validate: d => !d.desc ? 'Введіть опис' : null,
+  },
+};
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function today() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function openQuickAdd(type) {
+  const cfg = QUICK_FORMS[type];
+  if (!cfg) return;
+  currentQuickSection = type;
+  setText('quickAddTitle', cfg.title);
+  document.getElementById('quickAddBody').innerHTML = `<div class="form-section">${cfg.fields()}</div>`;
+  document.getElementById('quickAddMsg').textContent = '';
+  document.getElementById('quickAddBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Фокус на перше текстове поле
+  setTimeout(() => {
+    const first = document.querySelector('#quickAddBody input[type=text], #quickAddBody textarea');
+    if (first) first.focus();
+  }, 100);
+}
+
+function closeQuickAdd() {
+  document.getElementById('quickAddBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  currentQuickSection = null;
+}
+
+function closeQuickAddOutside(e) {
+  if (e.target === document.getElementById('quickAddBackdrop')) closeQuickAdd();
+}
+
+async function submitQuickAdd() {
+  const cfg = QUICK_FORMS[currentQuickSection];
+  if (!cfg) return;
+
+  const btn = document.getElementById('quickAddBtn');
+  const msg = document.getElementById('quickAddMsg');
+  const data = cfg.collect();
+  const err  = cfg.validate(data);
+
+  if (err) { msg.textContent = '✕ ' + err; msg.className = 'form-msg error'; return; }
+
+  btn.disabled = true;
+  msg.textContent = 'Збереження...';
+  msg.className = 'form-msg';
+
+  try {
+    const section = cfg.section;
+    const url = `${API_URL}?action=add&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Помилка сервера');
+
+    msg.textContent = '✓ Збережено!';
+    msg.className = 'form-msg success';
+    showToast('Запис додано', 'success');
+    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message;
+    msg.className = 'form-msg error';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
 function loadTeamName() {
   const saved = localStorage.getItem('dashTeamName');
@@ -1471,7 +1704,7 @@ function cancelEditTeamName() {
   input.style.display = 'none';
   span.style.display  = '';
 }
-document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeChartSettings(); } });
+document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); } });
 
 loadChartConfigs();
 loadTeamName();
