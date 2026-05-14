@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight «ТОА» — Дашборд команди</title>
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -758,7 +758,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbyptvRJBodo6vRIS25jtWTXh7ncfj3yRgovrp7tNHzyxz_NWOEf_w-JuIdoS8S7-7QO/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwccnrl9VfkfH7hL8vrYt9f0MNpGl40NZGyNtvBaEOU4nsepneWT4yUtT52OoS84FqZ/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -935,40 +935,15 @@ function mkChart(id, cfg) {
 }
 
 // ════════════════════════════════════════════════
-// 5 НАЛАШТОВУВАНИХ ГРАФІКІВ
+// 5 НАЛАШТОВУВАНИХ ГРАФІКІВ (кожен — свій аркуш)
 // ════════════════════════════════════════════════
 
-// Джерела даних
-const DATA_SOURCES = [
-  { id:'daily_fact',    label:'Щоденні — Дані графік 1',   type:'daily',   field:'mvFact' },
-  { id:'daily_plan',   label:'Щоденні — План графік 1',    type:'daily',   field:'mvPlan' },
-  { id:'daily_fact2',  label:'Щоденні — Дані графік 2',   type:'daily',   field:'fact'   },
-  { id:'daily_plan2',  label:'Щоденні — План графік 2',    type:'daily',   field:'plan'   },
-  { id:'monthly_fact', label:'Місячні — Факт %',           type:'monthly', field:'fact'   },
-  { id:'monthly_plan', label:'Місячні — План %',           type:'monthly', field:'plan'   },
-  { id:'weekly_qual',  label:'Тижневі — Якість',           type:'weekly',  field:'quality'},
-  { id:'weekly_safe',  label:'Тижневі — Безпека',          type:'weekly',  field:'safety' },
-  { id:'weekly_disc',  label:'Тижневі — Дисципліна',       type:'weekly',  field:'discipline'},
-  { id:'weekly_qlim',  label:'Тижневі — Ліміт якості',     type:'weekly',  field:'qualityLimit'},
-  { id:'weekly_slim',  label:'Тижневі — Ліміт безпеки',    type:'weekly',  field:'safetyLimit'},
-];
-
 const DEFAULT_CHARTS = [
-  { title:'Ефективність задач', tooltip:'Кількість задач', type:'bar', color:'#d4a017',
-    lineColor:'#1a9e5c', unit:'%', min:0, max:100,
-    dataSource:'daily_fact', planSource:'daily_plan', showPlan:true },
-  { title:'Реакція на зауваження', tooltip:'Кількість зауважень', type:'bar', color:'#1a9e5c',
-    lineColor:'#c0392b', unit:'', min:0, max:100,
-    dataSource:'daily_fact2', planSource:'daily_plan2', showPlan:true },
-  { title:'Ефективність по місяцях', tooltip:'%', type:'bar', color:'#1a6fb5',
-    lineColor:'#1a9e5c', unit:'%', min:0, max:100,
-    dataSource:'monthly_fact', planSource:'monthly_plan', showPlan:true },
-  { title:'Якість — кількість зауважень', tooltip:'шт.', type:'bar', color:'#1a9e5c',
-    lineColor:'#1a9e5c', unit:'шт.', min:0, max:null,
-    dataSource:'weekly_qual', planSource:'weekly_qlim', showPlan:true },
-  { title:'Безпека та дисципліна', tooltip:'шт.', type:'bar', color:'#d4a017',
-    lineColor:'#1a9e5c', unit:'шт.', min:0, max:null,
-    dataSource:'weekly_safe', planSource:'weekly_slim', showPlan:true },
+  { title:'Графік 1', tooltip:'Значення', type:'bar', color:'#d4a017', lineColor:'#1a9e5c', unit:'', min:0, max:null, showPlan:true },
+  { title:'Графік 2', tooltip:'Значення', type:'bar', color:'#1a6fb5', lineColor:'#1a9e5c', unit:'', min:0, max:null, showPlan:true },
+  { title:'Графік 3', tooltip:'Значення', type:'bar', color:'#1a9e5c', lineColor:'#c0392b', unit:'', min:0, max:null, showPlan:true },
+  { title:'Графік 4', tooltip:'Значення', type:'bar', color:'#c0392b', lineColor:'#1a9e5c', unit:'', min:0, max:null, showPlan:true },
+  { title:'Графік 5', tooltip:'Значення', type:'line', color:'#1a6fb5', lineColor:'#1a9e5c', unit:'', min:0, max:null, showPlan:true },
 ];
 
 let chartConfigs = [];
@@ -987,42 +962,30 @@ function saveChartConfigsToStorage() {
   localStorage.setItem('dashChartConfigs', JSON.stringify(chartConfigs));
 }
 
-// Отримати масив даних по джерелу
-function getSourceData(sourceId, fullData) {
-  const src = DATA_SOURCES.find(s => s.id === sourceId);
-  if (!src || !fullData) return { labels:[], values:[] };
-  const arr = fullData[src.type] || [];
-  const labels = arr.map(r => r.date || r.month || r.week || '');
-  const values = arr.map(r => {
-    const v = r[src.field];
-    return (v === null || v === undefined) ? null : +v;
-  });
-  return { labels, values };
-}
-
-// Рендер одного графіка
+// Рендер одного графіка з даних charts[idx]
 function renderUserChart(idx, fullData) {
   const cfg = chartConfigs[idx];
   if (!cfg) return;
 
   setText('chartTitle' + idx, cfg.title || ('Графік ' + (idx+1)));
 
-  const { labels, values } = getSourceData(cfg.dataSource, fullData);
-  const { values: planValues } = getSourceData(cfg.planSource, fullData);
+  const chartData = (fullData?.charts || [])[idx] || [];
+  const labels = chartData.map(r => r.label);
+  const values = chartData.map(r => r.value);
+  const plans  = chartData.map(r => r.plan);
+
+  const unitSuffix = cfg.unit ? (' ' + cfg.unit) : '';
+  const yMax = cfg.max !== null && cfg.max !== '' ? +cfg.max : undefined;
+  const yMin = cfg.min !== null && cfg.min !== '' ? +cfg.min : 0;
 
   const datasets = [];
-
-  // Основний датасет
   if (cfg.type === 'line') {
     datasets.push({
       label: cfg.tooltip || cfg.title,
       data: values,
       borderColor: cfg.color || '#1a6fb5',
       backgroundColor: (cfg.color || '#1a6fb5') + '22',
-      borderWidth: 2,
-      pointRadius: 3,
-      fill: true,
-      tension: 0.3,
+      borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3,
     });
   } else {
     datasets.push({
@@ -1032,39 +995,22 @@ function renderUserChart(idx, fullData) {
       borderRadius: 3,
     });
   }
-
-  // Лінія плану
-  if (cfg.showPlan && cfg.planSource) {
+  if (cfg.showPlan) {
     datasets.push({
-      label: 'План',
-      data: planValues,
-      type: 'line',
+      label: 'План', data: plans, type: 'line',
       borderColor: cfg.lineColor || '#1a9e5c',
-      borderDash: [5, 4],
-      borderWidth: 2,
-      pointRadius: 0,
-      fill: false,
-      spanGaps: true,
+      borderDash: [5,4], borderWidth: 2, pointRadius: 0, fill: false, spanGaps: true,
     });
   }
-
-  const unitSuffix = cfg.unit ? (' ' + cfg.unit) : '';
-  const yMax = cfg.max !== null && cfg.max !== '' ? +cfg.max : undefined;
-  const yMin = cfg.min !== null && cfg.min !== '' ? +cfg.min : 0;
 
   mkChart('userChart' + idx, {
     type: cfg.type === 'line' ? 'line' : 'bar',
     data: { labels, datasets },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}`
-          }
-        }
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}` } }
       },
       scales: cScales(yMin, yMax, v => v + unitSuffix)
     }
@@ -1072,170 +1018,182 @@ function renderUserChart(idx, fullData) {
 }
 
 function renderAllUserCharts(fullData) {
-  for (let i = 0; i < 5; i++) {
-    renderUserChart(i, fullData);
-  }
+  for (let i = 0; i < 5; i++) renderUserChart(i, fullData);
 }
 
-// ── НАЛАШТУВАННЯ — модальне вікно ─────────────
+// ── НАЛАШТУВАННЯ ГРАФІКІВ ────────────────────
 function openChartSettings() {
   renderChartSettingsPanel(currentChartTab);
   document.getElementById('chartSettingsBackdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
-
 function closeChartSettings() {
   document.getElementById('chartSettingsBackdrop').classList.remove('open');
   document.body.style.overflow = '';
 }
-
 function closeChartSettingsOutside(e) {
   if (e.target === document.getElementById('chartSettingsBackdrop')) closeChartSettings();
 }
-
 function switchChartTab(idx, btn) {
   currentChartTab = idx;
-  document.querySelectorAll('#chartTabRow .mtab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#chartTabRow .mtab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderChartSettingsPanel(idx);
 }
 
 function renderChartSettingsPanel(idx) {
   const cfg = chartConfigs[idx] || DEFAULT_CHARTS[idx];
-  const srcOptions = DATA_SOURCES.map(s =>
-    `<option value="${s.id}" ${cfg.dataSource===s.id?'selected':''}>${s.label}</option>`
-  ).join('');
-  const planOptions = `<option value="">— без плану —</option>` + DATA_SOURCES.map(s =>
-    `<option value="${s.id}" ${cfg.planSource===s.id?'selected':''}>${s.label}</option>`
-  ).join('');
-
   document.getElementById('chartSettingsBody').innerHTML = `
     <div class="form-section">
       <div class="form-section-label">Загальне</div>
       <div class="form-grid">
-        <div class="form-field full">
-          <label class="field-label">Назва графіка</label>
-          <input class="field-input" id="cs_title" value="${cfg.title||''}" placeholder="Назва">
-        </div>
-        <div class="form-field full">
-          <label class="field-label">Підпис у tooltip (при наведенні)</label>
-          <input class="field-input" id="cs_tooltip" value="${cfg.tooltip||''}" placeholder="напр. Кількість задач">
-        </div>
+        <div class="form-field full"><label class="field-label">Назва графіка</label>
+          <input class="field-input" id="cs_title" value="${cfg.title||''}"></div>
+        <div class="form-field full"><label class="field-label">Підпис у tooltip</label>
+          <input class="field-input" id="cs_tooltip" value="${cfg.tooltip||''}"></div>
       </div>
     </div>
     <div class="form-section">
       <div class="form-section-label">Тип та кольори</div>
       <div class="form-grid">
-        <div class="form-field">
-          <label class="field-label">Тип графіка</label>
+        <div class="form-field"><label class="field-label">Тип графіка</label>
           <select class="field-input" id="cs_type">
-            <option value="bar" ${cfg.type==='bar'?'selected':''}>Стовпчастий (bar)</option>
-            <option value="line" ${cfg.type==='line'?'selected':''}>Лінійний (line)</option>
-          </select>
-        </div>
-        <div class="form-field">
-          <label class="field-label">Колір основного ряду</label>
-          <input class="field-input" type="color" id="cs_color" value="${cfg.color||'#1a6fb5'}">
-        </div>
-        <div class="form-field">
-          <label class="field-label">Колір лінії плану</label>
-          <input class="field-input" type="color" id="cs_lineColor" value="${cfg.lineColor||'#1a9e5c'}">
-        </div>
+            <option value="bar" ${cfg.type==='bar'?'selected':''}>Стовпчастий</option>
+            <option value="line" ${cfg.type==='line'?'selected':''}>Лінійний</option>
+          </select></div>
+        <div class="form-field"><label class="field-label">Колір основного ряду</label>
+          <input class="field-input" type="color" id="cs_color" value="${cfg.color||'#1a6fb5'}"></div>
+        <div class="form-field"><label class="field-label">Колір лінії плану</label>
+          <input class="field-input" type="color" id="cs_lineColor" value="${cfg.lineColor||'#1a9e5c'}"></div>
       </div>
     </div>
     <div class="form-section">
       <div class="form-section-label">Шкала (вісь Y)</div>
       <div class="form-grid-3">
-        <div class="form-field">
-          <label class="field-label">Одиниця виміру</label>
-          <input class="field-input" id="cs_unit" value="${cfg.unit||''}" placeholder="напр. % або шт.">
-        </div>
-        <div class="form-field">
-          <label class="field-label">Мін. значення</label>
-          <input class="field-input" type="number" id="cs_min" value="${cfg.min??0}">
-        </div>
-        <div class="form-field">
-          <label class="field-label">Макс. значення (порожньо = авто)</label>
-          <input class="field-input" type="number" id="cs_max" value="${cfg.max??''}">
-        </div>
+        <div class="form-field"><label class="field-label">Одиниця виміру</label>
+          <input class="field-input" id="cs_unit" value="${cfg.unit||''}" placeholder="%, шт."></div>
+        <div class="form-field"><label class="field-label">Мін.</label>
+          <input class="field-input" type="number" id="cs_min" value="${cfg.min??0}"></div>
+        <div class="form-field"><label class="field-label">Макс. (порожньо = авто)</label>
+          <input class="field-input" type="number" id="cs_max" value="${cfg.max??''}"></div>
       </div>
     </div>
     <div class="form-section">
-      <div class="form-section-label">Джерела даних</div>
-      <div class="form-grid">
-        <div class="form-field full">
-          <label class="field-label">Основні дані</label>
-          <select class="field-input" id="cs_dataSource">${srcOptions}</select>
-        </div>
-        <div class="form-field full">
-          <label class="field-label">Лінія плану / ліміту</label>
-          <select class="field-input" id="cs_planSource">${planOptions}</select>
-        </div>
-        <div class="form-field">
-          <label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="cs_showPlan" ${cfg.showPlan?'checked':''} style="width:16px;height:16px">
-            Показувати лінію плану
-          </label>
-        </div>
-      </div>
+      <div class="form-field"><label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cs_showPlan" ${cfg.showPlan?'checked':''} style="width:16px;height:16px">
+        Показувати лінію плану
+      </label></div>
     </div>
     <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--c-muted);font-family:var(--mono)">
-      Попередній перегляд оновиться після збереження
-    </div>
-  `;
+      Дані графіку зберігаються в аркуші <b>«Графік${idx+1}»</b> у Google Sheets.<br>
+      Колонки: Мітка (дата/назва) | Значення | План
+    </div>`;
 }
 
 function saveChartSettings() {
   const idx = currentChartTab;
   const maxVal = document.getElementById('cs_max').value;
   chartConfigs[idx] = {
-    title:      document.getElementById('cs_title').value.trim(),
-    tooltip:    document.getElementById('cs_tooltip').value.trim(),
-    type:       document.getElementById('cs_type').value,
-    color:      document.getElementById('cs_color').value,
-    lineColor:  document.getElementById('cs_lineColor').value,
-    unit:       document.getElementById('cs_unit').value.trim(),
-    min:        +document.getElementById('cs_min').value || 0,
-    max:        maxVal !== '' ? +maxVal : null,
-    dataSource: document.getElementById('cs_dataSource').value,
-    planSource: document.getElementById('cs_planSource').value,
-    showPlan:   document.getElementById('cs_showPlan').checked,
+    title:     document.getElementById('cs_title').value.trim(),
+    tooltip:   document.getElementById('cs_tooltip').value.trim(),
+    type:      document.getElementById('cs_type').value,
+    color:     document.getElementById('cs_color').value,
+    lineColor: document.getElementById('cs_lineColor').value,
+    unit:      document.getElementById('cs_unit').value.trim(),
+    min:       +document.getElementById('cs_min').value || 0,
+    max:       maxVal !== '' ? +maxVal : null,
+    showPlan:  document.getElementById('cs_showPlan').checked,
   };
   saveChartConfigsToStorage();
-
   const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
-
-  // Оновити назву вкладки в налаштуваннях
   document.querySelectorAll('#chartTabRow .mtab')[idx].textContent = newTitle;
-
-  // Оновити назву і кнопку прямо на дашборді
   setText('chartTitle' + idx, newTitle);
-
-  // Перемалювати графік — беремо відфільтровані або повні дані
   const dataToUse = cachedFullData || fullData;
   if (dataToUse) renderUserChart(idx, dataToUse);
-
   const msg = document.getElementById('chartSettingsMsg');
-  msg.textContent = '✓ Збережено! Графік оновлено.';
-  msg.className = 'form-msg success';
-  setTimeout(() => { msg.textContent = ''; }, 2500);
-}
-
-function resetChartSettings() {
-  if (!confirm('Скинути всі графіки до стандартних налаштувань?')) return;
-  chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
-  saveChartConfigsToStorage();
-  // Оновити назви вкладок
-  document.querySelectorAll('#chartTabRow .mtab').forEach((btn, i) => {
-    btn.textContent = chartConfigs[i].title || ('Графік ' + (i+1));
-  });
-  renderChartSettingsPanel(currentChartTab);
-  if (cachedFullData) renderAllUserCharts(cachedFullData);
-  const msg = document.getElementById('chartSettingsMsg');
-  msg.textContent = '✓ Скинуто до стандартних';
+  msg.textContent = '✓ Збережено!';
   msg.className = 'form-msg success';
   setTimeout(() => { msg.textContent = ''; }, 2000);
 }
+
+function resetChartSettings() {
+  if (!confirm('Скинути всі графіки до стандартних?')) return;
+  chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+  saveChartConfigsToStorage();
+  document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
+    btn.textContent = chartConfigs[i].title || ('Графік '+(i+1));
+  });
+  renderChartSettingsPanel(currentChartTab);
+  const dataToUse = cachedFullData || fullData;
+  if (dataToUse) renderAllUserCharts(dataToUse);
+  const msg = document.getElementById('chartSettingsMsg');
+  msg.textContent = '✓ Скинуто';
+  msg.className = 'form-msg success';
+  setTimeout(() => { msg.textContent = ''; }, 2000);
+}
+
+// ── ДОДАВАННЯ ДАНИХ З ГРАФІКА ────────────────
+function openChartDataAdd(chartIdx) {
+  const cfg = chartConfigs[chartIdx];
+  currentQuickSection = '__chart__' + chartIdx;
+  setText('quickAddTitle', '+ Дані: ' + (cfg?.title || ('Графік '+(chartIdx+1))));
+  document.getElementById('quickAddBody').innerHTML = `
+    <div class="form-section">
+      <div class="form-section-label">Аркуш: Графік${chartIdx+1}</div>
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Мітка (дата або назва)</label>
+          <input class="field-input" type="text" id="cd_label" value="${today()}" placeholder="напр. 14.05.2026 або Тиждень 1"></div>
+        <div class="form-field"><label class="field-label">Значення</label>
+          <input class="field-input" type="number" id="cd_value" placeholder="87"></div>
+        <div class="form-field"><label class="field-label">План (необов'язково)</label>
+          <input class="field-input" type="number" id="cd_plan" placeholder="85"></div>
+      </div>
+    </div>`;
+  document.getElementById('quickAddMsg').textContent = '';
+  window.__chartIdx = chartIdx;
+  document.getElementById('quickAddBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('cd_value')?.focus(), 100);
+}
+
+// Перевизначаємо submitQuickAdd для графіків
+const _origSubmitQuickAdd = window.submitQuickAdd;
+window.submitQuickAdd = async function() {
+  if (!currentQuickSection?.startsWith('__chart__')) {
+    return _origSubmitQuickAdd?.();
+  }
+  const idx = window.__chartIdx;
+  const btn = document.getElementById('quickAddBtn');
+  const msg = document.getElementById('quickAddMsg');
+  const label = document.getElementById('cd_label')?.value.trim();
+  const value = document.getElementById('cd_value')?.value;
+  const plan  = document.getElementById('cd_plan')?.value;
+
+  if (!label) { msg.textContent = '✕ Введіть мітку'; msg.className='form-msg error'; return; }
+  if (value === '') { msg.textContent = '✕ Введіть значення'; msg.className='form-msg error'; return; }
+
+  btn.disabled = true;
+  msg.textContent = 'Збереження...';
+  msg.className = 'form-msg';
+
+  try {
+    const data = { label, value: +value, plan: plan !== '' ? +plan : null };
+    const url = `${API_URL}?action=add&section=chart${idx+1}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Помилка');
+    msg.textContent = '✓ Збережено!';
+    msg.className = 'form-msg success';
+    showToast('Дані збережено', 'success');
+    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message;
+    msg.className = 'form-msg error';
+  } finally {
+    btn.disabled = false;
+  }
+};
+
 
 // ════════════════════════════════════════════════
 // ТАБЛИЦІ З INLINE ЗМІНОЮ СТАТУСУ
