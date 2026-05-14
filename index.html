@@ -1842,44 +1842,6 @@ function openChartDataAdd(chartIdx) {
   document.body.style.overflow = 'hidden';
 }
 
-// Перевантажуємо submitQuickAdd щоб підтримував графіки
-const _origSubmitQuickAdd = window.submitQuickAdd;
-window.submitQuickAdd = async function() {
-  if (!currentQuickSection?.startsWith('__chart__')) {
-    return _origSubmitQuickAdd?.();
-  }
-  const formCfg = window.__chartFormCfg;
-  if (!formCfg) return;
-
-  const btn = document.getElementById('quickAddBtn');
-  const msg = document.getElementById('quickAddMsg');
-  const data = formCfg.collect();
-  const err  = formCfg.validate(data);
-
-  if (err) { msg.textContent = '✕ ' + err; msg.className = 'form-msg error'; return; }
-
-  btn.disabled = true;
-  msg.textContent = 'Збереження...';
-  msg.className = 'form-msg';
-
-  try {
-    const url = `${API_URL}?action=add&section=${formCfg.section}&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Помилка сервера');
-
-    msg.textContent = '✓ Збережено!';
-    msg.className = 'form-msg success';
-    showToast('Дані збережено', 'success');
-    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
-  } catch(e) {
-    msg.textContent = '✕ ' + e.message;
-    msg.className = 'form-msg error';
-  } finally {
-    btn.disabled = false;
-  }
-};
-
 // ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
 function loadTeamName() {
   const saved = localStorage.getItem('dashTeamName');
