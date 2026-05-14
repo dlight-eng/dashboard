@@ -36,7 +36,11 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);margin-bottom:10px;box-shadow:var(--shadow)}
 .header-left{display:flex;align-items:center;gap:12px}
 .logo{background:#1a1f36;color:#f5c518;font-family:var(--mono);font-weight:500;font-size:12px;padding:4px 10px;border-radius:4px;letter-spacing:1px}
+.team-name-wrap{display:flex;align-items:center;gap:5px;cursor:pointer}
+.team-name-wrap:hover .edit-hint{opacity:1}
+.edit-hint{font-size:12px;color:var(--c-muted);opacity:0;transition:.15s;cursor:pointer;line-height:1}
 .brand-name{font-family:var(--mono);font-size:15px;font-weight:500;color:#1a1f36;letter-spacing:2px}
+.brand-name-input{font-family:var(--mono);font-size:15px;font-weight:500;color:#1a1f36;letter-spacing:2px;border:none;border-bottom:2px solid #1a1f36;background:transparent;outline:none;width:180px;padding:0}
 .month-badge{font-family:var(--mono);font-size:10px;color:var(--c-muted);border:1px solid var(--c-border);padding:3px 10px;border-radius:4px;background:var(--c-card)}
 .header-right{display:flex;gap:6px;align-items:center}
 .update-wrap{display:flex;align-items:center;gap:5px}
@@ -487,7 +491,13 @@ select.field-input{cursor:pointer}
   <div class="header">
     <div class="header-left">
       <div class="logo">DLight</div>
-      <div class="brand-name" id="hTeamName">«ТОЙОТА»</div>
+      <div class="team-name-wrap" title="Клікни щоб змінити назву команди">
+        <span class="brand-name" id="hTeamName" onclick="startEditTeamName()">«ТОЙОТА»</span>
+        <input class="brand-name-input" id="hTeamNameInput" type="text"
+          onblur="saveTeamName()" onkeydown="if(event.key==='Enter')saveTeamName();if(event.key==='Escape')cancelEditTeamName()"
+          placeholder="Назва команди" style="display:none">
+        <span class="edit-hint" onclick="startEditTeamName()">✎</span>
+      </div>
       <select class="month-select" id="monthSelect" onchange="onMonthChange()">
         <option value="">Всі місяці</option>
         <option>Січень</option><option>Лютий</option><option>Березень</option>
@@ -567,38 +577,73 @@ select.field-input{cursor:pointer}
     </div>
   </div>
 
-  <!-- МІСЯЧНА ЕФЕКТИВНІСТЬ -->
-  <div class="section" style="margin-bottom:10px">
-    <div class="section-title"><span>Ефективність по місяцях (%)</span></div>
-    <div class="chart-wrap" style="height:160px"><canvas id="monthlyChart"></canvas></div>
+  <!-- КНОПКА НАЛАШТУВАННЯ ГРАФІКІВ -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+    <button class="hdr-btn" onclick="openChartSettings()">⚙ Налаштувати графіки</button>
   </div>
 
-  <!-- ЩОДЕННІ — 2 графіки -->
-  <div class="section" style="margin-bottom:10px">
-    <div class="section-title"><span>Щоденні показники</span></div>
-    <div class="two-col-grid">
-      <div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--c-text);font-weight:500;margin-bottom:8px">Ефективність задач, %</div>
-        <div class="chart-wrap" style="height:160px"><canvas id="dailyNormChart"></canvas></div>
+  <!-- 5 НАЛАШТОВУВАНИХ ГРАФІКІВ -->
+  <div id="chartsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="section" id="chartBox0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle0">Графік 1</span></div>
       </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--c-text);font-weight:500;margin-bottom:8px">Реакція на зауваження</div>
-        <div class="chart-wrap" style="height:160px"><canvas id="dailyMlChart"></canvas></div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart0"></canvas></div>
+    </div>
+    <div class="section" id="chartBox1">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle1">Графік 2</span></div>
       </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart1"></canvas></div>
+    </div>
+    <div class="section" id="chartBox2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle2">Графік 3</span></div>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart2"></canvas></div>
+    </div>
+    <div class="section" id="chartBox3">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle3">Графік 4</span></div>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart3"></canvas></div>
+    </div>
+    <div class="section" style="grid-column:1/-1" id="chartBox4">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle4">Графік 5</span></div>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart4"></canvas></div>
     </div>
   </div>
 
-  <!-- ЩОТИЖНЕВІ — 2 графіки -->
-  <div class="section" style="margin-bottom:10px">
-    <div class="section-title"><span>Щотижневі показники</span></div>
-    <div class="two-col-grid">
-      <div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--c-text);font-weight:500;margin-bottom:8px">Якість, кількість зауважень</div>
-        <div class="chart-wrap" style="height:150px"><canvas id="weeklyQualityChart"></canvas></div>
+  <!-- МОДАЛЬНЕ ВІКНО НАЛАШТУВАННЯ ГРАФІКІВ -->
+  <div class="modal-backdrop" id="chartSettingsBackdrop" onclick="closeChartSettingsOutside(event)">
+    <div class="modal" style="width:min(780px,96vw);max-height:92vh">
+      <div class="modal-header">
+        <div class="modal-title">⚙ Налаштування графіків</div>
+        <button class="modal-close" onclick="closeChartSettings()">✕</button>
       </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--c-text);font-weight:500;margin-bottom:8px">Безпека та дисципліна, кількість зауважень</div>
-        <div class="chart-wrap" style="height:150px"><canvas id="weeklySafetyChart"></canvas></div>
+
+      <!-- ВКЛАДКИ ГРАФІКІВ -->
+      <div class="modal-tabs" id="chartTabRow">
+        <button class="mtab active" onclick="switchChartTab(0,this)">Графік 1</button>
+        <button class="mtab" onclick="switchChartTab(1,this)">Графік 2</button>
+        <button class="mtab" onclick="switchChartTab(2,this)">Графік 3</button>
+        <button class="mtab" onclick="switchChartTab(3,this)">Графік 4</button>
+        <button class="mtab" onclick="switchChartTab(4,this)">Графік 5</button>
+      </div>
+
+      <div class="modal-body" id="chartSettingsBody">
+        <!-- Генерується динамічно -->
+      </div>
+
+      <div class="modal-footer">
+        <div class="form-msg" id="chartSettingsMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="resetChartSettings()">Скинути до стандартних</button>
+          <button class="hdr-btn" onclick="closeChartSettings()">Скасувати</button>
+          <button class="submit-btn" onclick="saveChartSettings()">Зберегти</button>
+        </div>
       </div>
     </div>
   </div>
@@ -695,6 +740,7 @@ async function loadData() {
 
 function renderAll(data) {
   fullData = data;
+  cachedFullData = data;
   renderMeta(data.meta);
   applyMonthFilter(data);
 }
@@ -705,14 +751,14 @@ const MONTH_MAP = {
   'Липень':7,'Серпень':8,'Вересень':9,'Жовтень':10,'Листопад':11,'Грудень':12
 };
 
-let fullData = null; // зберігаємо всі дані для фільтрації
+let fullData = null;
 
 function onMonthChange() {
   if (fullData) applyMonthFilter(fullData);
 }
 
 function getSelectedMonth() {
-  return document.getElementById('monthSelect').value; // '' = всі
+  return document.getElementById('monthSelect').value;
 }
 
 function applyMonthFilter(data) {
@@ -722,31 +768,29 @@ function applyMonthFilter(data) {
   function filterByDate(arr) {
     if (!arr || !month) return arr || [];
     return arr.filter(r => {
-      // дата може бути "dd.MM.yyyy" або "dd.MM.yy"
       const parts = String(r.date || '').split('.');
       if (parts.length < 2) return true;
       return parseInt(parts[1], 10) === mNum;
     });
   }
 
-  // Щоденні — фільтруємо по даті
   const daily    = filterByDate(data.daily);
-  const weekly   = data.weekly || []; // тижневі не мають дати — показуємо всі
+  const weekly   = data.weekly || [];
   const problems = filterByDate(data.problems);
   const escals   = filterByDate(data.escalations);
   const corr     = filterByDate(data.corrective);
   const comments = filterByDate(data.comments);
-  // Місячні — фільтруємо по назві місяця
   const monthly  = month
     ? (data.monthly || []).filter(m => m.month === month)
     : (data.monthly || []);
 
+  // Передаємо відфільтровані дані в кеш для графіків
+  const filteredData = { ...data, daily, weekly, problems, escalations: escals,
+    corrective: corr, comments, monthly };
+  cachedFullData = filteredData;
+
   renderKPI(daily, problems, data.partners, comments);
-  renderMonthlyChart(monthly.length ? monthly : data.monthly);
-  renderDailyNormChart(daily);
-  renderDailyMlChart(daily);
-  renderWeeklyQualityChart(weekly);
-  renderWeeklySafetyChart(weekly);
+  renderAllUserCharts(filteredData);
 
   allProblems    = problems;
   allEscalations = escals;
@@ -759,9 +803,10 @@ function applyMonthFilter(data) {
   renderComments(allComments);
   renderCorrective(allCorrective);
 }
+
 function renderMeta(meta) {
   if (!meta) return;
-  setText('hTeamName', meta.teamName || '«ТОЙОТА»');
+  setText('hTeamName', localStorage.getItem('dashTeamName') || meta.teamName || '«ТОЙОТА»');
   setText('companyMission', meta.companyMission || '');
   setText('teamMission', meta.teamMission || '');
   setText('teamGoal', meta.teamGoal || '');
@@ -818,7 +863,7 @@ function renderKPI(daily, problems, partners, comments) {
 }
 
 // ════════════════════════════════════════════════
-// ГРАФІКИ
+// БАЗОВІ УТИЛІТИ ГРАФІКІВ
 // ════════════════════════════════════════════════
 const CO = { gc:'rgba(226,230,240,.8)', tc:'#6b7491', tf:{size:10,family:'IBM Plex Mono'} };
 function cScales(yMin, yMax, yCb) {
@@ -829,54 +874,308 @@ function cScales(yMin, yMax, yCb) {
 }
 function mkChart(id, cfg) {
   if (charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), cfg);
+  const el = document.getElementById(id);
+  if (!el) return;
+  charts[id] = new Chart(el, cfg);
 }
 
-function renderMonthlyChart(data) {
-  if (!data||!data.length) return;
-  mkChart('monthlyChart',{type:'bar',data:{labels:data.map(d=>d.month||d.date),datasets:[
-    {label:'Факт %',data:data.map(d=>d.fact),backgroundColor:'rgba(26,111,181,0.72)',borderRadius:3},
-    {label:'План',data:data.map(d=>d.plan||85),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,100,v=>v+'%')}});
+// ════════════════════════════════════════════════
+// 5 НАЛАШТОВУВАНИХ ГРАФІКІВ
+// ════════════════════════════════════════════════
+
+// Джерела даних
+const DATA_SOURCES = [
+  { id:'daily_fact',    label:'Щоденні — Дані графік 1',   type:'daily',   field:'mvFact' },
+  { id:'daily_plan',   label:'Щоденні — План графік 1',    type:'daily',   field:'mvPlan' },
+  { id:'daily_fact2',  label:'Щоденні — Дані графік 2',   type:'daily',   field:'fact'   },
+  { id:'daily_plan2',  label:'Щоденні — План графік 2',    type:'daily',   field:'plan'   },
+  { id:'monthly_fact', label:'Місячні — Факт %',           type:'monthly', field:'fact'   },
+  { id:'monthly_plan', label:'Місячні — План %',           type:'monthly', field:'plan'   },
+  { id:'weekly_qual',  label:'Тижневі — Якість',           type:'weekly',  field:'quality'},
+  { id:'weekly_safe',  label:'Тижневі — Безпека',          type:'weekly',  field:'safety' },
+  { id:'weekly_disc',  label:'Тижневі — Дисципліна',       type:'weekly',  field:'discipline'},
+  { id:'weekly_qlim',  label:'Тижневі — Ліміт якості',     type:'weekly',  field:'qualityLimit'},
+  { id:'weekly_slim',  label:'Тижневі — Ліміт безпеки',    type:'weekly',  field:'safetyLimit'},
+];
+
+const DEFAULT_CHARTS = [
+  { title:'Ефективність задач', tooltip:'Кількість задач', type:'bar', color:'#d4a017',
+    lineColor:'#1a9e5c', unit:'%', min:0, max:100,
+    dataSource:'daily_fact', planSource:'daily_plan', showPlan:true },
+  { title:'Реакція на зауваження', tooltip:'Кількість зауважень', type:'bar', color:'#1a9e5c',
+    lineColor:'#c0392b', unit:'', min:0, max:100,
+    dataSource:'daily_fact2', planSource:'daily_plan2', showPlan:true },
+  { title:'Ефективність по місяцях', tooltip:'%', type:'bar', color:'#1a6fb5',
+    lineColor:'#1a9e5c', unit:'%', min:0, max:100,
+    dataSource:'monthly_fact', planSource:'monthly_plan', showPlan:true },
+  { title:'Якість — кількість зауважень', tooltip:'шт.', type:'bar', color:'#1a9e5c',
+    lineColor:'#1a9e5c', unit:'шт.', min:0, max:null,
+    dataSource:'weekly_qual', planSource:'weekly_qlim', showPlan:true },
+  { title:'Безпека та дисципліна', tooltip:'шт.', type:'bar', color:'#d4a017',
+    lineColor:'#1a9e5c', unit:'шт.', min:0, max:null,
+    dataSource:'weekly_safe', planSource:'weekly_slim', showPlan:true },
+];
+
+let chartConfigs = [];
+let currentChartTab = 0;
+let cachedFullData = null;
+
+function loadChartConfigs() {
+  try {
+    const saved = localStorage.getItem('dashChartConfigs');
+    chartConfigs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+  } catch(e) {
+    chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+  }
 }
-function renderDailyNormChart(data) {
-  if (!data||!data.length) return;
-  mkChart('dailyNormChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
-    {label:'Кількість задач',data:data.map(d=>d.mvFact||0),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
-    {label:'План',data:data.map(d=>d.mvPlan||0),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{
-      legend:{display:false},
-      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}%`}}
-    },
-    scales:cScales(0,100,v=>v+'%')}});
+
+function saveChartConfigsToStorage() {
+  localStorage.setItem('dashChartConfigs', JSON.stringify(chartConfigs));
 }
-function renderDailyMlChart(data) {
-  if (!data||!data.length) return;
-  mkChart('dailyMlChart',{type:'bar',data:{labels:data.map(d=>d.date),datasets:[
-    {label:'Кількість зауважень',data:data.map(d=>d.fact||0),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
-    {label:'План',data:data.map(d=>d.plan||85),type:'line',borderColor:'rgba(192,57,43,0.75)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false}
-  ]},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{
-      legend:{display:false},
-      tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.raw}`}}
-    },
-    scales:cScales(0,100,v=>v+'%')}});
+
+// Отримати масив даних по джерелу
+function getSourceData(sourceId, fullData) {
+  const src = DATA_SOURCES.find(s => s.id === sourceId);
+  if (!src || !fullData) return { labels:[], values:[] };
+  const arr = fullData[src.type] || [];
+  const labels = arr.map(r => r.date || r.month || r.week || '');
+  const values = arr.map(r => {
+    const v = r[src.field];
+    return (v === null || v === undefined) ? null : +v;
+  });
+  return { labels, values };
 }
-function renderWeeklyQualityChart(data) {
-  if (!data||!data.length) return;
-  mkChart('weeklyQualityChart',{type:'bar',data:{labels:data.map(w=>w.week),datasets:[
-    {label:'Зауваження',data:data.map(w=>w.quality),backgroundColor:'rgba(26,158,92,0.72)',borderRadius:3},
-    {label:'Ліміт',data:data.map(w=>w.qualityLimit||null),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,spanGaps:true}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined,v=>Math.round(v))}});
+
+// Рендер одного графіка
+function renderUserChart(idx, fullData) {
+  const cfg = chartConfigs[idx];
+  if (!cfg) return;
+
+  setText('chartTitle' + idx, cfg.title || ('Графік ' + (idx+1)));
+
+  const { labels, values } = getSourceData(cfg.dataSource, fullData);
+  const { values: planValues } = getSourceData(cfg.planSource, fullData);
+
+  const datasets = [];
+
+  // Основний датасет
+  if (cfg.type === 'line') {
+    datasets.push({
+      label: cfg.tooltip || cfg.title,
+      data: values,
+      borderColor: cfg.color || '#1a6fb5',
+      backgroundColor: (cfg.color || '#1a6fb5') + '22',
+      borderWidth: 2,
+      pointRadius: 3,
+      fill: true,
+      tension: 0.3,
+    });
+  } else {
+    datasets.push({
+      label: cfg.tooltip || cfg.title,
+      data: values,
+      backgroundColor: (cfg.color || '#1a6fb5') + 'bb',
+      borderRadius: 3,
+    });
+  }
+
+  // Лінія плану
+  if (cfg.showPlan && cfg.planSource) {
+    datasets.push({
+      label: 'План',
+      data: planValues,
+      type: 'line',
+      borderColor: cfg.lineColor || '#1a9e5c',
+      borderDash: [5, 4],
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: false,
+      spanGaps: true,
+    });
+  }
+
+  const unitSuffix = cfg.unit ? (' ' + cfg.unit) : '';
+  const yMax = cfg.max !== null && cfg.max !== '' ? +cfg.max : undefined;
+  const yMin = cfg.min !== null && cfg.min !== '' ? +cfg.min : 0;
+
+  mkChart('userChart' + idx, {
+    type: cfg.type === 'line' ? 'line' : 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}`
+          }
+        }
+      },
+      scales: cScales(yMin, yMax, v => v + unitSuffix)
+    }
+  });
 }
-function renderWeeklySafetyChart(data) {
-  if (!data||!data.length) return;
-  mkChart('weeklySafetyChart',{type:'bar',data:{labels:data.map(w=>w.week),datasets:[
-    {label:'Безпека',data:data.map(w=>w.safety),backgroundColor:'rgba(212,160,23,0.75)',borderRadius:3},
-    {label:'Дисципліна',data:data.map(w=>w.discipline||0),backgroundColor:'rgba(192,57,43,0.60)',borderRadius:3},
-    {label:'Ліміт',data:data.map(w=>w.safetyLimit||null),type:'line',borderColor:'rgba(46,160,90,0.8)',borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,spanGaps:true}
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:cScales(0,undefined,v=>Math.round(v))}});
+
+function renderAllUserCharts(fullData) {
+  for (let i = 0; i < 5; i++) {
+    renderUserChart(i, fullData);
+  }
+}
+
+// ── НАЛАШТУВАННЯ — модальне вікно ─────────────
+function openChartSettings() {
+  renderChartSettingsPanel(currentChartTab);
+  document.getElementById('chartSettingsBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeChartSettings() {
+  document.getElementById('chartSettingsBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeChartSettingsOutside(e) {
+  if (e.target === document.getElementById('chartSettingsBackdrop')) closeChartSettings();
+}
+
+function switchChartTab(idx, btn) {
+  currentChartTab = idx;
+  document.querySelectorAll('#chartTabRow .mtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChartSettingsPanel(idx);
+}
+
+function renderChartSettingsPanel(idx) {
+  const cfg = chartConfigs[idx] || DEFAULT_CHARTS[idx];
+  const srcOptions = DATA_SOURCES.map(s =>
+    `<option value="${s.id}" ${cfg.dataSource===s.id?'selected':''}>${s.label}</option>`
+  ).join('');
+  const planOptions = `<option value="">— без плану —</option>` + DATA_SOURCES.map(s =>
+    `<option value="${s.id}" ${cfg.planSource===s.id?'selected':''}>${s.label}</option>`
+  ).join('');
+
+  document.getElementById('chartSettingsBody').innerHTML = `
+    <div class="form-section">
+      <div class="form-section-label">Загальне</div>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label class="field-label">Назва графіка</label>
+          <input class="field-input" id="cs_title" value="${cfg.title||''}" placeholder="Назва">
+        </div>
+        <div class="form-field full">
+          <label class="field-label">Підпис у tooltip (при наведенні)</label>
+          <input class="field-input" id="cs_tooltip" value="${cfg.tooltip||''}" placeholder="напр. Кількість задач">
+        </div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Тип та кольори</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label">Тип графіка</label>
+          <select class="field-input" id="cs_type">
+            <option value="bar" ${cfg.type==='bar'?'selected':''}>Стовпчастий (bar)</option>
+            <option value="line" ${cfg.type==='line'?'selected':''}>Лінійний (line)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Колір основного ряду</label>
+          <input class="field-input" type="color" id="cs_color" value="${cfg.color||'#1a6fb5'}">
+        </div>
+        <div class="form-field">
+          <label class="field-label">Колір лінії плану</label>
+          <input class="field-input" type="color" id="cs_lineColor" value="${cfg.lineColor||'#1a9e5c'}">
+        </div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Шкала (вісь Y)</div>
+      <div class="form-grid-3">
+        <div class="form-field">
+          <label class="field-label">Одиниця виміру</label>
+          <input class="field-input" id="cs_unit" value="${cfg.unit||''}" placeholder="напр. % або шт.">
+        </div>
+        <div class="form-field">
+          <label class="field-label">Мін. значення</label>
+          <input class="field-input" type="number" id="cs_min" value="${cfg.min??0}">
+        </div>
+        <div class="form-field">
+          <label class="field-label">Макс. значення (порожньо = авто)</label>
+          <input class="field-input" type="number" id="cs_max" value="${cfg.max??''}">
+        </div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-label">Джерела даних</div>
+      <div class="form-grid">
+        <div class="form-field full">
+          <label class="field-label">Основні дані</label>
+          <select class="field-input" id="cs_dataSource">${srcOptions}</select>
+        </div>
+        <div class="form-field full">
+          <label class="field-label">Лінія плану / ліміту</label>
+          <select class="field-input" id="cs_planSource">${planOptions}</select>
+        </div>
+        <div class="form-field">
+          <label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="cs_showPlan" ${cfg.showPlan?'checked':''} style="width:16px;height:16px">
+            Показувати лінію плану
+          </label>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--c-muted);font-family:var(--mono)">
+      Попередній перегляд оновиться після збереження
+    </div>
+  `;
+}
+
+function saveChartSettings() {
+  const idx = currentChartTab;
+  const maxVal = document.getElementById('cs_max').value;
+  chartConfigs[idx] = {
+    title:      document.getElementById('cs_title').value.trim(),
+    tooltip:    document.getElementById('cs_tooltip').value.trim(),
+    type:       document.getElementById('cs_type').value,
+    color:      document.getElementById('cs_color').value,
+    lineColor:  document.getElementById('cs_lineColor').value,
+    unit:       document.getElementById('cs_unit').value.trim(),
+    min:        +document.getElementById('cs_min').value || 0,
+    max:        maxVal !== '' ? +maxVal : null,
+    dataSource: document.getElementById('cs_dataSource').value,
+    planSource: document.getElementById('cs_planSource').value,
+    showPlan:   document.getElementById('cs_showPlan').checked,
+  };
+  saveChartConfigsToStorage();
+
+  // Оновити назву вкладки
+  document.querySelectorAll('#chartTabRow .mtab')[idx].textContent =
+    chartConfigs[idx].title || ('Графік ' + (idx+1));
+
+  // Перемалювати графік
+  if (cachedFullData) renderUserChart(idx, cachedFullData);
+
+  const msg = document.getElementById('chartSettingsMsg');
+  msg.textContent = '✓ Збережено!';
+  msg.className = 'form-msg success';
+  setTimeout(() => { msg.textContent = ''; }, 2000);
+}
+
+function resetChartSettings() {
+  if (!confirm('Скинути всі графіки до стандартних налаштувань?')) return;
+  chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+  saveChartConfigsToStorage();
+  // Оновити назви вкладок
+  document.querySelectorAll('#chartTabRow .mtab').forEach((btn, i) => {
+    btn.textContent = chartConfigs[i].title || ('Графік ' + (i+1));
+  });
+  renderChartSettingsPanel(currentChartTab);
+  if (cachedFullData) renderAllUserCharts(cachedFullData);
+  const msg = document.getElementById('chartSettingsMsg');
+  msg.textContent = '✓ Скинуто до стандартних';
+  msg.className = 'form-msg success';
+  setTimeout(() => { msg.textContent = ''; }, 2000);
 }
 
 // ════════════════════════════════════════════════
@@ -1138,9 +1437,44 @@ function setUpdateTime(d) { setText('updateTime',`оновлено ${String(d.ge
 function setDotOk()    { document.getElementById('statusDot').className='update-dot'; }
 function setDotError() { document.getElementById('statusDot').className='update-dot error'; }
 
-// Закрити по Escape
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+// ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
+function loadTeamName() {
+  const saved = localStorage.getItem('dashTeamName');
+  if (saved) setText('hTeamName', saved);
+}
 
+function startEditTeamName() {
+  const span  = document.getElementById('hTeamName');
+  const input = document.getElementById('hTeamNameInput');
+  input.value = span.textContent;
+  span.style.display  = 'none';
+  input.style.display = 'block';
+  input.focus();
+  input.select();
+}
+
+function saveTeamName() {
+  const span  = document.getElementById('hTeamName');
+  const input = document.getElementById('hTeamNameInput');
+  const val   = input.value.trim();
+  if (val) {
+    span.textContent = val;
+    localStorage.setItem('dashTeamName', val);
+  }
+  input.style.display = 'none';
+  span.style.display  = '';
+}
+
+function cancelEditTeamName() {
+  const span  = document.getElementById('hTeamName');
+  const input = document.getElementById('hTeamNameInput');
+  input.style.display = 'none';
+  span.style.display  = '';
+}
+document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeChartSettings(); } });
+
+loadChartConfigs();
+loadTeamName();
 loadData();
 </script>
 </body>
