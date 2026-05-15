@@ -664,7 +664,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzfr0AcX2M7gRkN6FT8tSTYRmWXWUnJUjpRFzuL5CoJyE9kfKsKgPdWnzRbl5GC8m_r/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyCHl24Lf914glC2_AMk_EZLV7105_96jhwon7qZvAUZztXRUx4LVFxYkGsLuhcCVng/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -876,7 +876,20 @@ function renderUserChart(idx, fullData) {
   setText('chartTitle' + idx, cfg.title || ('Графік ' + (idx+1)));
 
   const chartData = (fullData?.charts || [])[idx] || [];
-  const labels = chartData.map(r => r.label);
+  const labels = chartData.map(r => {
+    const l = String(r.label || '');
+    // Якщо містить час — беремо тільки дату (перші 10 символів dd.MM.yyyy або перше слово)
+    if (l.includes('GMT') || l.includes(':00:00')) {
+      // Спробуємо розпарсити як дату
+      const d = new Date(l);
+      if (!isNaN(d)) {
+        return String(d.getDate()).padStart(2,'0') + '.' +
+               String(d.getMonth()+1).padStart(2,'0') + '.' +
+               d.getFullYear();
+      }
+    }
+    return l;
+  });
   const values = chartData.map(r => r.value);
   const plans  = chartData.map(r => r.plan);
 
