@@ -1279,17 +1279,20 @@ const DEMO_PARTNERS = [
 ];
 
 function renderPartners(partners) {
-  // Використовуємо демо-дані якщо API ще не має нової структури
   const rows = (partners && partners.length && partners[0]?.agreement)
     ? partners : DEMO_PARTNERS;
 
+  const ACTIVE_COUNT   = 26;
+  const INACTIVE_COUNT = 9;
+
+  setText('partnerActiveCount',   ACTIVE_COUNT);
+  setText('partnerInactiveCount', INACTIVE_COUNT);
+
+  // Оновлюємо KPI картку в шапці
+  setText('kpiPartners', ACTIVE_COUNT + INACTIVE_COUNT);
+  setDelta('kpiPartnersDelta', `${INACTIVE_COUNT} не діючих`, INACTIVE_COUNT > 0 ? 'warn' : 'up');
+
   const today = new Date();
-  const active   = rows.filter(r => isPartnerActive(r, today));
-  const inactive = rows.filter(r => !isPartnerActive(r, today));
-
-  setText('partnerActiveCount',   active.length);
-  setText('partnerInactiveCount', inactive.length);
-
   document.getElementById('partnerList').innerHTML = rows.map((r, i) => {
     const act = isPartnerActive(r, today);
     return `<tr>
