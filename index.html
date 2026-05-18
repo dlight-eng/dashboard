@@ -615,7 +615,24 @@ select.field-input{cursor:pointer}
         <span>Партнерські угоди</span>
         <button class="add-inline-btn" onclick="openQuickAdd('partner')">+ Додати</button>
       </div>
-      <div id="partnerList"></div>
+      <!-- Лічильники -->
+      <div style="display:flex;gap:12px;margin-bottom:10px">
+        <div style="background:var(--c-green-bg);border:1px solid var(--c-green);border-radius:6px;padding:6px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-green)" id="partnerActiveCount">0</span>
+          <span style="font-size:11px;color:var(--c-green);font-family:var(--mono)">діючих угод</span>
+        </div>
+        <div style="background:var(--c-red-bg);border:1px solid var(--c-red);border-radius:6px;padding:6px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-red)" id="partnerInactiveCount">0</span>
+          <span style="font-size:11px;color:var(--c-red);font-family:var(--mono)">не діючих угод</span>
+        </div>
+      </div>
+      <!-- Таблиця -->
+      <div class="table-scroll">
+        <table class="data-table" id="partnerTable">
+          <thead><tr><th>#</th><th>Команда / Партнер</th><th>Угода</th><th>Строк дії</th></tr></thead>
+          <tbody id="partnerList"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -1248,13 +1265,51 @@ function renderEscalations(escalations) {
   </tr>`).join('') || emptyRow(4,'Немає записів');
 }
 
+// Тестові дані партнерів (поки API не має цих полів)
+const DEMO_PARTNERS = [
+  {team:'Фіксики',    agreement:'Проведення інструктажів з питань охорони праці та пожежної безпеки', deadline:'30.12.2025', active:true},
+  {team:'Фіксики',    agreement:'Виконання вимог нормативно-правових актів з ОП та ПБ в офісі та виробництві', deadline:'30.12.2025', active:true},
+  {team:'Фіксики',    agreement:'Брати участь в тестуванні доробок в BAS', deadline:'30.12.2025', active:true},
+  {team:'Бухгалтерія',agreement:'Проведення інструктажів з питань охорони праці та пожежної безпеки', deadline:'30.12.2025', active:true},
+  {team:'Бухгалтерія',agreement:'Виконання вимог нормативно-правових актів з ОП та ПБ в офісі та виробництві', deadline:'30.12.2025', active:true},
+  {team:'Бухгалтерія',agreement:'Брати участь в тестуванні доробок в BAS', deadline:'30.12.2025', active:true},
+  {team:'Запчасти_ОП',agreement:'Проведення інструктажів з питань охорони праці та пожежної безпеки', deadline:'30.12.2025', active:true},
+  {team:'Запчасти_ОП',agreement:'Виконання вимог нормативно-правових актів з ОП та ПБ в офісі та виробництві', deadline:'30.12.2025', active:true},
+  {team:'Запчасти_ОП',agreement:'Брати участь в тестуванні доробок в BAS', deadline:'30.12.2025', active:true},
+];
+
 function renderPartners(partners) {
-  document.getElementById('partnerList').innerHTML = partners.map((p,i)=>`
-    <div class="partner-row">
-      <span class="partner-num">${p.n||i+1}</span>
-      <span class="partner-name">${p.name}</span>
-      <div class="partner-days">${DAYS_UK.map((d,j)=>`<div class="pday ${(p.days||[])[j]?'pday-ok':'pday-no'}" title="${d}">${d[0]}</div>`).join('')}</div>
-    </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає даних</div>';
+  // Використовуємо демо-дані якщо API ще не має нової структури
+  const rows = (partners && partners.length && partners[0]?.agreement)
+    ? partners : DEMO_PARTNERS;
+
+  const today = new Date();
+  const active   = rows.filter(r => isPartnerActive(r, today));
+  const inactive = rows.filter(r => !isPartnerActive(r, today));
+
+  setText('partnerActiveCount',   active.length);
+  setText('partnerInactiveCount', inactive.length);
+
+  document.getElementById('partnerList').innerHTML = rows.map((r, i) => {
+    const act = isPartnerActive(r, today);
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted)">${i+1}</td>
+      <td style="font-weight:500;font-size:12px;white-space:nowrap">${r.team||r.name||'—'}</td>
+      <td style="font-size:12px;max-width:240px">${r.agreement||r.comment||'—'}</td>
+      <td style="white-space:nowrap">
+        <span class="pill ${act?'pill-done':'pill-over'}">${r.deadline||'—'}</span>
+      </td>
+    </tr>`;
+  }).join('') || emptyRow(4, 'Немає даних');
+}
+
+function isPartnerActive(r, today) {
+  if (r.active === false) return false;
+  if (!r.deadline) return true;
+  const parts = String(r.deadline).split('.');
+  if (parts.length < 3) return true;
+  const d = new Date(+parts[2], +parts[1]-1, +parts[0]);
+  return d >= today;
 }
 
 function renderComments(comments) {
