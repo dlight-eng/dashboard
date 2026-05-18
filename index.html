@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight «Синергія» — Дашборд команди</title>
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -892,52 +892,77 @@ function renderUserChart(idx, fullData) {
 
   setText('chartTitle' + idx, cfg.title || ('Графік ' + (idx+1)));
 
-  const chartData = (fullData?.charts || [])[idx] || [];
-  const labels = chartData.map(r => {
-    const l = String(r.label || '');
-    // Якщо містить час — беремо тільки дату (перші 10 символів dd.MM.yyyy або перше слово)
-    if (l.includes('GMT') || l.includes(':00:00')) {
-      // Спробуємо розпарсити як дату
-      const d = new Date(l);
-      if (!isNaN(d)) {
-        return String(d.getDate()).padStart(2,'0') + '.' +
-               String(d.getMonth()+1).padStart(2,'0') + '.' +
-               d.getFullYear();
-      }
-    }
-    return l;
-  });
-  const values = chartData.map(r => r.value);
-  const plans  = chartData.map(r => r.plan);
+  let chartData = [...((fullData?.charts || [])[idx] || [])];
 
-  const unitSuffix = cfg.unit ? (' ' + cfg.unit) : '';
-  const yMax = cfg.max !== null && cfg.max !== '' ? +cfg.max : undefined;
-  const yMin = cfg.min !== null && cfg.min !== '' ? +cfg.min : 0;
+  // Сортування по даті (старі зліва, нові зправа)
+  chartData.sort((a, b) => {
+    const parseD = s => {
+      const p = String(s).split('.');
+      if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
+      return new Date(s);
+    };
+    return parseD(a.label) - parseD(b.label);
+  });
+
+  const labels = chartData.map(r => r.label);
+  const values = chartData.map(r => r.value);
+  const plan   = cfg.planValue != null ? +cfg.planValue : null;
+  const dir    = cfg.planDir || 'above'; // 'above' = добре вище, 'below' = добре нижче
+  const unitSuffix = cfg.unit ? ' ' + cfg.unit : '';
+
+  // Кольори стовпців залежно від плану
+  function getColor(val) {
+    if (plan == null) return '#d4a017bb';
+    if (dir === 'above') {
+      // Добре — вище плану
+      if (val >= plan)                    return 'rgba(26,158,92,0.82)';   // зелений
+      if (val >= plan * 0.9)              return 'rgba(212,160,23,0.82)';  // жовтий
+      return 'rgba(192,57,43,0.82)';                                        // червоний
+    } else {
+      // Добре — нижче плану
+      if (val <= plan)                    return 'rgba(26,158,92,0.82)';
+      if (val <= plan * 1.1)              return 'rgba(212,160,23,0.82)';
+      return 'rgba(192,57,43,0.82)';
+    }
+  }
+
+  const barColors = values.map(v => v != null ? getColor(v) : '#e2e6f0');
 
   const datasets = [];
   if (cfg.type === 'line') {
     datasets.push({
       label: cfg.tooltip || cfg.title,
       data: values,
-      borderColor: cfg.color || '#1a6fb5',
-      backgroundColor: (cfg.color || '#1a6fb5') + '22',
+      borderColor: '#1a6fb5',
+      backgroundColor: 'rgba(26,111,181,0.12)',
       borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3,
+      pointBackgroundColor: values.map(v => v != null ? getColor(v) : '#e2e6f0'),
     });
   } else {
     datasets.push({
       label: cfg.tooltip || cfg.title,
       data: values,
-      backgroundColor: (cfg.color || '#1a6fb5') + 'bb',
+      backgroundColor: barColors,
       borderRadius: 3,
     });
   }
-  if (cfg.showPlan) {
+
+  // Лінія плану з налаштувань (горизонтальна через весь графік)
+  if (cfg.showPlan !== false && plan != null) {
     datasets.push({
-      label: 'План', data: plans, type: 'line',
-      borderColor: cfg.lineColor || '#1a9e5c',
-      borderDash: [5,4], borderWidth: 2, pointRadius: 0, fill: false, spanGaps: true,
+      label: 'План',
+      data: Array(labels.length).fill(plan),
+      type: 'line',
+      borderColor: 'rgba(26,158,92,0.9)',
+      borderWidth: 2,
+      borderDash: [6, 4],
+      pointRadius: 0,
+      fill: false,
     });
   }
+
+  const yMax = cfg.max != null && cfg.max !== '' ? +cfg.max : undefined;
+  const yMin = cfg.min != null ? +cfg.min : 0;
 
   mkChart('userChart' + idx, {
     type: cfg.type === 'line' ? 'line' : 'bar',
@@ -946,7 +971,14 @@ function renderUserChart(idx, fullData) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}` } }
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === 'План') return `План: ${ctx.raw}${unitSuffix}`;
+              return `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}`;
+            }
+          }
+        }
       },
       scales: cScales(yMin, yMax, v => v + unitSuffix)
     }
@@ -997,10 +1029,6 @@ function renderChartSettingsPanel(idx) {
             <option value="bar" ${cfg.type==='bar'?'selected':''}>Стовпчастий</option>
             <option value="line" ${cfg.type==='line'?'selected':''}>Лінійний</option>
           </select></div>
-        <div class="form-field"><label class="field-label">Колір основного ряду</label>
-          <input class="field-input" type="color" id="cs_color" value="${cfg.color||'#1a6fb5'}"></div>
-        <div class="form-field"><label class="field-label">Колір лінії плану</label>
-          <input class="field-input" type="color" id="cs_lineColor" value="${cfg.lineColor||'#1a9e5c'}"></div>
       </div>
     </div>
     <div class="form-section">
@@ -1015,14 +1043,24 @@ function renderChartSettingsPanel(idx) {
       </div>
     </div>
     <div class="form-section">
-      <div class="form-field"><label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
-        <input type="checkbox" id="cs_showPlan" ${cfg.showPlan?'checked':''} style="width:16px;height:16px">
-        Показувати лінію плану
-      </label></div>
+      <div class="form-section-label">Лінія плану</div>
+      <div class="form-grid">
+        <div class="form-field"><label class="field-label">Значення плану</label>
+          <input class="field-input" type="number" id="cs_planValue" value="${cfg.planValue??''}" placeholder="напр. 85"></div>
+        <div class="form-field"><label class="field-label">Умова виконання</label>
+          <select class="field-input" id="cs_planDir">
+            <option value="above" ${(cfg.planDir||'above')==='above'?'selected':''}>Добре — перетнути (вище плану)</option>
+            <option value="below" ${cfg.planDir==='below'?'selected':''}>Добре — не перетнути (нижче плану)</option>
+          </select></div>
+        <div class="form-field"><label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="cs_showPlan" ${cfg.showPlan!==false?'checked':''} style="width:16px;height:16px">
+          Показувати лінію плану
+        </label></div>
+      </div>
     </div>
     <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--c-muted);font-family:var(--mono)">
-      Дані графіку зберігаються в аркуші <b>«Графік${idx+1}»</b> у Google Sheets.<br>
-      Колонки: Мітка (дата/назва) | Значення | План
+      Аркуш: <b>«Графік${idx+1}»</b> · Колонки: Мітка | Значення<br>
+      🟢 Зелений: виконано · 🟡 Жовтий: ±10% від плану · 🔴 Червоний: не виконано
     </div>`;
 }
 
@@ -1030,15 +1068,17 @@ function saveChartSettings() {
   const idx = currentChartTab;
   const maxVal = document.getElementById('cs_max').value;
   chartConfigs[idx] = {
-    title:     document.getElementById('cs_title').value.trim(),
-    tooltip:   document.getElementById('cs_tooltip').value.trim(),
-    type:      document.getElementById('cs_type').value,
-    color:     document.getElementById('cs_color').value,
-    lineColor: document.getElementById('cs_lineColor').value,
-    unit:      document.getElementById('cs_unit').value.trim(),
-    min:       +document.getElementById('cs_min').value || 0,
-    max:       maxVal !== '' ? +maxVal : null,
-    showPlan:  document.getElementById('cs_showPlan').checked,
+    title:      document.getElementById('cs_title').value.trim(),
+    tooltip:    document.getElementById('cs_tooltip').value.trim(),
+    type:       document.getElementById('cs_type').value,
+    color:      chartConfigs[idx]?.color || '#d4a017',
+    lineColor:  '#1a9e5c',
+    unit:       document.getElementById('cs_unit').value.trim(),
+    min:        +document.getElementById('cs_min').value || 0,
+    max:        maxVal !== '' ? +maxVal : null,
+    showPlan:   document.getElementById('cs_showPlan').checked,
+    planValue:  document.getElementById('cs_planValue').value !== '' ? +document.getElementById('cs_planValue').value : null,
+    planDir:    document.getElementById('cs_planDir').value,
   };
   saveChartConfigsToStorage();
   const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
@@ -1079,10 +1119,8 @@ function openChartDataAdd(chartIdx) {
       <div class="form-grid">
         <div class="form-field full"><label class="field-label">Мітка (дата або назва)</label>
           <input class="field-input" type="text" id="cd_label" value="${today()}" placeholder="напр. 14.05.2026 або Тиждень 1"></div>
-        <div class="form-field"><label class="field-label">Значення</label>
+        <div class="form-field full"><label class="field-label">Значення</label>
           <input class="field-input" type="number" id="cd_value" placeholder="87"></div>
-        <div class="form-field"><label class="field-label">План (необов'язково)</label>
-          <input class="field-input" type="number" id="cd_plan" placeholder="85"></div>
       </div>
     </div>`;
   document.getElementById('quickAddMsg').textContent = '';
@@ -1103,7 +1141,6 @@ window.submitQuickAdd = async function() {
   const msg = document.getElementById('quickAddMsg');
   const label = document.getElementById('cd_label')?.value.trim();
   const value = document.getElementById('cd_value')?.value;
-  const plan  = document.getElementById('cd_plan')?.value;
 
   if (!label) { msg.textContent = '✕ Введіть мітку'; msg.className='form-msg error'; return; }
   if (value === '') { msg.textContent = '✕ Введіть значення'; msg.className='form-msg error'; return; }
@@ -1113,7 +1150,7 @@ window.submitQuickAdd = async function() {
   msg.className = 'form-msg';
 
   try {
-    const data = { label, value: +value, plan: plan !== '' ? +plan : null };
+    const data = { label, value: +value };
     const url = `${API_URL}?action=add&section=chart${idx+1}&data=${encodeURIComponent(JSON.stringify(data))}`;
     const res = await fetch(url);
     const result = await res.json();
