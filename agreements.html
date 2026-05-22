@@ -264,7 +264,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzkk7xy7L-2p-3NxvPwaX9TI0zlu7VVqknr1pWP7xI-EW15QWYqhxvyk6UdCewv9Xou/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzmh-OBThMZ7VFZ3Qh-pPOomHhcDpB6Hd61OZrkB1Gizsiawyv1Bj3xziMQPjQuxp82/exec';
 
 const TEAMS = [
   'Бухгалтерія','Фіксики','Синергія','Портал знань','Беркут',
@@ -284,8 +284,10 @@ async function loadMatrix() {
     matrixData = data.data || [];
     renderMatrix();
     updateStats();
+    return true;
   } catch(e) {
     showToast('Помилка: ' + e.message, 'error');
+    return false;
   } finally {
     showLoad(false);
   }
@@ -564,7 +566,22 @@ function escHtml(str) {
 }
 
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeCard(); });
-loadMatrix();
+
+// Автовідкриття картки якщо є параметри в URL
+function checkUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  const teamA = params.get('teamA');
+  const teamB = params.get('teamB');
+  if (teamA && teamB) {
+    // Встановлюємо фільтр на команду
+    const sel = document.getElementById('filterTeam');
+    if (sel) { sel.value = teamA; highlightTeam(); }
+    // Відкриваємо картку після завантаження матриці
+    openCard(teamA, teamB);
+  }
+}
+
+loadMatrix().then(() => checkUrlParams()).catch(() => checkUrlParams());
 
 </script>
 </body>
