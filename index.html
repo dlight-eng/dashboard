@@ -1118,9 +1118,31 @@ function renderChartSettingsPanel(idx) {
         </label></div>
       </div>
     </div>
+    <div class="form-section">
+      <div class="form-section-label">Тригер — автоматична проблема</div>
+      <div class="form-grid">
+        <div class="form-field">
+          <label class="field-label">Умова спрацювання</label>
+          <select class="field-input" id="cs_triggerType">
+            <option value="">— вимкнено —</option>
+            <option value="below" ${(cfg.triggerType||'')==='below'?'selected':''}>Значення нижче плану</option>
+            <option value="above" ${(cfg.triggerType||'')==='above'?'selected':''}>Значення перевищує план</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Відповідальний</label>
+          <input class="field-input" id="cs_triggerResp" value="${cfg.triggerResp||''}" placeholder="Прізвище">
+        </div>
+        <div class="form-field full">
+          <label class="field-label">Опис проблеми (шаблон)</label>
+          <input class="field-input" id="cs_triggerDesc" value="${cfg.triggerDesc||''}" placeholder="напр. Показник графіка нижче плану">
+        </div>
+      </div>
+    </div>
     <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--c-muted);font-family:var(--mono)">
       Аркуш: <b>«Графік${idx+1}»</b> · Колонки: Мітка | Значення<br>
-      🟢 Зелений: виконано · 🟡 Жовтий: ±10% від плану · 🔴 Червоний: не виконано
+      🟢 Зелений: виконано · 🟡 Жовтий: ±10% від плану · 🔴 Червоний: не виконано<br>
+      ⚡ Тригер: щодня перевіряє останнє значення — запусти <b>setupDailyTrigger()</b> в Apps Script
     </div>`;
 }
 
@@ -1139,6 +1161,9 @@ function saveChartSettings() {
     showPlan:   document.getElementById('cs_showPlan').checked,
     planValue:  document.getElementById('cs_planValue').value !== '' ? +document.getElementById('cs_planValue').value : null,
     planDir:    document.getElementById('cs_planDir').value,
+    triggerType: document.getElementById('cs_triggerType').value,
+    triggerResp: document.getElementById('cs_triggerResp').value.trim(),
+    triggerDesc: document.getElementById('cs_triggerDesc').value.trim(),
   };
   saveChartConfigsToStorage();
   const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
@@ -1146,10 +1171,33 @@ function saveChartSettings() {
   setText('chartTitle' + idx, newTitle);
   const dataToUse = cachedFullData || fullData;
   if (dataToUse) renderUserChart(idx, dataToUse);
+  saveAllTriggers();
   const msg = document.getElementById('chartSettingsMsg');
   msg.textContent = '✓ Збережено!';
   msg.className = 'form-msg success';
   setTimeout(() => { msg.textContent = ''; }, 2000);
+}
+
+// ── ЗБЕРЕЖЕННЯ ТРИГЕРІВ В SHEETS ─────────────
+async function saveAllTriggers() {
+  try {
+    const triggers = chartConfigs
+      .map((cfg, i) => cfg.triggerType ? {
+        chartIdx:    i,
+        triggerType: cfg.triggerType,
+        planValue:   cfg.planValue || 0,
+        desc:        cfg.triggerDesc || `Відхилення показника графіка "${cfg.title||'Графік '+(i+1)}"`,
+        resp:        cfg.triggerResp || '',
+      } : null)
+      .filter(Boolean);
+
+    if (!triggers.length && !(chartConfigs.some(c => c.triggerType))) return;
+
+    const url = `${API_URL}?action=saveTriggers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(triggers))}`;
+    await fetch(url);
+  } catch(e) {
+    console.warn('Тригери не збережені:', e.message);
+  }
 }
 
 function resetChartSettings() {
