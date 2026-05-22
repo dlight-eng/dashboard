@@ -707,7 +707,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzkk7xy7L-2p-3NxvPwaX9TI0zlu7VVqknr1pWP7xI-EW15QWYqhxvyk6UdCewv9Xou/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzmh-OBThMZ7VFZ3Qh-pPOomHhcDpB6Hd61OZrkB1Gizsiawyv1Bj3xziMQPjQuxp82/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -725,26 +725,32 @@ function getSelectedTeam() {
 }
 
 function onTeamChange() {
-  // Зберігаємо вибір команди
-  localStorage.setItem('dashSelectedTeam', getSelectedTeam());
-  // Завантажуємо конфіги графіків для нової команди
-  loadChartConfigs();
-  // Оновлюємо назви вкладок
+  // Зберігаємо вибір команди в Sheets
+  fetch(`${API_URL}?action=saveSelectedTeam&team=${encodeURIComponent(getSelectedTeam())}&userKey=default`).catch(()=>{});
+  // Скидаємо конфіг графіків до дефолту (завантажиться при loadData)
+  chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
-    btn.textContent = chartConfigs[i]?.title || ('Графік '+(i+1));
+    btn.textContent = 'Графік '+(i+1);
   });
   loadData();
 }
 
-function loadSavedTeam() {
-  const saved = localStorage.getItem('dashSelectedTeam');
-  if (saved) {
-    const sel = document.getElementById('teamSelect');
-    if (sel) {
-      for (let opt of sel.options) {
-        if (opt.value === saved || opt.text === saved) { sel.value = opt.value; break; }
+async function loadSavedTeam() {
+  try {
+    const res  = await fetch(`${API_URL}?action=getSelectedTeam&userKey=default`);
+    const data = await res.json();
+    if (data.team) {
+      const sel = document.getElementById('teamSelect');
+      if (sel) {
+        for (let opt of sel.options) {
+          if (opt.value === data.team || opt.text === data.team) {
+            sel.value = opt.value; break;
+          }
+        }
       }
     }
+  } catch(e) {
+    // Якщо не вдалось — використовуємо дефолт (Тойота)
   }
 }
 
@@ -773,8 +779,16 @@ async function loadData() {
 }
 
 function renderAll(data) {
-  fullData = data;          // завжди повні дані
-  cachedFullData = data;    // початково = повні, потім = відфільтровані
+  fullData = data;
+  cachedFullData = data;
+  // Завантажуємо конфіг графіків з відповіді API
+  if (data.chartsConfig && Array.isArray(data.chartsConfig) && data.chartsConfig.length > 0) {
+    chartConfigs = data.chartsConfig;
+    // Оновлюємо назви вкладок
+    document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
+      btn.textContent = chartConfigs[i]?.title || ('Графік '+(i+1));
+    });
+  }
   renderMeta(data.meta);
   applyMonthFilter(data);
 }
@@ -929,20 +943,32 @@ let chartConfigs = [];
 let currentChartTab = 0;
 
 function getChartStorageKey() {
-  return 'dashChartConfigs_' + getSelectedTeam();
+  return 'chartsConfig_' + getSelectedTeam(); // fallback key (не використовується)
 }
 
-function loadChartConfigs() {
+async function loadChartConfigs() {
+  // Конфіг вже прийшов в data.chartsConfig при завантаженні
+  // Ця функція використовується тільки при зміні команди
   try {
-    const saved = localStorage.getItem(getChartStorageKey());
-    chartConfigs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+    const res = await fetch(`${API_URL}?action=getChartsConfig&team=${encodeURIComponent(getSelectedTeam())}`);
+    const data = await res.json();
+    if (data.config && Array.isArray(data.config) && data.config.length > 0) {
+      chartConfigs = data.config;
+    } else {
+      chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
+    }
   } catch(e) {
     chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   }
 }
 
-function saveChartConfigsToStorage() {
-  localStorage.setItem(getChartStorageKey(), JSON.stringify(chartConfigs));
+async function saveChartConfigsToStorage() {
+  try {
+    const url = `${API_URL}?action=saveChartsConfig&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(chartConfigs))}`;
+    await fetch(url);
+  } catch(e) {
+    console.warn('Не вдалось зберегти конфіг графіків:', e.message);
+  }
 }
 
 // Рендер одного графіка з даних charts[idx]
@@ -1120,33 +1146,40 @@ function renderChartSettingsPanel(idx) {
     </div>
     <div class="form-section">
       <div class="form-section-label">Тригер — автоматична проблема</div>
+      <div style="font-size:11px;color:var(--c-muted);font-family:var(--mono);margin-bottom:8px">
+        Якщо за місяць значення потрапляє в зону певну кількість разів — автоматично створюється проблема в трекері
+      </div>
       <div class="form-grid">
         <div class="form-field">
-          <label class="field-label">Умова спрацювання</label>
-          <select class="field-input" id="cs_triggerType">
-            <option value="">— вимкнено —</option>
-            <option value="below" ${(cfg.triggerType||'')==='below'?'selected':''}>Значення нижче плану</option>
-            <option value="above" ${(cfg.triggerType||'')==='above'?'selected':''}>Значення перевищує план</option>
-          </select>
+          <label class="field-label">🔴 Червона зона — більше ніж (разів/міс)</label>
+          <input class="field-input" type="number" id="cs_triggerRed" min="0"
+            value="${cfg.triggerRed??''}" placeholder="напр. 3 (0 = вимкнено)">
+        </div>
+        <div class="form-field">
+          <label class="field-label">🟡 Жовта зона — більше ніж (разів/міс)</label>
+          <input class="field-input" type="number" id="cs_triggerYellow" min="0"
+            value="${cfg.triggerYellow??''}" placeholder="напр. 5 (0 = вимкнено)">
         </div>
         <div class="form-field">
           <label class="field-label">Відповідальний</label>
-          <input class="field-input" id="cs_triggerResp" value="${cfg.triggerResp||''}" placeholder="Прізвище">
+          <input class="field-input" type="text" id="cs_triggerResp"
+            value="${cfg.triggerResp||''}" placeholder="Прізвище">
         </div>
         <div class="form-field full">
-          <label class="field-label">Опис проблеми (шаблон)</label>
-          <input class="field-input" id="cs_triggerDesc" value="${cfg.triggerDesc||''}" placeholder="напр. Показник графіка нижче плану">
+          <label class="field-label">Шаблон опису проблеми</label>
+          <input class="field-input" id="cs_triggerDesc"
+            value="${cfg.triggerDesc||''}" placeholder="напр. Показник виходить за межі норми">
         </div>
       </div>
     </div>
     <div style="background:var(--c-card);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--c-muted);font-family:var(--mono)">
       Аркуш: <b>«Графік${idx+1}»</b> · Колонки: Мітка | Значення<br>
       🟢 Зелений: виконано · 🟡 Жовтий: ±10% від плану · 🔴 Червоний: не виконано<br>
-      ⚡ Тригер: щодня перевіряє останнє значення — запусти <b>setupDailyTrigger()</b> в Apps Script
+      ⚡ Тригер: щодня рахує випадки за поточний місяць. Запусти <b>setupDailyTrigger()</b> в Apps Script
     </div>`;
 }
 
-function saveChartSettings() {
+async function saveChartSettings() {
   const idx = currentChartTab;
   const maxVal = document.getElementById('cs_max').value;
   chartConfigs[idx] = {
@@ -1161,9 +1194,10 @@ function saveChartSettings() {
     showPlan:   document.getElementById('cs_showPlan').checked,
     planValue:  document.getElementById('cs_planValue').value !== '' ? +document.getElementById('cs_planValue').value : null,
     planDir:    document.getElementById('cs_planDir').value,
-    triggerType: document.getElementById('cs_triggerType').value,
-    triggerResp: document.getElementById('cs_triggerResp').value.trim(),
-    triggerDesc: document.getElementById('cs_triggerDesc').value.trim(),
+    triggerRed:    document.getElementById('cs_triggerRed')?.value !== '' ? +document.getElementById('cs_triggerRed').value : null,
+    triggerYellow: document.getElementById('cs_triggerYellow')?.value !== '' ? +document.getElementById('cs_triggerYellow').value : null,
+    triggerResp:   document.getElementById('cs_triggerResp')?.value.trim() || '',
+    triggerDesc:   document.getElementById('cs_triggerDesc')?.value.trim() || '',
   };
   saveChartConfigsToStorage();
   const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
@@ -1182,16 +1216,16 @@ function saveChartSettings() {
 async function saveAllTriggers() {
   try {
     const triggers = chartConfigs
-      .map((cfg, i) => cfg.triggerType ? {
-        chartIdx:    i,
-        triggerType: cfg.triggerType,
-        planValue:   cfg.planValue || 0,
-        desc:        cfg.triggerDesc || `Відхилення показника графіка "${cfg.title||'Графік '+(i+1)}"`,
-        resp:        cfg.triggerResp || '',
+      .map((cfg, i) => (cfg.triggerRed || cfg.triggerYellow) ? {
+        chartIdx:      i,
+        triggerRed:    cfg.triggerRed    || 0,
+        triggerYellow: cfg.triggerYellow || 0,
+        planValue:     cfg.planValue     || 0,
+        planDir:       cfg.planDir       || 'above',
+        desc:          cfg.triggerDesc   || `Відхилення показника "${cfg.title||'Графік '+(i+1)}"`,
+        resp:          cfg.triggerResp   || '',
       } : null)
       .filter(Boolean);
-
-    if (!triggers.length && !(chartConfigs.some(c => c.triggerType))) return;
 
     const url = `${API_URL}?action=saveTriggers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(triggers))}`;
     await fetch(url);
@@ -1200,7 +1234,7 @@ async function saveAllTriggers() {
   }
 }
 
-function resetChartSettings() {
+async function resetChartSettings() {
   if (!confirm('Скинути всі графіки до стандартних?')) return;
   chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   saveChartConfigsToStorage();
@@ -1636,9 +1670,7 @@ async function submitForm() {
   }
 }
 
-function getToken() {
-  return localStorage.getItem('dashToken') || '';
-}
+function getToken() { return ''; }
 
 // ════════════════════════════════════════════════
 // УТИЛІТИ
@@ -1946,9 +1978,7 @@ document.addEventListener('keydown', e => {
   if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); }
 });
 
-loadSavedTeam();
-loadChartConfigs();
-loadData();
+loadSavedTeam().then(() => loadData());
 </script>
 </body>
 </html>
