@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Партнерські угоди DLight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --c-bg:#f0f2f7;--c-surface:#fff;--c-card:#f8f9fc;--c-border:#e2e6f0;
+  --c-text:#1a1f36;--c-muted:#6b7491;
+  --c-green:#1a9e5c;--c-green-bg:#edf7f2;--c-green-cell:#b7e1cd;
+  --c-yellow:#c07010;--c-yellow-bg:#fef5e6;--c-yellow-cell:#fce8b2;
+  --c-red:#c0392b;--c-red-bg:#fdf0ee;--c-red-cell:#f4c7c3;
+  --c-blue:#1a6fb5;--c-blue-bg:#eaf2fb;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,.06);
+}
+body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-size:13px;min-height:100vh}
+.wrap{padding:14px;max-width:1400px;margin:0 auto}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;
+  background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);
+  margin-bottom:14px;box-shadow:var(--shadow)}
+.logo{background:#1a1f36;color:#f5c518;font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:4px}
+.page-title{font-family:var(--mono);font-size:15px;font-weight:500;color:#1a1f36;letter-spacing:1px}
+.hdr-btn{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:4px;
+  border:1px solid var(--c-border);background:transparent;color:var(--c-muted);cursor:pointer;transition:.15s}
+.hdr-btn:hover{border-color:#1a1f36;color:#1a1f36}
+.hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
+.hdr-btn.primary:hover{background:#2d3454}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar-label{font-family:var(--mono);font-size:11px;color:var(--c-muted)}
+.team-filter{font-family:var(--mono);font-size:11px;padding:5px 10px;border:1px solid var(--c-border);
+  border-radius:4px;background:var(--c-card);color:var(--c-text);cursor:pointer;outline:none}
+.team-filter:hover{border-color:#1a1f36}
+.legend{display:flex;gap:10px;margin-left:auto}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);color:var(--c-muted)}
+.leg-dot{width:14px;height:14px;border-radius:3px}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);
+  padding:12px 16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
+.stat-num{font-family:var(--mono);font-size:28px;font-weight:500}
+.stat-label{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
+.stat-green{color:var(--c-green)}
+.stat-yellow{color:var(--c-yellow)}
+.stat-red{color:var(--c-red)}
+
+/* MATRIX */
+.matrix-wrap{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);
+  padding:14px;box-shadow:var(--shadow);margin-bottom:14px;overflow-x:auto}
+.matrix-title{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:10px}
+.matrix-table{border-collapse:collapse;min-width:900px}
+.matrix-table th,.matrix-table td{border:1px solid var(--c-border)}
+.matrix-table th{font-family:var(--mono);font-size:10px;padding:4px 8px;background:#1a1f36;
+  color:#fff;white-space:nowrap;text-align:center}
+.matrix-table td.row-header{font-family:var(--mono);font-size:10px;padding:4px 10px;
+  background:#1a1f36;color:#fff;white-space:nowrap;text-align:left}
+.matrix-cell{width:44px;height:32px;text-align:center;cursor:pointer;transition:.15s;
+  font-family:var(--mono);font-size:10px;font-weight:500}
+.matrix-cell:hover{filter:brightness(.92)}
+.cell-done{background:var(--c-green-cell);color:#1a7a46}
+.cell-wait{background:var(--c-yellow-cell);color:#7a5500}
+.cell-over{background:var(--c-red-cell);color:#8b2018}
+.cell-none{background:#f0f2f7;color:#bbb;cursor:default}
+.cell-self{background:#e8eaf0;color:#bbb;cursor:default}
+
+/* HIGHLIGHT */
+.row-highlight td,.col-highlight{filter:brightness(.94)}
+
+/* CARD MODAL */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,17,30,.45);z-index:1000;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-backdrop.open{opacity:1;pointer-events:all}
+.modal{background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;
+  width:min(680px,95vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 8px 40px rgba(0,0,0,.18);transform:translateY(10px);transition:transform .2s}
+.modal-backdrop.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px}
+.modal-title{font-family:var(--mono);font-size:13px;font-weight:500}
+.modal-close{width:28px;height:28px;border-radius:6px;border:1px solid var(--c-border);
+  background:transparent;color:var(--c-muted);cursor:pointer;font-size:16px;
+  display:flex;align-items:center;justify-content:center;line-height:1}
+.modal-close:hover{background:var(--c-red-bg);color:var(--c-red);border-color:var(--c-red)}
+.modal-body{padding:0 20px 8px;overflow-y:auto;flex:1}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--c-border);
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* STATUS SELECTOR IN CARD */
+.status-selector{display:flex;gap:6px;margin-bottom:14px}
+.status-opt{font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:4px;
+  border:2px solid var(--c-border);cursor:pointer;transition:.15s;background:var(--c-card)}
+.status-opt:hover{border-color:var(--c-muted)}
+.status-opt.sel-done{border-color:var(--c-green);background:var(--c-green-bg);color:var(--c-green)}
+.status-opt.sel-wait{border-color:var(--c-yellow);background:var(--c-yellow-bg);color:var(--c-yellow)}
+.status-opt.sel-over{border-color:var(--c-red);background:var(--c-red-bg);color:var(--c-red)}
+
+/* OBLIGATIONS TABLE */
+.obl-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+.obl-table th{font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;
+  letter-spacing:.5px;padding:5px 8px;border-bottom:1px solid var(--c-border);
+  background:var(--c-card);text-align:left}
+.obl-table td{padding:6px 8px;border-bottom:1px solid var(--c-border);vertical-align:middle}
+.obl-table tr:last-child td{border-bottom:none}
+.obl-input{width:100%;font-size:12px;font-family:var(--font);padding:4px 6px;
+  border:1px solid var(--c-border);border-radius:4px;background:#fff;outline:none}
+.obl-input:focus{border-color:#1a1f36}
+.obl-check{width:18px;height:18px;cursor:pointer;accent-color:var(--c-green)}
+.add-obl-btn{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:4px;
+  border:1px dashed var(--c-border);background:transparent;color:var(--c-blue);
+  cursor:pointer;transition:.15s;margin-top:4px}
+.add-obl-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
+.del-btn{font-size:14px;color:var(--c-red);background:transparent;border:none;cursor:pointer;padding:2px 6px}
+.del-btn:hover{color:#8b2018}
+.form-msg{font-family:var(--mono);font-size:11px;color:var(--c-muted)}
+.form-msg.success{color:var(--c-green)}
+.form-msg.error{color:var(--c-red)}
+.save-btn{font-family:var(--mono);font-size:12px;padding:8px 20px;border-radius:5px;
+  border:none;background:#1a1f36;color:#f5c518;cursor:pointer;transition:.15s}
+.save-btn:hover{background:#2d3454}
+.save-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* LOADING */
+#loadOverlay{position:fixed;inset:0;background:rgba(240,242,247,.9);display:flex;
+  align-items:center;justify-content:center;z-index:9999;transition:opacity .3s}
+#loadOverlay.hidden{opacity:0;pointer-events:none}
+.spinner{width:36px;height:36px;border:3px solid var(--c-border);border-top-color:#1a1f36;
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1f36;color:#fff;
+  font-family:var(--mono);font-size:12px;padding:8px 16px;border-radius:6px;
+  z-index:600;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:var(--c-green)}
+.toast.error{background:var(--c-red)}
+</style>
+</head>
+<body>
+
+<div id="loadOverlay"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<!-- CARD MODAL -->
+<div class="modal-backdrop" id="cardModal" onclick="closeCardOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="cardTitle">Картка угоди</div>
+      <button class="modal-close" onclick="closeCard()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:10px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Статус угоди</div>
+        <div class="status-selector">
+          <button class="status-opt" id="opt-done" onclick="selectStatus('done')">✓ Підписана</button>
+          <button class="status-opt" id="opt-wait" onclick="selectStatus('wait')">⏳ На підписі</button>
+          <button class="status-opt" id="opt-over" onclick="selectStatus('over')">✕ Не підписана</button>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Зобов'язання</div>
+      <table class="obl-table">
+        <thead><tr>
+          <th>#</th><th>Опис зобов'язання</th><th>Дата</th>
+          <th title="Прийнято нами">Ми</th><th title="Прийнято партнером">Партнер</th><th></th>
+        </tr></thead>
+        <tbody id="oblBody"></tbody>
+      </table>
+      <button class="add-obl-btn" onclick="addOblRow()">+ Додати зобов'язання</button>
+    </div>
+    <div class="modal-footer">
+      <div class="form-msg" id="cardMsg"></div>
+      <div style="display:flex;gap:8px">
+        <button class="hdr-btn" onclick="closeCard()">Скасувати</button>
+        <button class="save-btn" onclick="saveCard()">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="wrap">
+  <div class="header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo">DLight</div>
+      <div class="page-title">Партнерські угоди</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="hdr-btn" onclick="initMatrix()">⚙ Ініціалізувати матрицю</button>
+      <button class="hdr-btn primary" onclick="location.href='index.html'">← Дашборд</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-num stat-green" id="statDone">—</div>
+      <div><div class="stat-label">Підписаних угод</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num stat-yellow" id="statWait">—</div>
+      <div><div class="stat-label">На підписі</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num stat-red" id="statOver">—</div>
+      <div><div class="stat-label">Не підписаних</div></div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <span class="toolbar-label">Фільтр:</span>
+    <select class="team-filter" id="filterTeam" onchange="highlightTeam()">
+      <option value="">— Всі команди —</option>
+      <option>Бухгалтерія</option><option>Фіксики</option><option>Синергія</option>
+      <option>Портал знань</option><option>Беркут</option><option>Кулібіни</option>
+      <option>Техкомпас</option><option>Тойота</option><option>Локомотив</option>
+      <option>Майстри ланцюгів постачань</option><option>Медоєди</option>
+      <option>Ремкоплект</option><option>Склад</option><option>ВЕД</option>
+    </select>
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-green-cell)"></div>Підписана</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-yellow-cell)"></div>На підписі</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-red-cell)"></div>Не підписана</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f0f2f7;border:1px solid #e2e6f0"></div>Не застосовується</div>
+    </div>
+  </div>
+
+  <!-- MATRIX -->
+  <div class="matrix-wrap">
+    <div class="matrix-title">Матриця угод — клікни на клітинку щоб відкрити картку</div>
+    <div id="matrixContainer" style="overflow-x:auto"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// ВСТАВТЕ ВАШ URL APPS SCRIPT
+// ═══════════════════════════════════════════
+const API_URL = 'https://script.google.com/macros/s/AKfycbxFA4nin9LGS1uH7BPUP-dRSoO4TnZrjRSzvsTyQEVzkGUE4GBXXq-c3nDwQhMbt7v5/exec';
+
+const TEAMS = [
+  'Бухгалтерія','Фіксики','Синергія','Портал знань','Беркут',
+  'Кулібіни','Техкомпас','Тойота','Локомотив',
+  'Майстри ланцюгів постачань','Медоєди','Ремкоплект','Склад','ВЕД'
+];
+
+let matrixData = [];  // [row][col] = 'done'|'wait'|'over'|'-'
+let currentCard = { teamA:'', teamB:'', status:'wait', items:[] };
+
+// ── ЗАВАНТАЖЕННЯ МАТРИЦІ ──────────────────
+async function loadMatrix() {
+  showLoad(true);
+  try {
+    const res  = await fetch(API_URL + '?action=matrix');
+    const data = await res.json();
+    matrixData = data.data || [];
+    renderMatrix();
+    updateStats();
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+  } finally {
+    showLoad(false);
+  }
+}
+
+// ── РЕНДЕР МАТРИЦІ ────────────────────────
+function renderMatrix() {
+  const filterTeam = document.getElementById('filterTeam').value;
+  let html = '<table class="matrix-table"><thead><tr><th>↓ Ініціатор / Партнер →</th>';
+  TEAMS.forEach((t,i) => {
+    const short = t.length > 10 ? t.slice(0,10)+'…' : t;
+    html += `<th title="${t}">${short}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  TEAMS.forEach((rowTeam, r) => {
+    const rowHighlight = filterTeam && rowTeam === filterTeam;
+    html += `<tr>`;
+    html += `<td class="row-header" ${rowHighlight?'style="background:#2d3454"':''}>${rowTeam}</td>`;
+    TEAMS.forEach((colTeam, c) => {
+      const colHighlight = filterTeam && colTeam === filterTeam;
+      if (r === c) {
+        html += `<td class="matrix-cell cell-self">—</td>`;
+        return;
+      }
+      const status = (matrixData[r] && matrixData[r][c]) || '-';
+      const cls = status === 'done' ? 'cell-done' :
+                  status === 'wait' ? 'cell-wait' :
+                  status === 'over' ? 'cell-over' : 'cell-none';
+      const lbl = status === 'done' ? '✓' :
+                  status === 'wait' ? '…' :
+                  status === 'over' ? '✕' : '—';
+      const hl = (rowHighlight || colHighlight) ? 'style="filter:brightness(.88)"' : '';
+      html += `<td class="matrix-cell ${cls}" ${hl} title="${rowTeam} → ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">${lbl}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('matrixContainer').innerHTML = html;
+}
+
+function highlightTeam() { renderMatrix(); }
+
+function updateStats() {
+  let done = 0, wait = 0, over = 0;
+  matrixData.forEach(row => row.forEach(cell => {
+    if (cell === 'done') done++;
+    else if (cell === 'wait') wait++;
+    else if (cell === 'over') over++;
+  }));
+  document.getElementById('statDone').textContent = done;
+  document.getElementById('statWait').textContent = wait;
+  document.getElementById('statOver').textContent = over;
+}
+
+// ── КАРТКА УГОДИ ─────────────────────────
+async function openCard(teamA, teamB) {
+  currentCard = { teamA, teamB, status: 'wait', items: [] };
+  document.getElementById('cardTitle').textContent = `${teamA}  →  ${teamB}`;
+  document.getElementById('cardMsg').textContent = '';
+
+  // Отримуємо поточний статус з матриці
+  const rIdx = TEAMS.indexOf(teamA);
+  const cIdx = TEAMS.indexOf(teamB);
+  const curStatus = (matrixData[rIdx] && matrixData[rIdx][cIdx]) || 'wait';
+  currentCard.status = curStatus === '-' ? 'wait' : curStatus;
+  updateStatusButtons();
+
+  // Завантажуємо картку
+  document.getElementById('oblBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Завантаження...</td></tr>';
+  document.getElementById('cardModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const res  = await fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`);
+    const data = await res.json();
+    currentCard.items = data.items || [];
+    renderOblRows();
+  } catch(e) {
+    currentCard.items = [];
+    renderOblRows();
+  }
+}
+
+function closeCard() {
+  document.getElementById('cardModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeCardOutside(e) {
+  if (e.target === document.getElementById('cardModal')) closeCard();
+}
+
+function selectStatus(s) {
+  currentCard.status = s;
+  updateStatusButtons();
+}
+function updateStatusButtons() {
+  ['done','wait','over'].forEach(s => {
+    const btn = document.getElementById('opt-'+s);
+    btn.className = 'status-opt' + (currentCard.status === s ? ' sel-'+s : '');
+  });
+}
+
+function renderOblRows() {
+  const body = document.getElementById('oblBody');
+  if (!currentCard.items.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--c-muted);font-size:12px">Немає зобов\'язань — додай перше</td></tr>';
+    return;
+  }
+  body.innerHTML = currentCard.items.map((it, i) => `<tr id="obl-${i}">
+    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:28px">${i+1}</td>
+    <td><input class="obl-input" id="desc-${i}" value="${escHtml(it.desc||'')}" placeholder="Опис зобов'язання"></td>
+    <td style="width:110px"><input class="obl-input" id="date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:100px"></td>
+    <td style="text-align:center;width:40px"><input type="checkbox" class="obl-check" id="us-${i}" ${it.acceptedUs?'checked':''}></td>
+    <td style="text-align:center;width:60px"><input type="checkbox" class="obl-check" id="pt-${i}" ${it.acceptedPartner?'checked':''}></td>
+    <td style="width:32px"><button class="del-btn" onclick="delObl(${i})">×</button></td>
+  </tr>`).join('');
+}
+
+function addOblRow() {
+  currentCard.items.push({ desc:'', date:'', acceptedUs:false, acceptedPartner:false });
+  renderOblRows();
+  setTimeout(() => {
+    const last = document.getElementById('desc-' + (currentCard.items.length-1));
+    if (last) last.focus();
+  }, 50);
+}
+
+function delObl(i) {
+  currentCard.items.splice(i, 1);
+  renderOblRows();
+}
+
+function collectItems() {
+  return currentCard.items.map((_, i) => ({
+    desc:            document.getElementById('desc-'+i)?.value.trim() || '',
+    date:            document.getElementById('date-'+i)?.value.trim() || '',
+    acceptedUs:      document.getElementById('us-'+i)?.checked || false,
+    acceptedPartner: document.getElementById('pt-'+i)?.checked || false,
+  }));
+}
+
+async function saveCard() {
+  const msg = document.getElementById('cardMsg');
+  msg.textContent = 'Збереження...'; msg.className = 'form-msg';
+  const items = collectItems();
+
+  try {
+    // Зберігаємо зобов'язання
+    const url1 = `${API_URL}?action=saveCard&teamA=${encodeURIComponent(currentCard.teamA)}&teamB=${encodeURIComponent(currentCard.teamB)}&data=${encodeURIComponent(JSON.stringify(items))}`;
+    await fetch(url1);
+
+    // Зберігаємо статус в матриці
+    const url2 = `${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(currentCard.teamA)}&teamB=${encodeURIComponent(currentCard.teamB)}&status=${currentCard.status}`;
+    await fetch(url2);
+
+    // Оновлюємо локальну матрицю
+    const rIdx = TEAMS.indexOf(currentCard.teamA);
+    const cIdx = TEAMS.indexOf(currentCard.teamB);
+    if (rIdx >= 0 && cIdx >= 0) {
+      if (!matrixData[rIdx]) matrixData[rIdx] = [];
+      matrixData[rIdx][cIdx] = currentCard.status;
+    }
+
+    msg.textContent = '✓ Збережено!'; msg.className = 'form-msg success';
+    showToast('Угоду збережено', 'success');
+    renderMatrix();
+    updateStats();
+    setTimeout(() => closeCard(), 1000);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.className = 'form-msg error';
+  }
+}
+
+// ── ІНІЦІАЛІЗАЦІЯ МАТРИЦІ ────────────────
+async function initMatrix() {
+  if (!confirm('Ініціалізувати матрицю угод в Google Sheets?\nБудуть створені аркуші для всіх команд.')) return;
+  showLoad(true);
+  try {
+    const res  = await fetch(API_URL + '?action=saveMatrix&teamA=init&teamB=init&status=init');
+    showToast('Матрицю ініціалізовано — запусти initAgreementsSystem() в Apps Script', 'success');
+  } catch(e) {
+    showToast('Запусти initAgreementsSystem() в Apps Script', 'error');
+  } finally {
+    showLoad(false);
+  }
+}
+
+// ── УТИЛІТИ ──────────────────────────────
+function showLoad(show) {
+  document.getElementById('loadOverlay').classList.toggle('hidden', !show);
+}
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeCard(); });
+
+loadMatrix();
+</script>
+</body>
+</html>
