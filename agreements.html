@@ -67,11 +67,14 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .matrix-cell{width:44px;height:32px;text-align:center;cursor:pointer;transition:.15s;
   font-family:var(--mono);font-size:10px;font-weight:500}
 .matrix-cell:hover{filter:brightness(.92)}
-.cell-done{background:var(--c-green-cell);color:#1a7a46}
-.cell-wait{background:var(--c-yellow-cell);color:#7a5500}
-.cell-over{background:var(--c-red-cell);color:#8b2018}
+.cell-done{background:var(--c-green-cell)}
+.cell-over{background:var(--c-red-cell)}
+.cell-mix{background:#fff}
 .cell-none{background:#f0f2f7;color:#bbb;cursor:default}
 .cell-self{background:#e8eaf0;color:#bbb;cursor:default}
+.cell-ratio{font-family:var(--mono);font-size:11px;font-weight:500;line-height:1.2}
+.ratio-done{color:#1a7a46}
+.ratio-over{color:#8b2018}
 
 /* HIGHLIGHT */
 .row-highlight td,.col-highlight{filter:brightness(.94)}
@@ -163,7 +166,6 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
         <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Статус угоди</div>
         <div class="status-selector">
           <button class="status-opt" id="opt-done" onclick="selectStatus('done')">✓ Підписана</button>
-          <button class="status-opt" id="opt-wait" onclick="selectStatus('wait')">⏳ На підписі</button>
           <button class="status-opt" id="opt-over" onclick="selectStatus('over')">✕ Не підписана</button>
         </div>
       </div>
@@ -221,18 +223,14 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
   </div>
 
   <!-- STATS -->
-  <div class="stats-row">
+  <div class="stats-row" style="grid-template-columns:1fr 1fr">
     <div class="stat-card">
       <div class="stat-num stat-green" id="statDone">—</div>
-      <div><div class="stat-label">Підписаних угод</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num stat-yellow" id="statWait">—</div>
-      <div><div class="stat-label">На підписі</div></div>
+      <div><div class="stat-label">Підписаних зобов'язань</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-num stat-red" id="statOver">—</div>
-      <div><div class="stat-label">Не підписаних</div></div>
+      <div><div class="stat-label">Не підписаних зобов'язань</div></div>
     </div>
   </div>
 
@@ -248,10 +246,10 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
       <option>Ремкоплект</option><option>Склад</option><option>ВЕД</option>
     </select>
     <div class="legend">
-      <div class="leg-item"><div class="leg-dot" style="background:var(--c-green-cell)"></div>Підписана</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--c-yellow-cell)"></div>На підписі</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--c-red-cell)"></div>Не підписана</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#f0f2f7;border:1px solid #e2e6f0"></div>Не застосовується</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-green-cell)"></div>Всі підписані</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#fff;border:1px solid #e2e6f0"></div>Частково підписані</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-red-cell)"></div>Жодної не підписано</div>
+      <div class="leg-item"><span style="font-family:var(--mono);font-size:11px"><span class="ratio-done">2</span>/<span class="ratio-over">5</span></span> — підписані/не підписані</div>
     </div>
   </div>
 
@@ -266,7 +264,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbxFA4nin9LGS1uH7BPUP-dRSoO4TnZrjRSzvsTyQEVzkGUE4GBXXq-c3nDwQhMbt7v5/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzce-SFYa21ERaGg8lNHhRa_nRjysrr2RzKuSKFfy96e6vvaoSnk5dl3ovY8jABMTYJ/exec';
 
 const TEAMS = [
   'Бухгалтерія','Фіксики','Синергія','Портал знань','Беркут',
@@ -296,7 +294,7 @@ async function loadMatrix() {
 // ── РЕНДЕР МАТРИЦІ ────────────────────────
 function renderMatrix() {
   const filterTeam = document.getElementById('filterTeam').value;
-  let html = '<table class="matrix-table"><thead><tr><th>↓ Ініціатор / Партнер →</th>';
+  let html = '<table class="matrix-table"><thead><tr><th>↓ / →</th>';
   TEAMS.forEach(t => {
     const short = t.length > 10 ? t.slice(0,10)+'…' : t;
     html += `<th title="${t}">${short}</th>`;
@@ -309,11 +307,37 @@ function renderMatrix() {
     TEAMS.forEach((colTeam, c) => {
       const colHL = filterTeam && colTeam === filterTeam;
       if (r === c) { html += `<td class="matrix-cell cell-self">—</td>`; return; }
-      const status = (matrixData[r] && matrixData[r][c]) || '-';
-      const cls = status==='done'?'cell-done':status==='wait'?'cell-wait':status==='over'?'cell-over':'cell-none';
-      const lbl = status==='done'?'✓':status==='wait'?'…':status==='over'?'✕':'—';
-      const hl  = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
-      html += `<td class="matrix-cell ${cls}" ${hl} title="${rowTeam} → ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">${lbl}</td>`;
+
+      const cell = (matrixData[r] && matrixData[r][c]);
+      const hl = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
+
+      if (!cell || cell === '-' || (typeof cell === 'string' && cell === '-')) {
+        html += `<td class="matrix-cell cell-none" ${hl}>—</td>`;
+        return;
+      }
+
+      // cell може бути об'єкт {done, over} або рядок 'done'/'over'/'wait'
+      let done = 0, over = 0;
+      if (typeof cell === 'object') {
+        done = cell.done || 0;
+        over = cell.over || 0;
+      } else {
+        // Старий формат — конвертуємо
+        if (cell === 'done') { done = 1; over = 0; }
+        else { done = 0; over = 1; }
+      }
+
+      const total = done + over;
+      let bgCls = 'cell-mix';
+      if (total === 0) bgCls = 'cell-none';
+      else if (over === 0) bgCls = 'cell-done';
+      else if (done === 0) bgCls = 'cell-over';
+
+      const inner = total === 0
+        ? '—'
+        : `<span class="cell-ratio"><span class="ratio-done">${done}</span>/<span class="ratio-over">${over}</span></span>`;
+
+      html += `<td class="matrix-cell ${bgCls}" ${hl} title="${rowTeam} → ${colTeam}: ${done} підписані, ${over} не підписані" onclick="openCard('${rowTeam}','${colTeam}')">${inner}</td>`;
     });
     html += '</tr>';
   });
@@ -325,37 +349,30 @@ function renderMatrix() {
 function highlightTeam() { renderMatrix(); }
 
 function updateStats() {
-  let done=0,wait=0,over=0;
-  matrixData.forEach(row => row.forEach(cell => {
-    if(cell==='done') done++;
-    else if(cell==='wait') wait++;
-    else if(cell==='over') over++;
+  let totalDone = 0, totalOver = 0;
+  matrixData.forEach(row => row && row.forEach(cell => {
+    if (!cell || cell === '-') return;
+    if (typeof cell === 'object') { totalDone += cell.done||0; totalOver += cell.over||0; }
+    else if (cell === 'done') totalDone++;
+    else totalOver++;
   }));
-  document.getElementById('statDone').textContent = done;
-  document.getElementById('statWait').textContent = wait;
-  document.getElementById('statOver').textContent = over;
+  document.getElementById('statDone').textContent = totalDone;
+  document.getElementById('statOver').textContent = totalOver;
 }
 
 // ── КАРТКА УГОДИ (двостороння) ───────────
 async function openCard(teamA, teamB) {
-  currentCard = { teamA, teamB, status:'wait', itemsAB:[], itemsBA:[] };
+  currentCard = { teamA, teamB, itemsAB:[], itemsBA:[] };
   document.getElementById('cardTitle').textContent = `${teamA}  ↔  ${teamB}`;
   document.getElementById('labelAB').textContent   = `${teamA} → ${teamB}`;
   document.getElementById('labelBA').textContent   = `${teamB} → ${teamA}`;
   document.getElementById('cardMsg').textContent   = '';
-
-  const rIdx = TEAMS.indexOf(teamA);
-  const cIdx = TEAMS.indexOf(teamB);
-  const curStatus = (matrixData[rIdx]&&matrixData[rIdx][cIdx]) || 'wait';
-  currentCard.status = curStatus==='-' ? 'wait' : curStatus;
-  updateStatusButtons();
 
   renderOblRows('AB');
   renderOblRows('BA');
   document.getElementById('cardModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Завантажуємо обидві картки
   try {
     const [resAB, resBA] = await Promise.all([
       fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`),
@@ -379,12 +396,8 @@ function closeCardOutside(e) {
   if(e.target===document.getElementById('cardModal')) closeCard();
 }
 
-function selectStatus(s) { currentCard.status=s; updateStatusButtons(); }
-function updateStatusButtons() {
-  ['done','wait','over'].forEach(s => {
-    document.getElementById('opt-'+s).className = 'status-opt'+(currentCard.status===s?' sel-'+s:'');
-  });
-}
+function selectStatus(s) { /* статус визначається автоматично */ }
+function updateStatusButtons() { /* не використовується */ }
 
 function getItems(side) { return side==='AB' ? currentCard.itemsAB : currentCard.itemsBA; }
 
@@ -439,12 +452,21 @@ async function saveCard() {
     await Promise.all([
       fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&data=${encodeURIComponent(JSON.stringify(itemsAB))}`),
       fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}`),
-      fetch(`${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&status=${currentCard.status}`),
     ]);
+
+    // Рахуємо підписані/непідписані зобов'язання з обох сторін
+    const allItems = [...itemsAB, ...itemsBA];
+    const done = allItems.filter(it => it.acceptedUs && it.acceptedPartner).length;
+    const over = allItems.filter(it => !it.acceptedUs || !it.acceptedPartner).length;
+    const ratio = { done, over };
+
+    // Зберігаємо ratio в матрицю
+    const matStatus = over === 0 ? 'done' : 'over';
+    await fetch(`${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&status=${encodeURIComponent(JSON.stringify(ratio))}`);
 
     const rIdx = TEAMS.indexOf(teamA);
     const cIdx = TEAMS.indexOf(teamB);
-    if(rIdx>=0&&cIdx>=0){ if(!matrixData[rIdx]) matrixData[rIdx]=[]; matrixData[rIdx][cIdx]=currentCard.status; }
+    if(rIdx>=0&&cIdx>=0){ if(!matrixData[rIdx]) matrixData[rIdx]=[]; matrixData[rIdx][cIdx]=ratio; }
 
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
     showToast('Угоду збережено','success');
