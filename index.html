@@ -23,6 +23,36 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .dash{padding:14px;max-width:1400px;margin:0 auto}
 
 /* LOADING */
+/* ── ЛІДЕРБОРД ── */
+.lb-hero{background:linear-gradient(135deg,#1a1f36 0%,#2d3454 50%,#1a1f36 100%);border-radius:var(--radius);padding:28px 24px 20px;margin-bottom:16px;text-align:center;position:relative;overflow:hidden}
+.lb-hero::before{content:'🏆';font-size:80px;position:absolute;top:-10px;right:20px;opacity:.12}
+.lb-hero-title{font-family:var(--mono);font-size:22px;font-weight:500;color:#f5c518;letter-spacing:3px;margin-bottom:6px}
+.lb-hero-sub{font-size:13px;color:rgba(255,255,255,.6);font-family:var(--mono)}
+.lb-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.lb-stat{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 16px;text-align:center;box-shadow:var(--shadow)}
+.lb-stat-val{font-family:var(--mono);font-size:24px;font-weight:500;color:#1a1f36}
+.lb-stat-lbl{font-size:11px;color:var(--c-muted);font-family:var(--mono);margin-top:2px}
+.lb-table-wrap{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.lb-table{width:100%;border-collapse:collapse;font-size:12px}
+.lb-table th{font-family:var(--mono);font-size:10px;color:#fff;background:#1a1f36;padding:8px 10px;text-align:center;letter-spacing:.5px;border-right:1px solid rgba(255,255,255,.1)}
+.lb-table th.th-left{text-align:left}
+.lb-table td{padding:9px 10px;border-bottom:1px solid var(--c-border);text-align:center;vertical-align:middle}
+.lb-table tr:last-child td{border-bottom:none}
+.lb-table tr:hover td{background:#f5f7fc}
+.lb-rank{font-family:var(--mono);font-size:12px;font-weight:500;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%}
+.lb-rank-1{background:#FFD700;color:#7a5500}
+.lb-rank-2{background:#C0C0C0;color:#444}
+.lb-rank-3{background:#CD7F32;color:#fff}
+.lb-rank-n{background:var(--c-card);color:var(--c-muted);font-size:11px;border:1px solid var(--c-border)}
+.lb-team{font-weight:500;font-size:13px;text-align:left}
+.lb-score{font-family:var(--mono);font-weight:500;font-size:15px;color:#1a1f36}
+.lb-money{font-family:var(--mono);font-size:12px;color:var(--c-green);font-weight:500}
+.lb-note{font-size:10px;color:var(--c-orange);font-family:var(--mono);padding:2px 6px;background:var(--c-orange-bg);border-radius:3px;white-space:nowrap}
+.lb-bar-bg{width:70px;height:7px;background:var(--c-border);border-radius:4px;display:inline-block;vertical-align:middle}
+.lb-bar{height:7px;border-radius:4px;transition:.3s}
+.lb-cat{font-family:var(--mono);font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:2px}
+.lb-val{font-family:var(--mono);font-size:12px}
+.hdr-btn.lb-active{background:#f5c518!important;color:#1a1f36!important;border-color:#d4a017!important}
 #loadingOverlay{position:fixed;inset:0;background:rgba(240,242,247,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);transition:opacity .3s}
 #loadingOverlay.hidden{opacity:0;pointer-events:none}
 .spinner{width:38px;height:38px;border:3px solid var(--c-border);border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
@@ -436,10 +466,19 @@ select.field-input{cursor:pointer}
         <span class="update-time" id="updateTime">—</span>
       </div>
       <button class="hdr-btn" onclick="loadData()">↻ Оновити</button>
+      <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
       <button class="hdr-btn primary" onclick="openModal()">+ Додати</button>
     </div>
   </div>
+
+  <!-- ЛІДЕРБОРД ПЛЮШКА -->
+  <div id="leaderboardPanel" style="display:none">
+    <div id="lbContent"></div>
+  </div>
+
+  <!-- ОСНОВНИЙ ДАШБОРД -->
+  <div id="mainDash">
 
   <!-- KPI -->
   <div class="kpi-strip">
@@ -703,6 +742,7 @@ select.field-input{cursor:pointer}
     </div>
   </div>
 
+  </div><!-- /mainDash -->
 </div><!-- /dash -->
 
 <script>
@@ -733,6 +773,171 @@ function onTeamChange() {
     btn.textContent = 'Графік '+(i+1);
   });
   loadData();
+}
+
+  });
+  loadData();
+}
+
+// ════════════════════════════════════════════════
+// ЛІДЕРБОРД "ПЛЮШКА"
+// ════════════════════════════════════════════════
+let lbVisible = false;
+let lbData = null;
+
+function toggleLeaderboard() {
+  lbVisible = !lbVisible;
+  document.getElementById('leaderboardPanel').style.display = lbVisible ? 'block' : 'none';
+  document.getElementById('mainDash').style.display = lbVisible ? 'none' : 'block';
+  document.getElementById('lbTabBtn').classList.toggle('lb-active', lbVisible);
+  if (lbVisible && !lbData) loadLeaderboard();
+}
+
+async function loadLeaderboard() {
+  document.getElementById('lbContent').innerHTML = `
+    <div style="text-align:center;padding:40px;color:var(--c-muted);font-family:var(--mono)">
+      <div style="width:32px;height:32px;border:3px solid var(--c-border);border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px"></div>
+      Завантаження лідерборду...
+    </div>`;
+  try {
+    const SHEET_ID = '1OzcA_9PA_YI6owQy-zuLFgv0vTVCCF6GCK95527COhE';
+    const GID      = '599275599';
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${GID}`;
+
+    const res  = await fetch(url);
+    const text = await res.text();
+    // Google повертає JSONP — прибираємо обгортку
+    const json = JSON.parse(text.replace(/^.*?({.*})\s*\)*\s*;?\s*$/, '$1'));
+    const rows = json.table.rows;
+
+    // Парсимо рядки — команди починаються з рядка 4 (індекс 3)
+    const teams = [];
+    for (let i = 3; i < rows.length; i++) {
+      const row = rows[i].c;
+      if (!row || !row[0] || !row[0].v) continue;
+      const name = String(row[0].v||'').trim();
+      if (!name) continue;
+
+      const get = (idx) => {
+        if (!row[idx] || row[idx].v === null) return 0;
+        return parseFloat(row[idx].v) || 0;
+      };
+      const getStr = (idx) => {
+        if (!row[idx] || row[idx].v === null) return '';
+        return String(row[idx].v||'').trim();
+      };
+
+      teams.push({
+        name,
+        tasksGreen:         get(1),
+        partnerAgreements:  get(2),
+        reactionViol:       get(3),
+        dashboardData:      get(4),
+        proposals:          get(5),
+        totalScore:         get(6),
+        likes:              get(7),
+        money:              get(8),
+        members:            get(9),
+        totalMoney:         get(10),
+        note:               getStr(11),
+      });
+    }
+
+    teams.sort((a,b) => b.totalScore - a.totalScore);
+    lbData = teams;
+    renderLeaderboard(teams);
+  } catch(e) {
+    document.getElementById('lbContent').innerHTML = `
+      <div style="text-align:center;padding:40px;color:var(--c-red);font-family:var(--mono)">
+        Помилка: ${e.message}<br>
+        <small style="color:var(--c-muted)">Переконайся що таблиця публічна (Переглядач)</small><br>
+        <button onclick="loadLeaderboard()" style="margin-top:12px;font-family:var(--mono);padding:6px 16px;border:1px solid var(--c-red);background:transparent;color:var(--c-red);border-radius:4px;cursor:pointer">Повторити</button>
+      </div>`;
+  }
+}
+
+function renderLeaderboard(teams) {
+  if (!teams.length) {
+    document.getElementById('lbContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--c-muted)">Немає даних</div>';
+    return;
+  }
+
+  const maxScore   = Math.max(...teams.map(t => t.totalScore), 1);
+  const totalMoney = teams.reduce((s,t) => s + t.totalMoney, 0);
+  const totalLikes = teams.reduce((s,t) => s + t.likes, 0);
+  const activeTeams = teams.filter(t => t.totalScore > 0).length;
+  const medals = ['🥇','🥈','🥉'];
+  const barColors = ['#f5c518','#1a9e5c','#1a6fb5','#c0392b','#8e44ad','#e67e22','#27ae60','#2980b9','#e74c3c','#9b59b6','#f39c12','#16a085','#2c3e50','#d35400','#7f8c8d','#1abc9c'];
+
+  let html = `
+    <div class="lb-hero">
+      <div class="lb-hero-title">🏆 ЛІДЕРБОРД «ПЛЮШКА»</div>
+      <div class="lb-hero-sub">Рейтинг команд за показниками ефективності</div>
+    </div>
+    <div class="lb-stats">
+      <div class="lb-stat">
+        <div class="lb-stat-val" style="color:var(--c-green)">₴${totalMoney.toLocaleString('uk-UA')}</div>
+        <div class="lb-stat-lbl">Загальний призовий фонд</div>
+      </div>
+      <div class="lb-stat">
+        <div class="lb-stat-val" style="color:#d4a017">${totalLikes.toLocaleString('uk-UA')}</div>
+        <div class="lb-stat-lbl">Всього лайтів</div>
+      </div>
+      <div class="lb-stat">
+        <div class="lb-stat-val">${activeTeams}</div>
+        <div class="lb-stat-lbl">Команд у грі</div>
+      </div>
+    </div>
+    <div class="lb-table-wrap">
+      <table class="lb-table">
+        <thead><tr>
+          <th style="width:44px">#</th>
+          <th class="th-left">Команда</th>
+          <th>Задачі<br><span style="font-size:9px;opacity:.7">/30</span></th>
+          <th>Угоди<br><span style="font-size:9px;opacity:.7">/5</span></th>
+          <th>Реакція<br><span style="font-size:9px;opacity:.7">/25</span></th>
+          <th>Дашборд<br><span style="font-size:9px;opacity:.7">/20</span></th>
+          <th>Пропозиції<br><span style="font-size:9px;opacity:.7">/20</span></th>
+          <th>Бали</th>
+          <th>👍</th>
+          <th>₴/ос</th>
+          <th>Всього ₴</th>
+        </tr></thead>
+        <tbody>`;
+
+  teams.forEach((t, i) => {
+    const rank = i + 1;
+    const pct  = maxScore > 0 ? Math.round(t.totalScore / maxScore * 100) : 0;
+    const col  = barColors[i % barColors.length];
+    const rankEl = rank <= 3
+      ? `<span class="lb-rank lb-rank-${rank}">${medals[i]}</span>`
+      : `<span class="lb-rank lb-rank-n">${rank}</span>`;
+    const rowBg = rank===1 ? 'background:linear-gradient(90deg,#fffbeb,#fff)' :
+                  rank===2 ? 'background:linear-gradient(90deg,#f8f8f8,#fff)' :
+                  rank===3 ? 'background:linear-gradient(90deg,#fdf5ee,#fff)' : '';
+    const note = t.note ? `<br><span class="lb-note">⭐ ${t.note}</span>` : '';
+    const v = x => x > 0 ? `<span class="lb-val">${x}</span>` : `<span style="color:var(--c-border)">—</span>`;
+
+    html += `<tr style="${rowBg}">
+      <td style="text-align:center">${rankEl}</td>
+      <td class="lb-team">${t.name}${note}</td>
+      <td>${v(t.tasksGreen)}</td>
+      <td>${v(t.partnerAgreements)}</td>
+      <td>${v(t.reactionViol)}</td>
+      <td>${v(t.dashboardData)}</td>
+      <td>${v(t.proposals)}</td>
+      <td>
+        <span class="lb-score">${t.totalScore}</span>
+        <div class="lb-bar-bg"><div class="lb-bar" style="width:${pct}%;background:${col}"></div></div>
+      </td>
+      <td>${v(t.likes)}</td>
+      <td>${t.money > 0 ? `<span class="lb-val">${t.money}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
+      <td>${t.totalMoney > 0 ? `<span class="lb-money">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  document.getElementById('lbContent').innerHTML = html;
 }
 
 async function loadSavedTeam() {
