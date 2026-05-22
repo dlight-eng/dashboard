@@ -153,13 +153,13 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 
 <!-- CARD MODAL -->
 <div class="modal-backdrop" id="cardModal" onclick="closeCardOutside(event)">
-  <div class="modal">
+  <div class="modal" style="width:min(1000px,96vw)">
     <div class="modal-header">
       <div class="modal-title" id="cardTitle">Картка угоди</div>
       <button class="modal-close" onclick="closeCard()">✕</button>
     </div>
     <div class="modal-body">
-      <div style="margin-bottom:10px">
+      <div style="margin-bottom:12px">
         <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Статус угоди</div>
         <div class="status-selector">
           <button class="status-opt" id="opt-done" onclick="selectStatus('done')">✓ Підписана</button>
@@ -167,15 +167,35 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
           <button class="status-opt" id="opt-over" onclick="selectStatus('over')">✕ Не підписана</button>
         </div>
       </div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Зобов'язання</div>
-      <table class="obl-table">
-        <thead><tr>
-          <th>#</th><th>Опис зобов'язання</th><th>Дата</th>
-          <th title="Прийнято нами">Ми</th><th title="Прийнято партнером">Партнер</th><th></th>
-        </tr></thead>
-        <tbody id="oblBody"></tbody>
-      </table>
-      <button class="add-obl-btn" onclick="addOblRow()">+ Додати зобов'язання</button>
+
+      <!-- ДВА БЛОКИ ЗОБОВ'ЯЗАНЬ -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+        <!-- Блок А → Б -->
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;padding:4px 8px;background:var(--c-card);border-radius:4px;border:1px solid var(--c-border)" id="labelAB">— → —</div>
+          <table class="obl-table">
+            <thead><tr>
+              <th>#</th><th>Зобов'язання</th><th>Дата</th><th title="Прийнято ініціатором">Ми</th><th title="Прийнято партнером">Партнер</th><th></th>
+            </tr></thead>
+            <tbody id="oblBodyAB"></tbody>
+          </table>
+          <button class="add-obl-btn" onclick="addOblRow('AB')">+ Додати</button>
+        </div>
+
+        <!-- Блок Б → А -->
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;padding:4px 8px;background:var(--c-card);border-radius:4px;border:1px solid var(--c-border)" id="labelBA">— → —</div>
+          <table class="obl-table">
+            <thead><tr>
+              <th>#</th><th>Зобов'язання</th><th>Дата</th><th title="Прийнято партнером">Партнер</th><th title="Прийнято ініціатором">Ми</th><th></th>
+            </tr></thead>
+            <tbody id="oblBodyBA"></tbody>
+          </table>
+          <button class="add-obl-btn" onclick="addOblRow('BA')">+ Додати</button>
+        </div>
+
+      </div>
     </div>
     <div class="modal-footer">
       <div class="form-msg" id="cardMsg"></div>
@@ -254,8 +274,8 @@ const TEAMS = [
   'Майстри ланцюгів постачань','Медоєди','Ремкоплект','Склад','ВЕД'
 ];
 
-let matrixData = [];  // [row][col] = 'done'|'wait'|'over'|'-'
-let currentCard = { teamA:'', teamB:'', status:'wait', items:[] };
+let matrixData = [];
+let currentCard = { teamA:'', teamB:'', status:'wait', itemsAB:[], itemsBA:[] };
 
 // ── ЗАВАНТАЖЕННЯ МАТРИЦІ ──────────────────
 async function loadMatrix() {
@@ -277,30 +297,22 @@ async function loadMatrix() {
 function renderMatrix() {
   const filterTeam = document.getElementById('filterTeam').value;
   let html = '<table class="matrix-table"><thead><tr><th>↓ Ініціатор / Партнер →</th>';
-  TEAMS.forEach((t,i) => {
+  TEAMS.forEach(t => {
     const short = t.length > 10 ? t.slice(0,10)+'…' : t;
     html += `<th title="${t}">${short}</th>`;
   });
   html += '</tr></thead><tbody>';
 
   TEAMS.forEach((rowTeam, r) => {
-    const rowHighlight = filterTeam && rowTeam === filterTeam;
-    html += `<tr>`;
-    html += `<td class="row-header" ${rowHighlight?'style="background:#2d3454"':''}>${rowTeam}</td>`;
+    const rowHL = filterTeam && rowTeam === filterTeam;
+    html += `<tr><td class="row-header" ${rowHL?'style="background:#2d3454"':''}>${rowTeam}</td>`;
     TEAMS.forEach((colTeam, c) => {
-      const colHighlight = filterTeam && colTeam === filterTeam;
-      if (r === c) {
-        html += `<td class="matrix-cell cell-self">—</td>`;
-        return;
-      }
+      const colHL = filterTeam && colTeam === filterTeam;
+      if (r === c) { html += `<td class="matrix-cell cell-self">—</td>`; return; }
       const status = (matrixData[r] && matrixData[r][c]) || '-';
-      const cls = status === 'done' ? 'cell-done' :
-                  status === 'wait' ? 'cell-wait' :
-                  status === 'over' ? 'cell-over' : 'cell-none';
-      const lbl = status === 'done' ? '✓' :
-                  status === 'wait' ? '…' :
-                  status === 'over' ? '✕' : '—';
-      const hl = (rowHighlight || colHighlight) ? 'style="filter:brightness(.88)"' : '';
+      const cls = status==='done'?'cell-done':status==='wait'?'cell-wait':status==='over'?'cell-over':'cell-none';
+      const lbl = status==='done'?'✓':status==='wait'?'…':status==='over'?'✕':'—';
+      const hl  = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
       html += `<td class="matrix-cell ${cls}" ${hl} title="${rowTeam} → ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">${lbl}</td>`;
     });
     html += '</tr>';
@@ -313,43 +325,49 @@ function renderMatrix() {
 function highlightTeam() { renderMatrix(); }
 
 function updateStats() {
-  let done = 0, wait = 0, over = 0;
+  let done=0,wait=0,over=0;
   matrixData.forEach(row => row.forEach(cell => {
-    if (cell === 'done') done++;
-    else if (cell === 'wait') wait++;
-    else if (cell === 'over') over++;
+    if(cell==='done') done++;
+    else if(cell==='wait') wait++;
+    else if(cell==='over') over++;
   }));
   document.getElementById('statDone').textContent = done;
   document.getElementById('statWait').textContent = wait;
   document.getElementById('statOver').textContent = over;
 }
 
-// ── КАРТКА УГОДИ ─────────────────────────
+// ── КАРТКА УГОДИ (двостороння) ───────────
 async function openCard(teamA, teamB) {
-  currentCard = { teamA, teamB, status: 'wait', items: [] };
-  document.getElementById('cardTitle').textContent = `${teamA}  →  ${teamB}`;
-  document.getElementById('cardMsg').textContent = '';
+  currentCard = { teamA, teamB, status:'wait', itemsAB:[], itemsBA:[] };
+  document.getElementById('cardTitle').textContent = `${teamA}  ↔  ${teamB}`;
+  document.getElementById('labelAB').textContent   = `${teamA} → ${teamB}`;
+  document.getElementById('labelBA').textContent   = `${teamB} → ${teamA}`;
+  document.getElementById('cardMsg').textContent   = '';
 
-  // Отримуємо поточний статус з матриці
   const rIdx = TEAMS.indexOf(teamA);
   const cIdx = TEAMS.indexOf(teamB);
-  const curStatus = (matrixData[rIdx] && matrixData[rIdx][cIdx]) || 'wait';
-  currentCard.status = curStatus === '-' ? 'wait' : curStatus;
+  const curStatus = (matrixData[rIdx]&&matrixData[rIdx][cIdx]) || 'wait';
+  currentCard.status = curStatus==='-' ? 'wait' : curStatus;
   updateStatusButtons();
 
-  // Завантажуємо картку
-  document.getElementById('oblBody').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Завантаження...</td></tr>';
+  renderOblRows('AB');
+  renderOblRows('BA');
   document.getElementById('cardModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 
+  // Завантажуємо обидві картки
   try {
-    const res  = await fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`);
-    const data = await res.json();
-    currentCard.items = data.items || [];
-    renderOblRows();
+    const [resAB, resBA] = await Promise.all([
+      fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`),
+      fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}`),
+    ]);
+    const [dataAB, dataBA] = await Promise.all([resAB.json(), resBA.json()]);
+    currentCard.itemsAB = dataAB.items || [];
+    currentCard.itemsBA = dataBA.items || [];
+    renderOblRows('AB');
+    renderOblRows('BA');
   } catch(e) {
-    currentCard.items = [];
-    renderOblRows();
+    showToast('Помилка завантаження картки', 'error');
   }
 }
 
@@ -358,121 +376,110 @@ function closeCard() {
   document.body.style.overflow = '';
 }
 function closeCardOutside(e) {
-  if (e.target === document.getElementById('cardModal')) closeCard();
+  if(e.target===document.getElementById('cardModal')) closeCard();
 }
 
-function selectStatus(s) {
-  currentCard.status = s;
-  updateStatusButtons();
-}
+function selectStatus(s) { currentCard.status=s; updateStatusButtons(); }
 function updateStatusButtons() {
   ['done','wait','over'].forEach(s => {
-    const btn = document.getElementById('opt-'+s);
-    btn.className = 'status-opt' + (currentCard.status === s ? ' sel-'+s : '');
+    document.getElementById('opt-'+s).className = 'status-opt'+(currentCard.status===s?' sel-'+s:'');
   });
 }
 
-function renderOblRows() {
-  const body = document.getElementById('oblBody');
-  if (!currentCard.items.length) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--c-muted);font-size:12px">Немає зобов\'язань — додай перше</td></tr>';
+function getItems(side) { return side==='AB' ? currentCard.itemsAB : currentCard.itemsBA; }
+
+function renderOblRows(side) {
+  const items = getItems(side);
+  const bodyId = 'oblBody' + side;
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--c-muted);font-size:12px">Немає зобов'язань</td></tr>`;
     return;
   }
-  body.innerHTML = currentCard.items.map((it, i) => `<tr id="obl-${i}">
-    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:28px">${i+1}</td>
-    <td><input class="obl-input" id="desc-${i}" value="${escHtml(it.desc||'')}" placeholder="Опис зобов'язання"></td>
-    <td style="width:110px"><input class="obl-input" id="date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:100px"></td>
-    <td style="text-align:center;width:40px"><input type="checkbox" class="obl-check" id="us-${i}" ${it.acceptedUs?'checked':''}></td>
-    <td style="text-align:center;width:60px"><input type="checkbox" class="obl-check" id="pt-${i}" ${it.acceptedPartner?'checked':''}></td>
-    <td style="width:32px"><button class="del-btn" onclick="delObl(${i})">×</button></td>
+  body.innerHTML = items.map((it,i) => `<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:24px">${i+1}</td>
+    <td><input class="obl-input" id="${side}-desc-${i}" value="${escHtml(it.desc||'')}" placeholder="Опис"></td>
+    <td style="width:100px"><input class="obl-input" id="${side}-date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:96px"></td>
+    <td style="text-align:center;width:36px"><input type="checkbox" class="obl-check" id="${side}-us-${i}" ${it.acceptedUs?'checked':''}></td>
+    <td style="text-align:center;width:52px"><input type="checkbox" class="obl-check" id="${side}-pt-${i}" ${it.acceptedPartner?'checked':''}></td>
+    <td style="width:28px"><button class="del-btn" onclick="delObl('${side}',${i})">×</button></td>
   </tr>`).join('');
 }
 
-function addOblRow() {
-  currentCard.items.push({ desc:'', date:'', acceptedUs:false, acceptedPartner:false });
-  renderOblRows();
-  setTimeout(() => {
-    const last = document.getElementById('desc-' + (currentCard.items.length-1));
-    if (last) last.focus();
-  }, 50);
+function addOblRow(side) {
+  getItems(side).push({ desc:'', date:'', acceptedUs:false, acceptedPartner:false });
+  renderOblRows(side);
+  const idx = getItems(side).length - 1;
+  setTimeout(() => document.getElementById(`${side}-desc-${idx}`)?.focus(), 50);
 }
 
-function delObl(i) {
-  currentCard.items.splice(i, 1);
-  renderOblRows();
+function delObl(side, i) {
+  getItems(side).splice(i,1);
+  renderOblRows(side);
 }
 
-function collectItems() {
-  return currentCard.items.map((_, i) => ({
-    desc:            document.getElementById('desc-'+i)?.value.trim() || '',
-    date:            document.getElementById('date-'+i)?.value.trim() || '',
-    acceptedUs:      document.getElementById('us-'+i)?.checked || false,
-    acceptedPartner: document.getElementById('pt-'+i)?.checked || false,
+function collectSide(side) {
+  return getItems(side).map((_,i) => ({
+    desc:            document.getElementById(`${side}-desc-${i}`)?.value.trim()||'',
+    date:            document.getElementById(`${side}-date-${i}`)?.value.trim()||'',
+    acceptedUs:      document.getElementById(`${side}-us-${i}`)?.checked||false,
+    acceptedPartner: document.getElementById(`${side}-pt-${i}`)?.checked||false,
   }));
 }
 
 async function saveCard() {
   const msg = document.getElementById('cardMsg');
-  msg.textContent = 'Збереження...'; msg.className = 'form-msg';
-  const items = collectItems();
+  msg.textContent='Збереження...'; msg.className='form-msg';
+  const {teamA, teamB} = currentCard;
+  const itemsAB = collectSide('AB');
+  const itemsBA = collectSide('BA');
 
   try {
-    // Зберігаємо зобов'язання
-    const url1 = `${API_URL}?action=saveCard&teamA=${encodeURIComponent(currentCard.teamA)}&teamB=${encodeURIComponent(currentCard.teamB)}&data=${encodeURIComponent(JSON.stringify(items))}`;
-    await fetch(url1);
+    await Promise.all([
+      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&data=${encodeURIComponent(JSON.stringify(itemsAB))}`),
+      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}`),
+      fetch(`${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&status=${currentCard.status}`),
+    ]);
 
-    // Зберігаємо статус в матриці
-    const url2 = `${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(currentCard.teamA)}&teamB=${encodeURIComponent(currentCard.teamB)}&status=${currentCard.status}`;
-    await fetch(url2);
+    const rIdx = TEAMS.indexOf(teamA);
+    const cIdx = TEAMS.indexOf(teamB);
+    if(rIdx>=0&&cIdx>=0){ if(!matrixData[rIdx]) matrixData[rIdx]=[]; matrixData[rIdx][cIdx]=currentCard.status; }
 
-    // Оновлюємо локальну матрицю
-    const rIdx = TEAMS.indexOf(currentCard.teamA);
-    const cIdx = TEAMS.indexOf(currentCard.teamB);
-    if (rIdx >= 0 && cIdx >= 0) {
-      if (!matrixData[rIdx]) matrixData[rIdx] = [];
-      matrixData[rIdx][cIdx] = currentCard.status;
-    }
-
-    msg.textContent = '✓ Збережено!'; msg.className = 'form-msg success';
-    showToast('Угоду збережено', 'success');
-    renderMatrix();
-    updateStats();
-    setTimeout(() => closeCard(), 1000);
+    msg.textContent='✓ Збережено!'; msg.className='form-msg success';
+    showToast('Угоду збережено','success');
+    renderMatrix(); updateStats();
+    setTimeout(()=>closeCard(),1000);
   } catch(e) {
-    msg.textContent = '✕ ' + e.message; msg.className = 'form-msg error';
+    msg.textContent='✕ '+e.message; msg.className='form-msg error';
   }
 }
 
 // ── ІНІЦІАЛІЗАЦІЯ МАТРИЦІ ────────────────
 async function initMatrix() {
-  if (!confirm('Ініціалізувати матрицю угод в Google Sheets?\nБудуть створені аркуші для всіх команд.')) return;
+  if(!confirm('Ініціалізувати матрицю угод в Google Sheets?')) return;
   showLoad(true);
   try {
-    const res  = await fetch(API_URL + '?action=saveMatrix&teamA=init&teamB=init&status=init');
-    showToast('Матрицю ініціалізовано — запусти initAgreementsSystem() в Apps Script', 'success');
+    await fetch(API_URL+'?action=saveMatrix&teamA=init&teamB=init&status=init');
+    showToast('Запусти initAgreementsSystem() в Apps Script','success');
   } catch(e) {
-    showToast('Запусти initAgreementsSystem() в Apps Script', 'error');
-  } finally {
-    showLoad(false);
-  }
+    showToast('Запусти initAgreementsSystem() в Apps Script','error');
+  } finally { showLoad(false); }
 }
 
-// ── УТИЛІТИ ──────────────────────────────
-function showLoad(show) {
-  document.getElementById('loadOverlay').classList.toggle('hidden', !show);
-}
-function showToast(msg, type='') {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 3000);
+function showLoad(show) { document.getElementById('loadOverlay').classList.toggle('hidden',!show); }
+function showToast(msg,type='') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  setTimeout(()=>t.className='toast',3000);
 }
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeCard(); });
-
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeCard(); });
 loadMatrix();
+
 </script>
 </body>
 </html>
