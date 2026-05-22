@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight — Дашборд команд</title>
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -654,7 +654,7 @@ select.field-input{cursor:pointer}
       <!-- Таблиця -->
       <div class="table-scroll">
         <table class="data-table" id="partnerTable">
-          <thead><tr><th>#</th><th>Команда / Партнер</th><th>Угода</th><th>Строк дії</th></tr></thead>
+          <thead><tr><th>#</th><th>Команда / Партнер</th><th>Угода</th><th>Дата</th><th>Підписи</th><th>Статус</th></tr></thead>
           <tbody id="partnerList"></tbody>
         </table>
       </div>
@@ -706,7 +706,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwmY1oF6fdh47cN75i8-7cfVE4kKdub7BqZ7i6epFhH72GaQzZDSWNUIGvhIranX-yq/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxFA4nin9LGS1uH7BPUP-dRSoO4TnZrjRSzvsTyQEVzkGUE4GBXXq-c3nDwQhMbt7v5/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -832,7 +832,7 @@ function applyMonthFilter(data) {
   renderProblems(allProblems, 'all');
   document.querySelectorAll('.filter-bar .chip').forEach((b,i)=>b.classList.toggle('active',i===0));
   renderEscalations(allEscalations);
-  renderPartners(data.partners || []);
+  renderPartners(data.partners || [], data.agreements);
   renderComments(allComments);
   renderCorrective(allCorrective);
 }
@@ -1374,32 +1374,69 @@ const DEMO_PARTNERS = [
   {team:'Запчасти_ОП',agreement:'Брати участь в тестуванні доробок в BAS', deadline:'30.12.2025', active:true},
 ];
 
-function renderPartners(partners) {
-  const rows = (partners && partners.length && partners[0]?.agreement)
-    ? partners : DEMO_PARTNERS;
+function renderPartners(partners, agreements) {
+  const ag = agreements || {};
+  const activeCount   = ag.configured ? (ag.active   ?? 0) : 26;
+  const inactiveCount = ag.configured ? (ag.inactive ?? 0) : 9;
 
-  const ACTIVE_COUNT   = 26;
-  const INACTIVE_COUNT = 9;
+  setText('partnerActiveCount',   activeCount);
+  setText('partnerInactiveCount', inactiveCount);
+  setText('kpiPartners', activeCount + inactiveCount);
+  setDelta('kpiPartnersDelta', `${inactiveCount} не підписано`, inactiveCount > 0 ? 'warn' : 'up');
 
-  setText('partnerActiveCount',   ACTIVE_COUNT);
-  setText('partnerInactiveCount', INACTIVE_COUNT);
+  const problems = ag.problem || [];
+  const body = document.getElementById('partnerList');
 
-  // Оновлюємо KPI картку в шапці
-  setText('kpiPartners', ACTIVE_COUNT + INACTIVE_COUNT);
-  setDelta('kpiPartnersDelta', `${INACTIVE_COUNT} не діючих`, INACTIVE_COUNT > 0 ? 'warn' : 'up');
+  // Якщо угоди не підключені — показуємо демо
+  if (!ag.configured) {
+    renderPartnerDemo();
+    return;
+  }
 
-  const today = new Date();
-  document.getElementById('partnerList').innerHTML = rows.map((r, i) => {
-    const act = isPartnerActive(r, today);
+  if (problems.length === 0) {
+    body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--c-green);padding:16px;font-size:12px;font-family:var(--mono)">
+      ✓ Всі угоди підписані</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = problems.map((r, i) => {
+    const statusCls = r.status === 'wait' ? 'pill-wait' : 'pill-over';
+    const statusLbl = r.status === 'wait' ? 'На підписі' : 'Не підписана';
     return `<tr>
       <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted)">${i+1}</td>
-      <td style="font-weight:500;font-size:12px;white-space:nowrap">${r.team||r.name||'—'}</td>
-      <td style="font-size:12px;max-width:240px">${r.agreement||r.comment||'—'}</td>
-      <td style="white-space:nowrap">
+      <td style="font-weight:500;font-size:12px;white-space:nowrap">${r.partner}</td>
+      <td style="font-size:11px;max-width:200px">${r.desc}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date||'—'}</td>
+      <td style="font-size:10px;font-family:var(--mono)">
+        <span style="color:${r.acceptedUs?'var(--c-green)':'var(--c-red)'}">
+          ${r.acceptedUs?'✓':'✗'} Ми
+        </span>
+        &nbsp;
+        <span style="color:${r.acceptedPartner?'var(--c-green)':'var(--c-red)'}">
+          ${r.acceptedPartner?'✓':'✗'} Партнер
+        </span>
+      </td>
+      <td><span class="pill ${statusCls}">${statusLbl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPartnerDemo() {
+  const today = new Date();
+  document.getElementById('partnerList').innerHTML = DEMO_PARTNERS.map((r,i) => {
+    const act = !r.deadline || (() => {
+      const p = r.deadline.split('.'); if(p.length<3) return true;
+      return new Date(+p[2],+p[1]-1,+p[0]) >= today;
+    })();
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted)">${i+1}</td>
+      <td style="font-weight:500;font-size:12px;white-space:nowrap">${r.team||'—'}</td>
+      <td style="font-size:12px;max-width:240px">${r.agreement||'—'}</td>
+      <td colspan="3" style="white-space:nowrap">
         <span class="pill ${act?'pill-done':'pill-over'}">${r.deadline||'—'}</span>
       </td>
     </tr>`;
-  }).join('') || emptyRow(4, 'Немає даних');
+  }).join('') || emptyRow(6,'Немає даних');
 }
 
 function isPartnerActive(r, today) {
@@ -1407,8 +1444,7 @@ function isPartnerActive(r, today) {
   if (!r.deadline) return true;
   const parts = String(r.deadline).split('.');
   if (parts.length < 3) return true;
-  const d = new Date(+parts[2], +parts[1]-1, +parts[0]);
-  return d >= today;
+  return new Date(+parts[2], +parts[1]-1, +parts[0]) >= today;
 }
 
 function renderComments(comments) {
