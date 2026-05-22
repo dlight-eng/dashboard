@@ -399,8 +399,8 @@ function renderOblRows(side) {
   }
   body.innerHTML = items.map((it,i) => `<tr>
     <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:24px">${i+1}</td>
-    <td><input class="obl-input" id="${side}-desc-${i}" value="${escHtml(it.desc||'')}" placeholder="Опис"></td>
-    <td style="width:100px"><input class="obl-input" id="${side}-date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:96px"></td>
+    <td><textarea class="obl-input" id="${side}-desc-${i}" placeholder="Опис" rows="2" style="min-width:180px;resize:vertical">${escHtml(it.desc||'')}</textarea></td>
+    <td style="width:110px"><input class="obl-input" id="${side}-date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:100px"></td>
     <td style="text-align:center;width:36px"><input type="checkbox" class="obl-check" id="${side}-us-${i}" ${it.acceptedUs?'checked':''}></td>
     <td style="text-align:center;width:52px"><input type="checkbox" class="obl-check" id="${side}-pt-${i}" ${it.acceptedPartner?'checked':''}></td>
     <td style="width:28px"><button class="del-btn" onclick="delObl('${side}',${i})">×</button></td>
