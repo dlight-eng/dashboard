@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight «ТОЙОТА» — Дашборд команди</title>
+<title>DLight — Дашборд команд</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -414,13 +414,14 @@ select.field-input{cursor:pointer}
   <div class="header">
     <div class="header-left">
       <div class="logo">DLight</div>
-      <div class="team-name-wrap" title="Клікни щоб змінити назву команди">
-        <span class="brand-name" id="hTeamName" onclick="startEditTeamName()">«ТОЙОТА»</span>
-        <input class="brand-name-input" id="hTeamNameInput" type="text"
-          onblur="saveTeamName()" onkeydown="if(event.key==='Enter')saveTeamName();if(event.key==='Escape')cancelEditTeamName()"
-          placeholder="Назва команди" style="display:none">
-        <span class="edit-hint" onclick="startEditTeamName()">✎</span>
-      </div>
+      <div class="brand-name" id="hTeamName"></div>
+      <select class="month-select" id="teamSelect" onchange="onTeamChange()" style="font-size:13px;font-weight:500;color:#1a1f36;min-width:160px">
+        <option>Бухгалтерія</option><option>Фіксики</option><option>Синергія</option>
+        <option>Портал знань</option><option>Беркут</option><option>Кулібіни</option>
+        <option>Техкомпас</option><option selected>Тойота</option><option>Локомотив</option>
+        <option>Майстри ланцюгів постачань</option><option>Медоєди</option>
+        <option>Ремкоплект</option><option>Склад</option><option>ВЕД</option>
+      </select>
       <select class="month-select" id="monthSelect" onchange="onMonthChange()">
         <option value="">Всі місяці</option>
         <option>Січень</option><option>Лютий</option><option>Березень</option>
@@ -471,7 +472,10 @@ select.field-input{cursor:pointer}
   <!-- MISSION -->
   <div class="mission-row">
     <div class="section">
-      <div class="section-title"><span>Цінності та місія компанії</span></div>
+      <div class="section-title">
+        <span>Цінності та місія компанії</span>
+        <button class="add-inline-btn" onclick="openMissionEdit('company')">✎ Редагувати</button>
+      </div>
       <div class="mission-inner">
         <div class="mission-block">
           <div class="mission-block-label">Місія</div>
@@ -484,7 +488,10 @@ select.field-input{cursor:pointer}
       </div>
     </div>
     <div class="section">
-      <div class="section-title"><span>Цінності та місія команди</span></div>
+      <div class="section-title">
+        <span>Цінності та місія команди</span>
+        <button class="add-inline-btn" onclick="openMissionEdit('team')">✎ Редагувати</button>
+      </div>
       <div class="mission-inner">
         <div class="mission-block">
           <div class="mission-block-label">Місія команди</div>
@@ -495,6 +502,24 @@ select.field-input{cursor:pointer}
         <div class="mission-block">
           <div class="mission-block-label">Наші цінності</div>
           <ul class="values-list" id="teamValues"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION EDIT MODAL -->
+  <div class="modal-backdrop" id="missionEditBackdrop" onclick="closeMissionEditOutside(event)">
+    <div class="modal" style="width:min(560px,95vw)">
+      <div class="modal-header">
+        <div class="modal-title" id="missionEditTitle">Редагувати місію</div>
+        <button class="modal-close" onclick="closeMissionEdit()">✕</button>
+      </div>
+      <div class="modal-body" id="missionEditBody"></div>
+      <div class="modal-footer">
+        <div class="form-msg" id="missionEditMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="closeMissionEdit()">Скасувати</button>
+          <button class="submit-btn" onclick="saveMissionEdit()">Зберегти</button>
         </div>
       </div>
     </div>
@@ -681,7 +706,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbyCHl24Lf914glC2_AMk_EZLV7105_96jhwon7qZvAUZztXRUx4LVFxYkGsLuhcCVng/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwmY1oF6fdh47cN75i8-7cfVE4kKdub7BqZ7i6epFhH72GaQzZDSWNUIGvhIranX-yq/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -693,13 +718,43 @@ let currentTab = 'data', currentSubtype = 'problem';
 let refreshTimer = null;
 let charts = {};
 
+// ── КОМАНДИ ───────────────────────────────────
+function getSelectedTeam() {
+  return document.getElementById('teamSelect')?.value || 'Тойота';
+}
+
+function onTeamChange() {
+  // Зберігаємо вибір команди
+  localStorage.setItem('dashSelectedTeam', getSelectedTeam());
+  // Завантажуємо конфіги графіків для нової команди
+  loadChartConfigs();
+  // Оновлюємо назви вкладок
+  document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
+    btn.textContent = chartConfigs[i]?.title || ('Графік '+(i+1));
+  });
+  loadData();
+}
+
+function loadSavedTeam() {
+  const saved = localStorage.getItem('dashSelectedTeam');
+  if (saved) {
+    const sel = document.getElementById('teamSelect');
+    if (sel) {
+      for (let opt of sel.options) {
+        if (opt.value === saved || opt.text === saved) { sel.value = opt.value; break; }
+      }
+    }
+  }
+}
+
 // ════════════════════════════════════════════════
 // ЗАВАНТАЖЕННЯ ДАНИХ
 // ════════════════════════════════════════════════
 async function loadData() {
   showLoading(true); hideError();
   try {
-    const res = await fetch(API_URL + '?action=all');
+    const team = getSelectedTeam();
+    const res = await fetch(API_URL + '?action=all&team=' + encodeURIComponent(team));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -784,7 +839,7 @@ function applyMonthFilter(data) {
 
 function renderMeta(meta) {
   if (!meta) return;
-  setText('hTeamName', localStorage.getItem('dashTeamName') || meta.teamName || '«ТОЙОТА»');
+  setText('hTeamName', getSelectedTeam());
   setText('companyMission', meta.companyMission || '');
   setText('teamMission', meta.teamMission || '');
   setText('teamGoal', meta.teamGoal || '');
@@ -872,9 +927,13 @@ const DEFAULT_CHARTS = [
 let chartConfigs = [];
 let currentChartTab = 0;
 
+function getChartStorageKey() {
+  return 'dashChartConfigs_' + getSelectedTeam();
+}
+
 function loadChartConfigs() {
   try {
-    const saved = localStorage.getItem('dashChartConfigs');
+    const saved = localStorage.getItem(getChartStorageKey());
     chartConfigs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   } catch(e) {
     chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
@@ -882,7 +941,7 @@ function loadChartConfigs() {
 }
 
 function saveChartConfigsToStorage() {
-  localStorage.setItem('dashChartConfigs', JSON.stringify(chartConfigs));
+  localStorage.setItem(getChartStorageKey(), JSON.stringify(chartConfigs));
 }
 
 // Рендер одного графіка з даних charts[idx]
@@ -1151,7 +1210,7 @@ window.submitQuickAdd = async function() {
 
   try {
     const data = { label, value: +value };
-    const url = `${API_URL}?action=add&section=chart${idx+1}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=chart${idx+1}&data=${encodeURIComponent(JSON.stringify(data))}`;
     const res = await fetch(url);
     const result = await res.json();
     if (!result.success) throw new Error(result.error || 'Помилка');
@@ -1183,7 +1242,7 @@ async function changeStatus(rowIndex, section, selectEl) {
   selectEl.disabled = true;
   try {
     const data = { rowIndex, status: newStatus };
-    const url = `${API_URL}?action=update&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const url = `${API_URL}?action=update&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
     const res = await fetch(url);
     const result = await res.json();
     if (result.success) {
@@ -1244,7 +1303,7 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
   if (cell) cell.innerHTML = '<span style="color:var(--c-muted);font-size:11px">Збереження...</span>';
 
   try {
-    const url = `${API_URL}?action=update&section=${section}&data=${encodeURIComponent(JSON.stringify({rowIndex, field, value: newVal}))}`;
+    const url = `${API_URL}?action=update&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify({rowIndex, field, value: newVal}))}`;
     const res = await fetch(url);
     const result = await res.json();
     if (!result.success) throw new Error(result.error);
@@ -1471,7 +1530,7 @@ async function submitForm() {
       }
     }
 
-    const url = `${API_URL}?action=add&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
     const res = await fetch(url);
     const result = await res.json();
     if (!result.success) throw new Error(result.error || 'Помилка сервера');
@@ -1702,7 +1761,7 @@ async function submitQuickAdd() {
 
   try {
     const section = cfg.section;
-    const url = `${API_URL}?action=add&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
     const res = await fetch(url);
     const result = await res.json();
     if (!result.success) throw new Error(result.error || 'Помилка сервера');
@@ -1720,44 +1779,87 @@ async function submitQuickAdd() {
 }
 
 
-// ── РЕДАГУВАННЯ НАЗВИ КОМАНДИ ─────────────────
-function loadTeamName() {
-  const saved = localStorage.getItem('dashTeamName');
-  if (saved) setText('hTeamName', saved);
+// ── РЕДАГУВАННЯ МІСІЇ ─────────────────────────
+let currentMissionType = 'company';
+
+function openMissionEdit(type) {
+  currentMissionType = type;
+  const isCompany = type === 'company';
+  setText('missionEditTitle', isCompany ? 'Редагувати місію компанії' : 'Редагувати місію команди');
+
+  const meta = fullData?.meta || {};
+  document.getElementById('missionEditBody').innerHTML = isCompany ? `
+    <div class="form-section">
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Місія компанії</label>
+          <textarea class="field-input" id="me_mission" style="min-height:70px">${meta.companyMission||''}</textarea></div>
+        <div class="form-field full"><label class="field-label">Цінності (через кому)</label>
+          <input class="field-input" id="me_values" value="${meta.companyValues||''}"></div>
+      </div>
+    </div>` : `
+    <div class="form-section">
+      <div class="form-grid">
+        <div class="form-field full"><label class="field-label">Місія команди</label>
+          <textarea class="field-input" id="me_mission" style="min-height:60px">${meta.teamMission||''}</textarea></div>
+        <div class="form-field full"><label class="field-label">Наша мета</label>
+          <textarea class="field-input" id="me_goal" style="min-height:60px">${meta.teamGoal||''}</textarea></div>
+        <div class="form-field full"><label class="field-label">Цінності команди (через кому)</label>
+          <input class="field-input" id="me_values" value="${meta.teamValues||''}"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('missionEditMsg').textContent = '';
+  document.getElementById('missionEditBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-function startEditTeamName() {
-  const span  = document.getElementById('hTeamName');
-  const input = document.getElementById('hTeamNameInput');
-  input.value = span.textContent;
-  span.style.display  = 'none';
-  input.style.display = 'block';
-  input.focus();
-  input.select();
+function closeMissionEdit() {
+  document.getElementById('missionEditBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
-function saveTeamName() {
-  const span  = document.getElementById('hTeamName');
-  const input = document.getElementById('hTeamNameInput');
-  const val   = input.value.trim();
-  if (val) {
-    span.textContent = val;
-    localStorage.setItem('dashTeamName', val);
+function closeMissionEditOutside(e) {
+  if (e.target === document.getElementById('missionEditBackdrop')) closeMissionEdit();
+}
+
+async function saveMissionEdit() {
+  const msg = document.getElementById('missionEditMsg');
+  msg.textContent = 'Збереження...'; msg.className = 'form-msg';
+
+  const isCompany = currentMissionType === 'company';
+  const data = isCompany ? {
+    companyMission: document.getElementById('me_mission')?.value.trim(),
+    companyValues:  document.getElementById('me_values')?.value.trim(),
+  } : {
+    teamMission: document.getElementById('me_mission')?.value.trim(),
+    teamGoal:    document.getElementById('me_goal')?.value.trim(),
+    teamValues:  document.getElementById('me_values')?.value.trim(),
+  };
+
+  try {
+    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=config&data=${encodeURIComponent(JSON.stringify(data))}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error);
+
+    // Оновлюємо відображення одразу
+    if (fullData?.meta) Object.assign(fullData.meta, data);
+    renderMeta(fullData?.meta || {});
+
+    msg.textContent = '✓ Збережено!'; msg.className = 'form-msg success';
+    showToast('Місію збережено', 'success');
+    setTimeout(() => closeMissionEdit(), 1200);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.className = 'form-msg error';
   }
-  input.style.display = 'none';
-  span.style.display  = '';
 }
 
-function cancelEditTeamName() {
-  const span  = document.getElementById('hTeamName');
-  const input = document.getElementById('hTeamNameInput');
-  input.style.display = 'none';
-  span.style.display  = '';
-}
-document.addEventListener('keydown', e => { if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); } });
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); }
+});
 
+loadSavedTeam();
 loadChartConfigs();
-loadTeamName();
 loadData();
 </script>
 </body>
