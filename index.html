@@ -814,17 +814,23 @@ async function loadLeaderboard() {
     console.log('LB raw (перші 200):', text.substring(0, 200));
     const json = JSON.parse(jsonStr);
     const rows = json.table.rows;
+    console.log('LB rows count:', rows.length);
+    if (rows.length > 0) console.log('LB row[0]:', JSON.stringify(rows[0]));
+    if (rows.length > 3) console.log('LB row[3]:', JSON.stringify(rows[3]));
 
-    // Парсимо рядки — команди починаються з рядка 4 (індекс 3)
+    // Парсимо рядки — шукаємо рядки де перша клітинка містить назву команди
     const teams = [];
-    for (let i = 3; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i].c;
-      if (!row || !row[0] || !row[0].v) continue;
+      if (!row || !row[0] || row[0].v === null || row[0].v === undefined) continue;
       const name = String(row[0].v||'').trim();
-      if (!name) continue;
+      // Пропускаємо заголовки та порожні
+      if (!name || name.length < 2) continue;
+      // Пропускаємо якщо це очевидний заголовок
+      if (['команди','команда','#','№'].includes(name.toLowerCase())) continue;
 
       const get = (idx) => {
-        if (!row[idx] || row[idx].v === null) return 0;
+        if (!row[idx] || row[idx].v === null || row[idx].v === undefined) return 0;
         return parseFloat(row[idx].v) || 0;
       };
       const getStr = (idx) => {
