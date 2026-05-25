@@ -827,8 +827,8 @@ async function loadLeaderboard() {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].c;
       if (!row) continue;
-      // Структура: [null/№, "Назва команди", col2, col3...]
-      const nameCell = row[1];
+      // C(idx=2) = назва команди
+      const nameCell = row[2];
       if (!nameCell || nameCell.v === null || nameCell.v === undefined) continue;
       const name = String(nameCell.v||'').trim();
       if (!name || name.length < 2) continue;
@@ -845,17 +845,17 @@ async function loadLeaderboard() {
 
       teams.push({
         name,
-        tasksGreen:        get(2),
-        partnerAgreements: get(3),
-        reactionViol:      get(4),
-        dashboardData:     get(5),
-        proposals:         get(6),
-        totalScore:        get(7),
-        likes:             get(8),
-        money:             get(9),
-        members:           get(10),
-        totalMoney:        get(11),
-        note:              getStr(12),
+        tasksGreen:        get(3),   // D
+        partnerAgreements: get(4),   // E
+        reactionViol:      get(5),   // F
+        dashboardData:     get(6),   // G
+        proposals:         get(7),   // H
+        totalScore:        get(8),   // I
+        likes:             get(9),   // J
+        money:             get(10),  // K
+        members:           get(11),  // L
+        totalMoney:        get(12),  // M
+        note:              getStr(13), // N
       });
     }
 
