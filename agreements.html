@@ -310,6 +310,12 @@ function renderMatrix() {
       const colHL = filterTeam && colTeam === filterTeam;
       if (r === c) { html += `<td class="matrix-cell cell-self">—</td>`; return; }
 
+      // Нижній трикутник — сіра дзеркальна клітинка
+      if (r > c) {
+        html += `<td class="matrix-cell cell-self" style="cursor:default;background:#f0f2f7"></td>`;
+        return;
+      }
+
       const cell = (matrixData[r] && matrixData[r][c]);
       const hl = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
 
