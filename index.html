@@ -52,7 +52,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .lb-bar{height:7px;border-radius:4px;transition:.3s}
 .lb-cat{font-family:var(--mono);font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:2px}
 .lb-val{font-family:var(--mono);font-size:12px}
-.hdr-btn.lb-active{background:#f5c518!important;color:#1a1f36!important;border-color:#f5c518!important;font-weight:500}
+.hdr-btn.lb-active{background:#f5c518!important;color:#1a1f36!important;border-color:#f5c518!important;font-weight:600}
 #loadingOverlay{position:fixed;inset:0;background:rgba(240,242,247,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);transition:opacity .3s}
 #loadingOverlay.hidden{opacity:0;pointer-events:none}
 .spinner{width:38px;height:38px;border:3px solid var(--c-border);border-top-color:#1a1f36;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
@@ -78,7 +78,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .update-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:pulse 2s infinite}
 .update-dot.error{background:var(--c-red);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.update-time{font-size:11px;color:var(--c-muted);font-family:var(--mono)}
+.update-time{font-size:11px;color:rgba(255,255,255,.6);font-family:var(--mono)}
 .write-btn{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;border:1px dashed var(--c-border);background:transparent;color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap}
 .write-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
 .add-inline-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
@@ -97,8 +97,10 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .inline-actions{display:flex;gap:4px;margin-top:4px}
 .inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
 .inline-cancel{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer}
-.month-select:hover,.month-select:focus{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4)}
-.hdr-btn:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.4);color:#fff}
+.month-select:hover,.month-select:focus{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.55)} .month-select option{background:#2d3454;color:#fff}
+.hdr-btn{font-family:var(--mono);font-size:11px;padding:6px 16px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.13);color:#fff;cursor:pointer;transition:.2s;white-space:nowrap}
+.month-select{font-family:var(--mono);font-size:11px;color:#fff;border:1px solid rgba(255,255,255,.35);padding:6px 12px;border-radius:6px;background:rgba(255,255,255,.13);cursor:pointer;outline:none;transition:.2s}
+.hdr-btn:hover{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.6);color:#fff}
 .hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
 .hdr-btn.primary:hover{background:#2d3454}
 
