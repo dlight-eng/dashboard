@@ -473,7 +473,6 @@ select.field-input{cursor:pointer}
       </div>
       <button class="hdr-btn" onclick="loadData()">↻</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
-      <button class="hdr-btn" id="rulesBtn" onclick="openRules()" style="display:none">📋 Правила</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
     </div>
   </div>
@@ -819,7 +818,6 @@ function toggleLeaderboard() {
   document.getElementById('leaderboardPanel').style.display = lbVisible ? 'block' : 'none';
   document.getElementById('mainDash').style.display = lbVisible ? 'none' : 'block';
   document.getElementById('lbTabBtn').classList.toggle('lb-active', lbVisible);
-  document.getElementById('rulesBtn').style.display = lbVisible ? 'inline-block' : 'none';
   if (lbVisible && !lbData) loadLeaderboard();
 }
 
@@ -923,6 +921,31 @@ function renderLeaderboard(teams) {
     <div class="lb-hero">
       <div class="lb-hero-title">🏆 ЛІДЕРБОРД «ПЛЮШКА»</div>
       <div class="lb-hero-sub">Рейтинг команд за показниками ефективності</div>
+    </div>
+
+    <!-- БЛОК ПРАВИЛ -->
+    <div onclick="openRules()" style="
+      cursor:pointer;
+      background:linear-gradient(135deg,#f5c518 0%,#e6a800 100%);
+      border-radius:10px;
+      padding:14px 24px;
+      margin-bottom:16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      box-shadow:0 4px 16px rgba(245,197,24,.35);
+      transition:.2s;
+      user-select:none;
+    " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,197,24,.45)'"
+       onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(245,197,24,.35)'">
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:28px">📋</span>
+        <div>
+          <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:#1a1f36;letter-spacing:1px">ПРАВИЛА ПРОГРАМИ «ПЛЮШКА»</div>
+          <div style="font-family:var(--mono);font-size:11px;color:rgba(26,31,54,.65);margin-top:2px">Натисни щоб переглянути умови нарахування балів та лайтів</div>
+        </div>
+      </div>
+      <div style="font-size:22px;color:#1a1f36;opacity:.6">→</div>
     </div>
     <div class="lb-stats">
       <div class="lb-stat">
