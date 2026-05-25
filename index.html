@@ -818,15 +818,15 @@ async function loadLeaderboard() {
     if (rows.length > 0) console.log('LB row[0]:', JSON.stringify(rows[0]));
     if (rows.length > 3) console.log('LB row[3]:', JSON.stringify(rows[3]));
 
-    // Парсимо рядки — шукаємо рядки де перша клітинка містить назву команди
     const teams = [];
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].c;
-      if (!row || !row[0] || row[0].v === null || row[0].v === undefined) continue;
-      const name = String(row[0].v||'').trim();
-      // Пропускаємо заголовки та порожні
+      if (!row) continue;
+      // Структура: [null/№, "Назва команди", col2, col3...]
+      const nameCell = row[1];
+      if (!nameCell || nameCell.v === null || nameCell.v === undefined) continue;
+      const name = String(nameCell.v||'').trim();
       if (!name || name.length < 2) continue;
-      // Пропускаємо якщо це очевидний заголовок
       if (['команди','команда','#','№'].includes(name.toLowerCase())) continue;
 
       const get = (idx) => {
@@ -840,17 +840,17 @@ async function loadLeaderboard() {
 
       teams.push({
         name,
-        tasksGreen:         get(1),
-        partnerAgreements:  get(2),
-        reactionViol:       get(3),
-        dashboardData:      get(4),
-        proposals:          get(5),
-        totalScore:         get(6),
-        likes:              get(7),
-        money:              get(8),
-        members:            get(9),
-        totalMoney:         get(10),
-        note:               getStr(11),
+        tasksGreen:        get(2),
+        partnerAgreements: get(3),
+        reactionViol:      get(4),
+        dashboardData:     get(5),
+        proposals:         get(6),
+        totalScore:        get(7),
+        likes:             get(8),
+        money:             get(9),
+        members:           get(10),
+        totalMoney:        get(11),
+        note:              getStr(12),
       });
     }
 
