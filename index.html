@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Дашборд команд</title>
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -24,6 +24,9 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 
 /* LOADING */
 /* ── ЛІДЕРБОРД ── */
+.lb-rules-block{cursor:pointer;background:linear-gradient(135deg,#f5c518 0%,#e6a800 100%);border-radius:10px;padding:14px 24px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 4px 16px rgba(245,197,24,.35);transition:.2s;user-select:none}
+.lb-rules-block:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,197,24,.5)}
+.lb-rules-block:active{transform:translateY(0)}
 .lb-hero{background:linear-gradient(135deg,#1a1f36 0%,#2d3454 50%,#1a1f36 100%);border-radius:var(--radius);padding:28px 24px 20px;margin-bottom:16px;text-align:center;position:relative;overflow:hidden}
 .lb-hero::before{content:'🏆';font-size:80px;position:absolute;top:-10px;right:20px;opacity:.12}
 .lb-hero-title{font-family:var(--mono);font-size:22px;font-weight:500;color:#f5c518;letter-spacing:3px;margin-bottom:6px}
@@ -479,6 +482,17 @@ select.field-input{cursor:pointer}
 
   <!-- ЛІДЕРБОРД ПЛЮШКА -->
   <div id="leaderboardPanel" style="display:none">
+    <!-- БЛОК ПРАВИЛ — статичний, поза lbContent -->
+    <div id="rulesBlock" onclick="openRules()" class="lb-rules-block">
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:28px">📋</span>
+        <div>
+          <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:#1a1f36;letter-spacing:1px">ПРАВИЛА ПРОГРАМИ «ПЛЮШКА»</div>
+          <div style="font-family:var(--mono);font-size:11px;color:rgba(26,31,54,.65);margin-top:2px">Натисни щоб переглянути умови нарахування балів та лайтів</div>
+        </div>
+      </div>
+      <div style="font-size:22px;color:#1a1f36;opacity:.6">→</div>
+    </div>
     <div id="lbContent"></div>
   </div>
 
@@ -923,30 +937,6 @@ function renderLeaderboard(teams) {
       <div class="lb-hero-sub">Рейтинг команд за показниками ефективності</div>
     </div>
 
-    <!-- БЛОК ПРАВИЛ -->
-    <div onclick="openRules()" style="
-      cursor:pointer;
-      background:linear-gradient(135deg,#f5c518 0%,#e6a800 100%);
-      border-radius:10px;
-      padding:14px 24px;
-      margin-bottom:16px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      box-shadow:0 4px 16px rgba(245,197,24,.35);
-      transition:.2s;
-      user-select:none;
-    " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(245,197,24,.45)'"
-       onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(245,197,24,.35)'">
-      <div style="display:flex;align-items:center;gap:14px">
-        <span style="font-size:28px">📋</span>
-        <div>
-          <div style="font-family:var(--mono);font-size:15px;font-weight:600;color:#1a1f36;letter-spacing:1px">ПРАВИЛА ПРОГРАМИ «ПЛЮШКА»</div>
-          <div style="font-family:var(--mono);font-size:11px;color:rgba(26,31,54,.65);margin-top:2px">Натисни щоб переглянути умови нарахування балів та лайтів</div>
-        </div>
-      </div>
-      <div style="font-size:22px;color:#1a1f36;opacity:.6">→</div>
-    </div>
     <div class="lb-stats">
       <div class="lb-stat">
         <div class="lb-stat-val" style="color:var(--c-green)">₴${totalMoney.toLocaleString('uk-UA')}</div>
