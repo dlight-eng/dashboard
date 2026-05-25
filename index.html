@@ -815,8 +815,13 @@ async function loadLeaderboard() {
     const json = JSON.parse(jsonStr);
     const rows = json.table.rows;
     console.log('LB rows count:', rows.length);
-    if (rows.length > 0) console.log('LB row[0]:', JSON.stringify(rows[0]));
-    if (rows.length > 3) console.log('LB row[3]:', JSON.stringify(rows[3]));
+    if (rows.length > 0) {
+      console.log('LB row[0] full:', JSON.stringify(rows[0]));
+      console.log('LB row[1] full:', JSON.stringify(rows[1]));
+      console.log('LB row[2] full:', JSON.stringify(rows[2]));
+      console.log('LB row[3] full:', JSON.stringify(rows[3]));
+      console.log('LB cols:', JSON.stringify(json.table.cols));
+    }
 
     const teams = [];
     for (let i = 0; i < rows.length; i++) {
