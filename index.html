@@ -803,10 +803,16 @@ async function loadLeaderboard() {
 
     const res  = await fetch(url);
     const text = await res.text();
-    // Google повертає JSONP з коментарем /*O_o*/ на початку
-    const jsonStart = text.indexOf('{');
-    const jsonEnd   = text.lastIndexOf('}');
-    const json = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    // Google Sheets JSONP: /*O_o*/\ngoogle.visualization.Query.setResponse({...});
+    let jsonStr = text;
+    // Прибираємо все до першої {
+    const start = text.indexOf('{');
+    // Прибираємо все після останньої }
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('Невірний формат відповіді Google Sheets');
+    jsonStr = text.substring(start, end + 1);
+    console.log('LB raw (перші 200):', text.substring(0, 200));
+    const json = JSON.parse(jsonStr);
     const rows = json.table.rows;
 
     // Парсимо рядки — команди починаються з рядка 4 (індекс 3)
