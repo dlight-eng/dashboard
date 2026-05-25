@@ -803,8 +803,10 @@ async function loadLeaderboard() {
 
     const res  = await fetch(url);
     const text = await res.text();
-    // Google повертає JSONP — прибираємо обгортку
-    const json = JSON.parse(text.replace(/^.*?({.*})\s*\)*\s*;?\s*$/, '$1'));
+    // Google повертає JSONP з коментарем /*O_o*/ на початку
+    const jsonStart = text.indexOf('{');
+    const jsonEnd   = text.lastIndexOf('}');
+    const json = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
     const rows = json.table.rows;
 
     // Парсимо рядки — команди починаються з рядка 4 (індекс 3)
