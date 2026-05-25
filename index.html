@@ -860,6 +860,7 @@ async function loadLeaderboard() {
     }
 
     teams.sort((a,b) => b.totalScore - a.totalScore);
+    console.log('LB teams scores:', teams.map(t => t.name + ':' + t.totalScore));
     lbData = teams;
     renderLeaderboard(teams);
   } catch(e) {
