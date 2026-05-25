@@ -239,11 +239,11 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
     <span class="toolbar-label">Фільтр:</span>
     <select class="team-filter" id="filterTeam" onchange="highlightTeam()">
       <option value="">— Всі команди —</option>
-      <option>Бухгалтерія</option><option>Фіксики</option><option>Синергія</option>
-      <option>Портал знань</option><option>Беркут</option><option>Кулібіни</option>
-      <option>Техкомпас</option><option>Тойота</option><option>Локомотив</option>
-      <option>Майстри ланцюгів постачань</option><option>Медоєди</option>
-      <option>Ремкоплект</option><option>Склад</option><option>ВЕД</option>
+      <option>Беркут</option><option>Бухгалтерія</option><option>Ефективність</option>
+      <option>Кулібіни</option><option>Локомотив</option><option>Майстри ланцюгів</option>
+      <option>Медоїди</option><option>Портал знань</option><option>Ремкоплект</option>
+      <option>Синергія</option><option>Склад</option><option>Техкомпас</option>
+      <option>Тойота</option><option>Фіксики</option>
     </select>
     <div class="legend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--c-green-cell)"></div>Всі підписані</div>
@@ -264,12 +264,12 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwCA07tRPGZxMYw0M3ppNjQsewQUB3s6QokkVWGFnov2Hf1HvHhl3YQv160AxyarfnU/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzFknmJHXqh6bcb5L6qXIHXWOwwevB54uyxWhVTbikHqWRqNayOTzMSjsLZpUqCU6e1/exec';
 
 const TEAMS = [
-  'Бухгалтерія','Фіксики','Синергія','Портал знань','Беркут',
-  'Кулібіни','Техкомпас','Тойота','Локомотив',
-  'Майстри ланцюгів постачань','Медоєди','Ремкоплект','Склад','ВЕД'
+  'Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив',
+  'Майстри ланцюгів','Медоїди','Портал знань','Ремкоплект',
+  'Синергія','Склад','Техкомпас','Тойота','Фіксики'
 ];
 
 let matrixData = [];
@@ -545,10 +545,17 @@ async function saveCard() {
     // Рахуємо по-правильному:
     // Угода AB підписана = acceptedUs(teamA) ТА acceptedPartner(teamB) = обидва чекбокси ✓
     // Угода BA підписана = acceptedUs(teamB) ТА acceptedPartner(teamA) = обидва чекбокси ✓
+    const _today = new Date(); _today.setHours(0,0,0,0);
+    function _isExp(dateStr) {
+      if (!dateStr) return false;
+      const p = String(dateStr).split('.');
+      if (p.length < 3) return false;
+      return new Date(+p[2], +p[1]-1, +p[0]) < _today;
+    }
     let done = 0, over = 0;
     [...itemsAB, ...itemsBA].forEach(it => {
-      if (it.desc || it.date) { // рахуємо тільки заповнені рядки
-        if (it.acceptedUs && it.acceptedPartner) done++;
+      if (it.desc || it.date) {
+        if (it.acceptedUs && it.acceptedPartner && !_isExp(it.date)) done++;
         else over++;
       }
     });
