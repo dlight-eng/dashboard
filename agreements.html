@@ -178,7 +178,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
           <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;padding:4px 8px;background:var(--c-card);border-radius:4px;border:1px solid var(--c-border)" id="labelAB">— → —</div>
           <table class="obl-table">
             <thead><tr>
-              <th>#</th><th>Зобов'язання</th><th>Дата</th><th title="Прийнято ініціатором">Ми</th><th title="Прийнято партнером">Партнер</th><th></th>
+              <th>#</th><th>Зобов'язання</th><th>Дійсна до</th><th title="Прийнято ініціатором">Ми</th><th title="Прийнято партнером">Партнер</th><th></th>
             </tr></thead>
             <tbody id="oblBodyAB"></tbody>
           </table>
@@ -190,7 +190,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
           <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;padding:4px 8px;background:var(--c-card);border-radius:4px;border:1px solid var(--c-border)" id="labelBA">— → —</div>
           <table class="obl-table">
             <thead><tr>
-              <th>#</th><th>Зобов'язання</th><th>Дата</th><th title="Прийнято партнером">Партнер</th><th title="Прийнято ініціатором">Ми</th><th></th>
+              <th>#</th><th>Зобов'язання</th><th>Дійсна до</th><th title="Прийнято партнером">Партнер</th><th title="Прийнято ініціатором">Ми</th><th></th>
             </tr></thead>
             <tbody id="oblBodyBA"></tbody>
           </table>
@@ -427,7 +427,7 @@ function renderOblRows(side) {
       return `<tr style="background:#f0f8ff">
         <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:24px">${i+1}</td>
         <td><textarea class="obl-input" id="${side}-desc-${i}" rows="3" style="width:100%;min-width:160px;resize:vertical">${escHtml(it.desc||'')}</textarea></td>
-        <td style="width:110px"><input class="obl-input" id="${side}-date-${i}" value="${escHtml(it.date||'')}" placeholder="дд.мм.рррр" style="width:100px"></td>
+        <td style="width:130px"><input class="obl-input" id="${side}-date-${i}" type="date" value="${toDateInput(it.date||'')}" style="width:120px"></td>
         <td style="text-align:center;width:40px"><input type="checkbox" class="obl-check" id="${side}-us-${i}" ${it.acceptedUs?'checked':''}></td>
         <td style="text-align:center;width:50px"><input type="checkbox" class="obl-check" id="${side}-pt-${i}" ${it.acceptedPartner?'checked':''}></td>
         <td style="width:80px;white-space:nowrap">
@@ -440,7 +440,7 @@ function renderOblRows(side) {
       return `<tr>
         <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:24px">${i+1}</td>
         <td style="font-size:12px;line-height:1.5;padding:8px">${escHtml(it.desc||'—')}</td>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);white-space:nowrap;width:100px">${it.date||'—'}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);white-space:nowrap;width:100px">${formatDateDisplay(it.date)||'—'}</td>
         <td style="text-align:center;width:40px">${signUs}</td>
         <td style="text-align:center;width:50px">${signPt}</td>
         <td style="width:80px;white-space:nowrap">
@@ -462,11 +462,33 @@ function startEditObl(side, i) {
   setTimeout(() => document.getElementById(`${side}-desc-${i}`)?.focus(), 50);
 }
 
+// Конвертація дд.мм.рррр → yyyy-mm-dd для input[type=date]
+function toDateInput(dateStr) {
+  if (!dateStr) return '';
+  const p = String(dateStr).split('.');
+  if (p.length === 3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+  // Якщо вже yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  return '';
+}
+
+// Конвертація yyyy-mm-dd → дд.мм.рррр для відображення
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  // Якщо yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y,m,d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+  }
+  return dateStr; // вже дд.мм.рррр
+}
+
 function saveOblRow(side, i) {
   const items = getItems(side);
   if (!items[i]) return;
   const desc = document.getElementById(`${side}-desc-${i}`)?.value.trim() || items[i].desc;
-  const date = document.getElementById(`${side}-date-${i}`)?.value.trim() || items[i].date;
+  const rawDate = document.getElementById(`${side}-date-${i}`)?.value || '';
+  const date = formatDateDisplay(rawDate); // зберігаємо як дд.мм.рррр
   const us   = document.getElementById(`${side}-us-${i}`)?.checked ?? items[i].acceptedUs;
   const pt   = document.getElementById(`${side}-pt-${i}`)?.checked ?? items[i].acceptedPartner;
   items[i] = { desc, date, acceptedUs: us, acceptedPartner: pt };
@@ -520,14 +542,18 @@ async function saveCard() {
       fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}`),
     ]);
 
-    // Рахуємо підписані/непідписані зобов'язання з обох сторін
-    const allItems = [...itemsAB, ...itemsBA];
-    const done = allItems.filter(it => it.acceptedUs && it.acceptedPartner).length;
-    const over = allItems.filter(it => !it.acceptedUs || !it.acceptedPartner).length;
+    // Рахуємо по-правильному:
+    // Угода AB підписана = acceptedUs(teamA) ТА acceptedPartner(teamB) = обидва чекбокси ✓
+    // Угода BA підписана = acceptedUs(teamB) ТА acceptedPartner(teamA) = обидва чекбокси ✓
+    let done = 0, over = 0;
+    [...itemsAB, ...itemsBA].forEach(it => {
+      if (it.desc || it.date) { // рахуємо тільки заповнені рядки
+        if (it.acceptedUs && it.acceptedPartner) done++;
+        else over++;
+      }
+    });
     const ratio = { done, over };
 
-    // Зберігаємо ratio в матрицю
-    const matStatus = over === 0 ? 'done' : 'over';
     await fetch(`${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&status=${encodeURIComponent(JSON.stringify(ratio))}`);
 
     const rIdx = TEAMS.indexOf(teamA);
