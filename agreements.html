@@ -310,17 +310,18 @@ function renderMatrix() {
       const colHL = filterTeam && colTeam === filterTeam;
       if (r === c) { html += `<td class="matrix-cell cell-self">—</td>`; return; }
 
-      // Нижній трикутник — сіра дзеркальна клітинка
+      // Нижній трикутник — сіра недоступна клітинка
       if (r > c) {
-        html += `<td class="matrix-cell cell-self" style="cursor:default;background:#f0f2f7"></td>`;
+        html += `<td class="matrix-cell" style="cursor:default;background:#e8eaf0;border:1px solid #d0d4e0"></td>`;
         return;
       }
 
       const cell = (matrixData[r] && matrixData[r][c]);
       const hl = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
 
-      if (!cell || cell === '-' || (typeof cell === 'string' && cell === '-')) {
-        html += `<td class="matrix-cell cell-none" ${hl}>—</td>`;
+      // Порожня клітинка (немає угод) — клікабельна для створення
+      if (!cell || cell === '-') {
+        html += `<td class="matrix-cell" ${hl} style="background:#f8f9fc;border:2px dashed #c8ccd8;cursor:pointer;color:#b0b4c4;font-size:16px" title="Натисни щоб створити угоду ${rowTeam} ↔ ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">+</td>`;
         return;
       }
 
@@ -330,16 +331,12 @@ function renderMatrix() {
         done = cell.done || 0;
         over = cell.over || 0;
       } else {
-        // Старий формат — конвертуємо
         if (cell === 'done') { done = 1; over = 0; }
         else { done = 0; over = 1; }
       }
 
       const total = done + over;
-      let bgCls = 'cell-mix';
-      if (total === 0) bgCls = 'cell-none';
-      else if (over === 0) bgCls = 'cell-done';
-      else if (done === 0) bgCls = 'cell-over';
+      let bgCls = total === 0 ? 'cell-none' : over === 0 ? 'cell-done' : done === 0 ? 'cell-over' : 'cell-mix';
 
       const inner = total === 0
         ? '—'
