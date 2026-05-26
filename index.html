@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight — Дашборд команд</title>
+<title>DLight «ТОЙОТА» — Дашборд команди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -84,7 +84,27 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .update-time{font-size:11px;color:rgba(255,255,255,.6);font-family:var(--mono)}
 .write-btn{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;border:1px dashed var(--c-border);background:transparent;color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap}
 .write-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
-.add-inline-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
+.members-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;padding:4px 0}
+.member-card{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:8px;background:var(--c-card);border:1px solid var(--c-border);cursor:default;transition:.15s;position:relative}
+.member-card:hover{border-color:#1a1f36;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.member-avatar{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--c-border)}
+.member-avatar-placeholder{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#1a1f36,#2d3454);display:flex;align-items:center;justify-content:center;color:#f5c518;font-family:var(--mono);font-size:16px;font-weight:500}
+.member-name{font-size:11px;font-family:var(--mono);font-weight:500;color:var(--c-text);text-align:center;line-height:1.3}
+.member-pos{font-size:10px;color:var(--c-muted);text-align:center;line-height:1.2}
+.member-remove{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:var(--c-red-bg);border:1px solid var(--c-red);color:var(--c-red);font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;line-height:1}
+.member-card:hover .member-remove{display:flex}
+.members-select-wrap{position:relative}
+.members-search{width:100%;font-family:var(--mono);font-size:12px;padding:7px 12px;border:1px solid var(--c-border);border-radius:6px;outline:none;background:var(--c-card)}
+.members-search:focus{border-color:#1a1f36}
+.members-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--c-surface);border:1px solid var(--c-border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;max-height:220px;overflow-y:auto;display:none}
+.members-dropdown.open{display:block}
+.members-option{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;transition:.1s}
+.members-option:hover{background:var(--c-blue-bg)}
+.members-option img{width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--c-border)}
+.members-option-info{flex:1;min-width:0}
+.members-option-name{font-size:12px;font-family:var(--mono);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.members-option-pos{font-size:10px;color:var(--c-muted)}
+.add-inline-btn{padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
 .add-inline-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
 .cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text)}
 .cell-val:hover{background:var(--c-blue-bg);color:var(--c-blue)}
@@ -755,6 +775,33 @@ select.field-input{cursor:pointer}
     </div>
   </div>
 
+  <!-- УЧАСНИКИ КОМАНДИ -->
+  <div class="section" style="margin-top:10px" id="membersSection">
+    <div class="section-title">
+      <span>👥 Учасники команди</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <span id="memberCount" style="font-family:var(--mono);font-size:11px;color:var(--c-muted)"></span>
+        <button class="add-inline-btn" onclick="openMembersPanel()">+ Додати учасника</button>
+      </div>
+    </div>
+
+    <!-- Сітка учасників -->
+    <div id="membersGrid" class="members-grid"></div>
+
+    <!-- Панель додавання -->
+    <div id="membersPanel" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--c-muted);margin-bottom:8px">Пошук співробітника в Bitrix24:</div>
+      <div class="members-select-wrap">
+        <input type="text" class="members-search" id="membersSearch" placeholder="Введіть ім'я або посаду..." oninput="filterB24Users(this.value)" onfocus="openMembersDropdown()">
+        <div class="members-dropdown" id="membersDropdown"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="hdr-btn" style="font-size:11px;padding:5px 12px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:4px;cursor:pointer" onclick="closeMembersPanel()">Закрити</button>
+        <button onclick="syncB24Users()" style="font-family:var(--mono);font-size:11px;padding:5px 12px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);border-radius:4px;cursor:pointer">↻ Оновити список з B24</button>
+      </div>
+    </div>
+  </div>
+
   <!-- QUICK ADD MODAL -->
   <div class="modal-backdrop" id="quickAddBackdrop" onclick="closeQuickAddOutside(event)">
     <div class="modal" style="width:min(560px,95vw)">
@@ -806,7 +853,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzFknmJHXqh6bcb5L6qXIHXWOwwevB54uyxWhVTbikHqWRqNayOTzMSjsLZpUqCU6e1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwf4UEFwH6NbHfBsjrCUPMRwoMtI5riu66AeZSpeiYHyTyYRr7VZ6vjw8s8zZEjcoBJ/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -1038,6 +1085,169 @@ function renderLeaderboard(teams) {
   document.getElementById('lbContent').innerHTML = html;
 }
 
+// ════════════════════════════════════════════════
+// УЧАСНИКИ КОМАНДИ
+// ════════════════════════════════════════════════
+let teamMembers  = [];  // поточні учасники команди
+let allB24Users  = [];  // всі співробітники з B24
+let b24Loaded    = false;
+
+async function loadTeamMembers() {
+  try {
+    const res  = await fetch(`${API_URL}?action=getTeamMembers&team=${encodeURIComponent(getSelectedTeam())}`);
+    const data = await res.json();
+    teamMembers = data.members || [];
+    renderTeamMembers();
+  } catch(e) {
+    console.warn('Учасники:', e.message);
+  }
+}
+
+function renderTeamMembers() {
+  const grid = document.getElementById('membersGrid');
+  const count = document.getElementById('memberCount');
+  if (!grid) return;
+
+  if (count) count.textContent = teamMembers.length ? `${teamMembers.length} осіб` : '';
+
+  if (!teamMembers.length) {
+    grid.innerHTML = `<div style="color:var(--c-muted);font-size:12px;font-family:var(--mono);padding:8px">
+      Учасників ще не додано — натисни "+ Додати учасника"</div>`;
+    return;
+  }
+
+  grid.innerHTML = teamMembers.map((m, i) => {
+    const initials = (m.name||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const avatar = m.photo
+      ? `<img class="member-avatar" src="${m.photo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
+      : '';
+    const placeholder = `<div class="member-avatar-placeholder" ${m.photo?'style="display:none"':''}>${initials}</div>`;
+    return `<div class="member-card">
+      <button class="member-remove" onclick="removeMember(${i})" title="Видалити">×</button>
+      ${avatar}${placeholder}
+      <div class="member-name">${m.name||'—'}</div>
+      <div class="member-pos">${m.position||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function removeMember(i) {
+  teamMembers.splice(i, 1);
+  renderTeamMembers();
+  saveTeamMembersToSheets();
+}
+
+async function saveTeamMembersToSheets() {
+  try {
+    const url = `${API_URL}?action=saveTeamMembers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(teamMembers))}`;
+    await fetch(url);
+    showToast('Учасників збережено', 'success');
+  } catch(e) {
+    showToast('Помилка збереження', 'error');
+  }
+}
+
+// ── ПАНЕЛЬ ДОДАВАННЯ ─────────────────────────
+function openMembersPanel() {
+  document.getElementById('membersPanel').style.display = 'block';
+  document.getElementById('membersSearch').focus();
+  if (!b24Loaded) loadB24Users();
+}
+
+function closeMembersPanel() {
+  document.getElementById('membersPanel').style.display = 'none';
+  document.getElementById('membersDropdown').classList.remove('open');
+}
+
+async function loadB24Users() {
+  const drop = document.getElementById('membersDropdown');
+  drop.innerHTML = '<div style="padding:10px 12px;color:var(--c-muted);font-size:12px">Завантаження...</div>';
+  drop.classList.add('open');
+  try {
+    const res  = await fetch(`${API_URL}?action=getB24Users`);
+    const data = await res.json();
+    allB24Users = data.users || [];
+    b24Loaded = true;
+    filterB24Users('');
+  } catch(e) {
+    drop.innerHTML = `<div style="padding:10px 12px;color:var(--c-red);font-size:12px">Помилка: ${e.message}</div>`;
+  }
+}
+
+async function syncB24Users() {
+  showToast('Синхронізація з Bitrix24...', '');
+  b24Loaded = false;
+  allB24Users = [];
+  await loadB24Users();
+  showToast('Список оновлено', 'success');
+}
+
+function openMembersDropdown() {
+  if (allB24Users.length) {
+    document.getElementById('membersDropdown').classList.add('open');
+    filterB24Users(document.getElementById('membersSearch').value);
+  } else {
+    loadB24Users();
+  }
+}
+
+function filterB24Users(query) {
+  const drop = document.getElementById('membersDropdown');
+  if (!allB24Users.length) return;
+  drop.classList.add('open');
+
+  const q = query.toLowerCase().trim();
+  const existing = new Set(teamMembers.map(m => m.id));
+  const filtered = allB24Users
+    .filter(u => !existing.has(u.id))
+    .filter(u => !q || u.name.toLowerCase().includes(q) || (u.position||'').toLowerCase().includes(q))
+    .slice(0, 20);
+
+  if (!filtered.length) {
+    drop.innerHTML = '<div style="padding:10px 12px;color:var(--c-muted);font-size:12px">Не знайдено</div>';
+    return;
+  }
+
+  drop.innerHTML = filtered.map(u => {
+    const initials = u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const avatarEl = u.photo
+      ? `<img src="${u.photo}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+      : `<div style="width:28px;height:28px;border-radius:50%;background:#1a1f36;color:#f5c518;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)">${initials}</div>`;
+    return `<div class="members-option" onclick="addMemberFromB24('${u.id}','${escHtmlAttr(u.name)}','${escHtmlAttr(u.position)}','${escHtmlAttr(u.photo)}')">
+      ${avatarEl}
+      <div class="members-option-info">
+        <div class="members-option-name">${u.name}</div>
+        <div class="members-option-pos">${u.position||'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addMemberFromB24(id, name, position, photo) {
+  // Перевіряємо чи вже є
+  if (teamMembers.find(m => m.id === id)) {
+    showToast('Учасник вже в команді', '');
+    return;
+  }
+  teamMembers.push({ id, name, position, photo });
+  renderTeamMembers();
+  saveTeamMembersToSheets();
+  // Оновлюємо пошук щоб прибрати доданого
+  filterB24Users(document.getElementById('membersSearch').value);
+  document.getElementById('membersSearch').value = '';
+}
+
+function escHtmlAttr(str) {
+  return String(str||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+
+// Закрити dropdown при кліку поза
+document.addEventListener('click', e => {
+  const panel = document.getElementById('membersPanel');
+  const drop  = document.getElementById('membersDropdown');
+  if (drop && !panel?.contains(e.target)) drop.classList.remove('open');
+});
+
 async function loadSavedTeam() {
   try {
     const res  = await fetch(`${API_URL}?action=getSelectedTeam&userKey=default`);
@@ -1069,6 +1279,7 @@ async function loadData() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     renderAll(data);
+    loadTeamMembers();
     setUpdateTime(new Date());
     setDotOk();
   } catch(err) {
