@@ -273,7 +273,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwf4UEFwH6NbHfBsjrCUPMRwoMtI5riu66AeZSpeiYHyTyYRr7VZ6vjw8s8zZEjcoBJ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwLjDXU36Htcl8mK8jXCZTdIiAywxQwu7Hku8goDj_JpZJfrrr5Pqnv7RGViqlMHC8h/exec';
 
 const TEAMS = [
   'Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив',
@@ -554,20 +554,15 @@ async function saveCard() {
   const comment = document.getElementById('cardComment')?.value.trim() || '';
 
   try {
-    await Promise.all([
-      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&data=${encodeURIComponent(JSON.stringify(itemsAB))}&comment=${encodeURIComponent(comment)}`),
-      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}&comment=${encodeURIComponent(comment)}`),
-    ]);
+    // Зберігаємо кожне зобов'язання окремим запитом (обходимо ліміт URL)
+    await saveCardSafe(teamA, teamB, itemsAB, comment);
+    await saveCardSafe(teamB, teamA, itemsBA, comment);
 
-    // Рахуємо по-правильному:
-    // Угода AB підписана = acceptedUs(teamA) ТА acceptedPartner(teamB) = обидва чекбокси ✓
-    // Угода BA підписана = acceptedUs(teamB) ТА acceptedPartner(teamA) = обидва чекбокси ✓
     const _today = new Date(); _today.setHours(0,0,0,0);
-    function _isExp(dateStr) {
-      if (!dateStr) return false;
-      const p = String(dateStr).split('.');
-      if (p.length < 3) return false;
-      return new Date(+p[2], +p[1]-1, +p[0]) < _today;
+    function _isExp(d) {
+      if (!d) return false;
+      const p = String(d).split('.');
+      return p.length===3 && new Date(+p[2],+p[1]-1,+p[0]) < _today;
     }
     let done = 0, over = 0;
     [...itemsAB, ...itemsBA].forEach(it => {
@@ -577,7 +572,6 @@ async function saveCard() {
       }
     });
     const ratio = { done, over };
-
     await fetch(`${API_URL}?action=saveMatrix&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&status=${encodeURIComponent(JSON.stringify(ratio))}`);
 
     const rIdx = TEAMS.indexOf(teamA);
@@ -590,6 +584,31 @@ async function saveCard() {
     setTimeout(()=>closeCard(),1000);
   } catch(e) {
     msg.textContent='✕ '+e.message; msg.className='form-msg error';
+  }
+}
+
+// Зберігає картку угоди по одному рядку — обходить ліміт URL
+async function saveCardSafe(teamA, teamB, items, comment) {
+  // Спочатку очищаємо
+  await fetch(`${API_URL}?action=clearCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`);
+
+  // Зберігаємо рядок за рядком
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    // Обрізаємо текст якщо занадто довгий (макс ~1500 символів на поле)
+    const desc = (it.desc || '').slice(0, 1500);
+    const params = new URLSearchParams({
+      action:  'addCardRow',
+      teamA,
+      teamB,
+      n:       i + 1,
+      desc,
+      date:    it.date || '',
+      us:      it.acceptedUs ? '1' : '0',
+      pt:      it.acceptedPartner ? '1' : '0',
+      comment: i === 0 ? (comment || '') : '',
+    });
+    await fetch(`${API_URL}?${params.toString()}`);
   }
 }
 
