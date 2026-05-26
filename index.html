@@ -853,7 +853,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwf4UEFwH6NbHfBsjrCUPMRwoMtI5riu66AeZSpeiYHyTyYRr7VZ6vjw8s8zZEjcoBJ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwLjDXU36Htcl8mK8jXCZTdIiAywxQwu7Hku8goDj_JpZJfrrr5Pqnv7RGViqlMHC8h/exec';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -2517,6 +2517,12 @@ document.addEventListener('keydown', e => {
 });
 
 loadSavedTeam().then(() => loadData());
+
+// Якщо прийшли з agreements.html з флагом openPlushka
+if (sessionStorage.getItem('openPlushka') === '1') {
+  sessionStorage.removeItem('openPlushka');
+  setTimeout(() => toggleLeaderboard(), 500);
+}
 </script>
 </body>
 </html>
