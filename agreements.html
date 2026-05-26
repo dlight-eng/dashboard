@@ -198,6 +198,16 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
         </div>
 
       </div>
+
+      <!-- КОМЕНТАРІ / ПРИМІТКИ -->
+      <div style="margin-top:14px;border-top:1px solid var(--c-border);padding-top:12px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">
+          💬 Примітки до угоди
+        </div>
+        <textarea id="cardComment" class="obl-input" rows="3"
+          style="width:100%;resize:vertical;min-height:70px"
+          placeholder="Додаткові умови, контекст, коментарі по угоді..."></textarea>
+      </div>
     </div>
     <div class="modal-footer">
       <div class="form-msg" id="cardMsg"></div>
@@ -264,7 +274,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbzFknmJHXqh6bcb5L6qXIHXWOwwevB54uyxWhVTbikHqWRqNayOTzMSjsLZpUqCU6e1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwf4UEFwH6NbHfBsjrCUPMRwoMtI5riu66AeZSpeiYHyTyYRr7VZ6vjw8s8zZEjcoBJ/exec';
 
 const TEAMS = [
   'Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив',
@@ -310,8 +320,8 @@ function renderMatrix() {
       const colHL = filterTeam && colTeam === filterTeam;
       if (r === c) { html += `<td class="matrix-cell cell-self">—</td>`; return; }
 
-      // Нижній трикутник — сіра недоступна клітинка
-      if (r > c) {
+      // Верхній трикутник — сіра недоступна клітинка
+      if (r < c) {
         html += `<td class="matrix-cell" style="cursor:default;background:#e8eaf0;border:1px solid #d0d4e0"></td>`;
         return;
       }
@@ -319,13 +329,13 @@ function renderMatrix() {
       const cell = (matrixData[r] && matrixData[r][c]);
       const hl = (rowHL||colHL) ? 'style="filter:brightness(.88)"' : '';
 
-      // Порожня клітинка (немає угод) — клікабельна для створення
+      // Порожня клітинка — клікабельна для створення
       if (!cell || cell === '-') {
         html += `<td class="matrix-cell" ${hl} style="background:#f8f9fc;border:2px dashed #c8ccd8;cursor:pointer;color:#b0b4c4;font-size:16px" title="Натисни щоб створити угоду ${rowTeam} ↔ ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">+</td>`;
         return;
       }
 
-      // cell може бути об'єкт {done, over} або рядок 'done'/'over'/'wait'
+      // cell може бути об'єкт {done, over}
       let done = 0, over = 0;
       if (typeof cell === 'object') {
         done = cell.done || 0;
@@ -367,8 +377,9 @@ function updateStats() {
 
 // ── КАРТКА УГОДИ (двостороння) ───────────
 async function openCard(teamA, teamB) {
-  currentCard = { teamA, teamB, itemsAB:[], itemsBA:[] };
+  currentCard = { teamA, teamB, itemsAB:[], itemsBA:[], comment:'' };
   editingRow = {};
+  document.getElementById('cardComment') && (document.getElementById('cardComment').value = '');
   document.getElementById('cardTitle').textContent = `${teamA}  ↔  ${teamB}`;
   document.getElementById('labelAB').textContent   = `${teamA} → ${teamB}`;
   document.getElementById('labelBA').textContent   = `${teamB} → ${teamA}`;
@@ -387,6 +398,9 @@ async function openCard(teamA, teamB) {
     const [dataAB, dataBA] = await Promise.all([resAB.json(), resBA.json()]);
     currentCard.itemsAB = dataAB.items || [];
     currentCard.itemsBA = dataBA.items || [];
+    currentCard.comment = dataAB.comment || dataBA.comment || '';
+    const commentEl = document.getElementById('cardComment');
+    if (commentEl) commentEl.value = currentCard.comment;
     renderOblRows('AB');
     renderOblRows('BA');
   } catch(e) {
@@ -538,11 +552,12 @@ async function saveCard() {
   const {teamA, teamB} = currentCard;
   const itemsAB = collectSide('AB');
   const itemsBA = collectSide('BA');
+  const comment = document.getElementById('cardComment')?.value.trim() || '';
 
   try {
     await Promise.all([
-      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&data=${encodeURIComponent(JSON.stringify(itemsAB))}`),
-      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}`),
+      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&data=${encodeURIComponent(JSON.stringify(itemsAB))}&comment=${encodeURIComponent(comment)}`),
+      fetch(`${API_URL}?action=saveCard&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}&data=${encodeURIComponent(JSON.stringify(itemsBA))}&comment=${encodeURIComponent(comment)}`),
     ]);
 
     // Рахуємо по-правильному:
