@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DLight «ТОЙОТА» — Дашборд команди</title>
+<title>DLight Дашборди</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -534,14 +534,14 @@ select.field-input{cursor:pointer}
   <!-- KPI -->
   <div class="kpi-strip">
     <div class="kpi-card" style="--accent:var(--c-green)">
-      <div class="kpi-label">Ефективність</div>
+      <div class="kpi-label" id="kpiEffLabel">Графік 1 (сер.)</div>
       <div class="kpi-val" id="kpiEff">—</div>
-      <div class="kpi-delta" id="kpiEffDelta">завантаження...</div>
+      <div class="kpi-delta" id="kpiEffDelta">немає даних</div>
     </div>
     <div class="kpi-card" style="--accent:var(--c-yellow)">
-      <div class="kpi-label">Виконано МВ</div>
+      <div class="kpi-label">Учасників команди</div>
       <div class="kpi-val" id="kpiMV">—</div>
-      <div class="kpi-delta" id="kpiMVDelta">завантаження...</div>
+      <div class="kpi-delta" id="kpiMVDelta">осіб</div>
     </div>
     <div class="kpi-card" style="--accent:var(--c-red)">
       <div class="kpi-label">Відкриті проблеми</div>
@@ -1098,6 +1098,9 @@ async function loadTeamMembers() {
     const data = await res.json();
     teamMembers = data.members || [];
     renderTeamMembers();
+    const _cnt = teamMembers.length;
+    setText("kpiMV", _cnt || "—");
+    setDelta("kpiMVDelta", _cnt ? `${_cnt} осіб у команді` : "ще не додано", _cnt ? "up" : "");
   } catch(e) {
     console.warn('Учасники:', e.message);
   }
@@ -1393,19 +1396,40 @@ function renderValuesList(id, valStr) {
 // KPI
 // ════════════════════════════════════════════════
 function renderKPI(daily, problems, partners, comments) {
-  if (daily && daily.length) {
-    const last7 = daily.slice(-7);
-    const avgFact = avg(last7.map(d=>d.fact));
-    const avgPlan = avg(last7.map(d=>d.plan)) || 85;
-    const diff = +(avgFact - avgPlan).toFixed(1);
-    setText('kpiEff', Math.round(avgFact) + '%');
-    setDelta('kpiEffDelta', diff >= 0 ? `+${diff}% до плану` : `${diff}% до плану`, diff >= 0 ? 'up' : 'dn');
-    const mvFact = daily.reduce((s,d)=>s+(d.mvFact||0),0);
-    const mvPlan = daily.reduce((s,d)=>s+(d.mvPlan||0),0);
-    const mvDiff = mvPlan ? Math.round((mvFact/mvPlan-1)*100) : 0;
-    setText('kpiMV', mvFact);
-    setDelta('kpiMVDelta', `план: ${mvPlan} / ${mvDiff>=0?'+':''}${mvDiff}%`, mvDiff>=0?'up':'dn');
+  // Блок 1 — середнє значення Графіку 1 за місяць
+  if (fullData?.charts?.[0]?.length) {
+    const chart1 = fullData.charts[0];
+    const vals = chart1.map(r => r.value).filter(v => v !== null && v !== undefined);
+    if (vals.length) {
+      const avg1  = Math.round(vals.reduce((a,b)=>a+b,0) / vals.length * 10) / 10;
+      const cfg   = chartConfigs[0];
+      const unit  = cfg?.unit || '';
+      const plan  = cfg?.planValue;
+      const label = cfg?.title || 'Графік 1';
+      setText('kpiEffLabel', label);
+      setText('kpiEff', avg1 + unit);
+      if (plan) {
+        const diff = +(avg1 - plan).toFixed(1);
+        const dir  = cfg?.planDir || 'above';
+        const good = dir === 'above' ? diff >= 0 : diff <= 0;
+        setDelta('kpiEffDelta', `план: ${plan}${unit}`, good ? 'up' : 'dn');
+      } else {
+        setDelta('kpiEffDelta', `${vals.length} записів`, 'up');
+      }
+    } else {
+      setText('kpiEff', '—');
+      setDelta('kpiEffDelta', 'немає даних', '');
+    }
+  } else {
+    setText('kpiEff', '—');
+    setDelta('kpiEffDelta', 'немає даних', '');
   }
+
+  // Блок 2 — кількість учасників команди
+  const membersCnt = teamMembers?.length ?? 0;
+  setText('kpiMV', membersCnt || '—');
+  setDelta('kpiMVDelta', membersCnt ? `осіб у команді` : 'ще не додано', membersCnt ? 'up' : '');
+
   if (problems) {
     const open = problems.filter(p=>p.status!=='done').length;
     const over = problems.filter(p=>p.status==='over').length;
