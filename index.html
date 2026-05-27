@@ -1211,12 +1211,12 @@ function filterB24Users(query) {
     return;
   }
 
-  drop.innerHTML = filtered.map(u => {
+  drop.innerHTML = filtered.map((u, idx) => {
     const initials = u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const avatarEl = u.photo
       ? `<img src="${u.photo}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
       : `<div style="width:28px;height:28px;border-radius:50%;background:#1a1f36;color:#f5c518;display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono)">${initials}</div>`;
-    return `<div class="members-option" onclick="addMemberFromB24('${u.id}','${escHtmlAttr(u.name)}','${escHtmlAttr(u.position)}','${escHtmlAttr(u.photo)}')">
+    return `<div class="members-option" data-idx="${idx}" style="cursor:pointer">
       ${avatarEl}
       <div class="members-option-info">
         <div class="members-option-name">${u.name}</div>
@@ -1224,20 +1224,32 @@ function filterB24Users(query) {
       </div>
     </div>`;
   }).join('');
+
+  // Зберігаємо відфільтрований список для кліку
+  drop._filtered = filtered;
+
+  // Обробник кліку через делегування
+  drop.onclick = (e) => {
+    const opt = e.target.closest('.members-option');
+    if (!opt) return;
+    const idx = +opt.dataset.idx;
+    const u = drop._filtered[idx];
+    if (u) addMemberFromB24(u.id, u.name, u.position, u.photo);
+  };
 }
 
 function addMemberFromB24(id, name, position, photo) {
-  // Перевіряємо чи вже є
   if (teamMembers.find(m => m.id === id)) {
     showToast('Учасник вже в команді', '');
     return;
   }
-  teamMembers.push({ id, name, position, photo });
+  teamMembers.push({ id: String(id), name: String(name||''), position: String(position||''), photo: String(photo||'') });
   renderTeamMembers();
   saveTeamMembersToSheets();
-  // Оновлюємо пошук щоб прибрати доданого
-  filterB24Users(document.getElementById('membersSearch').value);
-  document.getElementById('membersSearch').value = '';
+  filterB24Users(document.getElementById('membersSearch')?.value || '');
+  const s = document.getElementById('membersSearch');
+  if (s) s.value = '';
+  showToast(name + ' додано до команди', 'success');
 }
 
 function escHtmlAttr(str) {
