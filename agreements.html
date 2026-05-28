@@ -273,7 +273,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbyzXScImmirtn-EtUZsTR7lNusqHitr398wWoEjf7AQMgTN4Xx3kaN5S5AEeHllI4mV/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxm1V-2M3EX8TEFfrz-kKJpTV_t3rzzKJ_BE2x0GCIN2jpnYq-yipEQIkMCVsU-1Hpb/exec';
 
 const TEAMS = [
   'Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив',
@@ -589,19 +589,22 @@ async function saveCard() {
 
 // Зберігає картку угоди по одному рядку — обходить ліміт URL
 async function saveCardSafe(teamA, teamB, items, comment) {
-  const base = `${API_URL}?action=clearCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`;
+  const ts = Date.now(); // унікальний timestamp проти кешування
+  const clearUrl = `${API_URL}?action=clearCard&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}&ts=${ts}`;
 
   // Чекаємо очищення перед записом
-  const clearRes = await fetch(base);
+  const clearRes = await fetch(clearUrl);
   await clearRes.json();
+
+  // Невелика пауза щоб Sheets встиг зберегти
+  await new Promise(r => setTimeout(r, 300));
 
   // Зберігаємо рядок за рядком, строго послідовно
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     const fullDesc = (it.desc || '').trim();
-    const chunkSize = 600; // менший розмір для надійності
+    const chunkSize = 600;
 
-    // Розбиваємо на частини
     const chunks = [];
     if (fullDesc.length === 0) {
       chunks.push('');
@@ -611,7 +614,6 @@ async function saveCardSafe(teamA, teamB, items, comment) {
       }
     }
 
-    // Перший чанк — основний рядок
     const p1 = new URLSearchParams({
       action:  'addCardRow',
       teamA, teamB,
@@ -621,17 +623,18 @@ async function saveCardSafe(teamA, teamB, items, comment) {
       us:      it.acceptedUs ? '1' : '0',
       pt:      it.acceptedPartner ? '1' : '0',
       comment: i === 0 ? (comment || '') : '',
+      ts:      String(ts + i + 1),
     });
     const r1 = await fetch(`${API_URL}?${p1.toString()}`);
     await r1.json();
 
-    // Додаткові чанки — дописуємо до рядка
     for (let c = 1; c < chunks.length; c++) {
       const p2 = new URLSearchParams({
         action: 'appendDescChunk',
         teamA, teamB,
         n: String(i + 1),
         chunk: chunks[c],
+        ts: String(ts + i + 1 + c),
       });
       const r2 = await fetch(`${API_URL}?${p2.toString()}`);
       await r2.json();
