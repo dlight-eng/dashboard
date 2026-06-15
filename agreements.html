@@ -273,7 +273,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 // ═══════════════════════════════════════════
 // ВСТАВТЕ ВАШ URL APPS SCRIPT
 // ═══════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwQ7vgp6QOB0xK8FA_Q597xZjXsQin0zB7aNK10zQXiJDFank8FFZ-3fsyL5i9K8nhY/exec';
+const API_URL = 'https://dlight-dashboard.romashykhin.workers.dev';
 
 const TEAMS = [
   'Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив',
@@ -285,12 +285,36 @@ let matrixData = [];
 let currentCard = { teamA:'', teamB:'', status:'wait', itemsAB:[], itemsBA:[] };
 
 // ── ЗАВАНТАЖЕННЯ МАТРИЦІ ──────────────────
-async function loadMatrix() {
+async function loadMatrix(forceReload = false) {
   showLoad(true);
   try {
-    const res  = await fetch(API_URL + '?action=matrix');
+    const CACHE_KEY = 'matrix_cache_v2';
+    const CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
+
+    if (!forceReload) {
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) {
+            matrixData = data;
+            renderMatrix();
+            updateStats();
+            showLoad(false);
+            return true;
+          }
+        }
+      } catch(e) {}
+    }
+
+    const res  = await fetch(API_URL + '?action=matrix&ts=' + Date.now());
     const data = await res.json();
     matrixData = data.data || [];
+
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: matrixData, ts: Date.now() }));
+    } catch(e) {}
+
     renderMatrix();
     updateStats();
     return true;
@@ -580,6 +604,7 @@ async function saveCard() {
 
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
     showToast('Угоду збережено','success');
+    sessionStorage.removeItem('matrix_cache_v2');
     renderMatrix(); updateStats();
     setTimeout(()=>closeCard(),1000);
   } catch(e) {
