@@ -414,11 +414,28 @@ async function openCard(teamA, teamB) {
   document.body.style.overflow = 'hidden';
 
   try {
-    const [resAB, resBA] = await Promise.all([
-      fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`),
-      fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(teamB)}&teamB=${encodeURIComponent(teamA)}`),
+    const CACHE_TTL_MS = 5 * 60 * 1000;
+    const now = Date.now();
+
+    async function getCardCached(tA, tB) {
+      const key = `card_${tA}_${tB}`;
+      try {
+        const c = sessionStorage.getItem(key);
+        if (c) {
+          const { data, ts } = JSON.parse(c);
+          if (now - ts < CACHE_TTL_MS) return data;
+        }
+      } catch(e) {}
+      const r = await fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(tA)}&teamB=${encodeURIComponent(tB)}`);
+      const d = await r.json();
+      try { sessionStorage.setItem(key, JSON.stringify({ data: d, ts: now })); } catch(e) {}
+      return d;
+    }
+
+    const [dataAB, dataBA] = await Promise.all([
+      getCardCached(teamA, teamB),
+      getCardCached(teamB, teamA),
     ]);
-    const [dataAB, dataBA] = await Promise.all([resAB.json(), resBA.json()]);
     currentCard.itemsAB = dataAB.items || [];
     currentCard.itemsBA = dataBA.items || [];
     currentCard.comment = dataAB.comment || dataBA.comment || '';
@@ -605,6 +622,8 @@ async function saveCard() {
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
     showToast('Угоду збережено','success');
     sessionStorage.removeItem('matrix_cache_v2');
+    sessionStorage.removeItem(`card_${teamA}_${teamB}`);
+    sessionStorage.removeItem(`card_${teamB}_${teamA}`);
     renderMatrix(); updateStats();
     setTimeout(()=>closeCard(),1000);
   } catch(e) {
@@ -705,7 +724,43 @@ function checkUrlParams() {
   }
 }
 
-loadMatrix().then(() => checkUrlParams()).catch(() => checkUrlParams());
+loadMatrix(forceReload = false).then(() => {
+  // Якщо є параметри в URL — відкриваємо картку
+  checkUrlParams();
+  // Фоново завантажуємо картки угод для прискорення відкриття
+  prefetchCards();
+}).catch(() => checkUrlParams());
+
+// Prefetch карток угод — завантажує всі картки для поточної команди
+async function prefetchCards() {
+  const params = new URLSearchParams(window.location.search);
+  const currentTeam = params.get('teamA') || TEAMS[0];
+  const CACHE_TTL_MS = 5 * 60 * 1000;
+
+  for (const partner of TEAMS) {
+    if (partner === currentTeam) continue;
+    await new Promise(r => setTimeout(r, 300));
+    try {
+      // Перевіряємо sessionStorage
+      const key1 = `card_${currentTeam}_${partner}`;
+      const key2 = `card_${partner}_${currentTeam}`;
+      const c1 = sessionStorage.getItem(key1);
+      const c2 = sessionStorage.getItem(key2);
+      const now = Date.now();
+
+      if (!c1 || now - JSON.parse(c1).ts > CACHE_TTL_MS) {
+        const r = await fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(currentTeam)}&teamB=${encodeURIComponent(partner)}`);
+        const d = await r.json();
+        sessionStorage.setItem(key1, JSON.stringify({ data: d, ts: now }));
+      }
+      if (!c2 || now - JSON.parse(c2).ts > CACHE_TTL_MS) {
+        const r = await fetch(`${API_URL}?action=card&teamA=${encodeURIComponent(partner)}&teamB=${encodeURIComponent(currentTeam)}`);
+        const d = await r.json();
+        sessionStorage.setItem(key2, JSON.stringify({ data: d, ts: now }));
+      }
+    } catch(e) {}
+  }
+}
 
 </script>
 </body>
