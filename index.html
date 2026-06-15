@@ -2693,7 +2693,41 @@ document.addEventListener('keydown', e => {
   if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); }
 });
 
-loadSavedTeam().then(() => loadData());
+loadSavedTeam().then(() => loadData()).then(() => {
+  // Після завантаження поточної команди — фоново завантажуємо всі інші
+  prefetchAllTeams();
+});
+
+// Попереднє завантаження даних для всіх команд у фоні
+async function prefetchAllTeams() {
+  const currentTeam = getSelectedTeam();
+  const CACHE_TTL = 3 * 60 * 1000;
+
+  for (const team of TEAMS) {
+    if (team === currentTeam) continue; // вже завантажено
+
+    const CACHE_KEY = 'dash_' + team;
+    try {
+      // Пропускаємо якщо кеш свіжий
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { ts } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) continue;
+      }
+    } catch(e) {}
+
+    // Пауза між запитами щоб не перевантажувати
+    await new Promise(r => setTimeout(r, 800));
+
+    try {
+      const res  = await fetch(`${API_URL}?action=all&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
+      const data = await res.json();
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    } catch(e) {
+      // Тихо ігноруємо помилки prefetch
+    }
+  }
+}
 
 // Якщо прийшли з agreements.html з флагом openPlushka
 if (sessionStorage.getItem('openPlushka') === '1') {
