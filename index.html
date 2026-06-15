@@ -903,8 +903,12 @@ function getSelectedTeam() {
 }
 
 function onTeamChange() {
-  // Зберігаємо вибір команди в Sheets
-  fetch(`${API_URL}?action=saveSelectedTeam&team=${encodeURIComponent(getSelectedTeam())}&userKey=default`).catch(()=>{});
+  // Зберігаємо локально в sessionStorage (швидко)
+  try { sessionStorage.setItem('selected_team', getSelectedTeam()); } catch(e) {}
+  // Синхронізуємо з сервером у фоні (не чекаємо)
+  setTimeout(() => {
+    fetch(`${API_URL}?action=saveSelectedTeam&team=${encodeURIComponent(getSelectedTeam())}&userKey=default`).catch(()=>{});
+  }, 2000);
   // Скидаємо конфіг графіків до дефолту (завантажиться при loadData)
   chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
@@ -1319,22 +1323,34 @@ document.addEventListener('click', e => {
 });
 
 async function loadSavedTeam() {
+  // Спочатку з sessionStorage (миттєво)
+  try {
+    const local = sessionStorage.getItem('selected_team');
+    if (local) {
+      const sel = document.getElementById('teamSelect');
+      if (sel) {
+        for (let opt of sel.options) {
+          if (opt.value === local || opt.text === local) { sel.value = opt.value; break; }
+        }
+      }
+      return; // не йдемо на сервер якщо є локальне значення
+    }
+  } catch(e) {}
+
+  // Якщо немає локального — запитуємо сервер (один раз)
   try {
     const res  = await fetch(`${API_URL}?action=getSelectedTeam&userKey=default`);
     const data = await res.json();
     if (data.team) {
+      try { sessionStorage.setItem('selected_team', data.team); } catch(e) {}
       const sel = document.getElementById('teamSelect');
       if (sel) {
         for (let opt of sel.options) {
-          if (opt.value === data.team || opt.text === data.team) {
-            sel.value = opt.value; break;
-          }
+          if (opt.value === data.team || opt.text === data.team) { sel.value = opt.value; break; }
         }
       }
     }
-  } catch(e) {
-    // Якщо не вдалось — використовуємо дефолт (Тойота)
-  }
+  } catch(e) {}
 }
 
 // ════════════════════════════════════════════════
@@ -1345,22 +1361,29 @@ async function loadData(forceReload = false) {
   try {
     const team = getSelectedTeam();
     const CACHE_KEY = 'dash_' + team;
-    const CACHE_TTL = 3 * 60 * 1000; // 3 хвилини
+    const CACHE_TTL = 10 * 60 * 1000; // 10 хвилин
 
-    // Перевіряємо кеш (тільки якщо не примусове оновлення)
+    // Показуємо кешовані дані миттєво, оновлюємо у фоні
     if (!forceReload) {
       try {
         const cached = sessionStorage.getItem(CACHE_KEY);
         if (cached) {
           const { data, ts } = JSON.parse(cached);
-          if (Date.now() - ts < CACHE_TTL) {
+          const age = Date.now() - ts;
+          if (age < CACHE_TTL) {
+            // Миттєво показуємо кеш
             renderAll(data);
             loadTeamMembers();
             setUpdateTime(new Date(ts));
             setDotOk();
             showLoading(false);
-            clearTimeout(refreshTimer);
-            refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL);
+            // Якщо кеш старший 3 хвилин — оновлюємо у фоні
+            if (age > 3 * 60 * 1000) {
+              setTimeout(() => loadData(true), 100);
+            } else {
+              clearTimeout(refreshTimer);
+              refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL);
+            }
             return;
           }
         }
@@ -2724,7 +2747,7 @@ loadSavedTeam().then(() => loadData()).then(() => {
 // Попереднє завантаження даних для всіх команд у фоні
 async function prefetchAllTeams() {
   const currentTeam = getSelectedTeam();
-  const CACHE_TTL = 3 * 60 * 1000;
+  const CACHE_TTL = 10 * 60 * 1000;
 
   for (const team of TEAMS) {
     if (team === currentTeam) continue; // вже завантажено
