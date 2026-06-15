@@ -463,7 +463,7 @@ select.field-input{cursor:pointer}
 
   <div id="errorBanner">
     <span id="errorText">Помилка завантаження</span>
-    <button onclick="loadData()" style="font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--c-red);background:transparent;color:var(--c-red);border-radius:3px;cursor:pointer">Повторити</button>
+    <button onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)" style="font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--c-red);background:transparent;color:var(--c-red);border-radius:3px;cursor:pointer">Повторити</button>
   </div>
 
   <!-- HEADER -->
@@ -494,7 +494,7 @@ select.field-input{cursor:pointer}
         <div class="update-dot" id="statusDot"></div>
         <span class="update-time" id="updateTime">—</span>
       </div>
-      <button class="hdr-btn" onclick="loadData()">↻</button>
+      <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
     </div>
@@ -885,7 +885,7 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbwQ7vgp6QOB0xK8FA_Q597xZjXsQin0zB7aNK10zQXiJDFank8FFZ-3fsyL5i9K8nhY/exec';
+const API_URL = 'https://dlight-dashboard.romashykhin.workers.dev';
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -910,7 +910,7 @@ function onTeamChange() {
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
     btn.textContent = 'Графік '+(i+1);
   });
-  loadData();
+  loadData(false); // нова команда — спробуємо кеш
 }
 
 
@@ -1317,14 +1317,43 @@ async function loadSavedTeam() {
 // ════════════════════════════════════════════════
 // ЗАВАНТАЖЕННЯ ДАНИХ
 // ════════════════════════════════════════════════
-async function loadData() {
+async function loadData(forceReload = false) {
   showLoading(true); hideError();
   try {
     const team = getSelectedTeam();
-    const res = await fetch(API_URL + '?action=all&team=' + encodeURIComponent(team));
+    const CACHE_KEY = 'dash_' + team;
+    const CACHE_TTL = 3 * 60 * 1000; // 3 хвилини
+
+    // Перевіряємо кеш (тільки якщо не примусове оновлення)
+    if (!forceReload) {
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < CACHE_TTL) {
+            renderAll(data);
+            loadTeamMembers();
+            setUpdateTime(new Date(ts));
+            setDotOk();
+            showLoading(false);
+            clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL);
+            return;
+          }
+        }
+      } catch(e) {}
+    }
+
+    const res = await fetch(`${API_URL}?action=all&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+
+    // Зберігаємо в кеш
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+    } catch(e) {}
+
     renderAll(data);
     loadTeamMembers();
     setUpdateTime(new Date());
@@ -1336,7 +1365,7 @@ async function loadData() {
     showLoading(false);
   }
   clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(loadData, REFRESH_INTERVAL);
+  refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL);
 }
 
 function renderAll(data) {
