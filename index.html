@@ -1126,13 +1126,35 @@ let b24Loaded    = false;
 
 async function loadTeamMembers() {
   try {
-    const res  = await fetch(`${API_URL}?action=getTeamMembers&team=${encodeURIComponent(getSelectedTeam())}`);
+    const team = getSelectedTeam();
+    const CACHE_KEY = 'members_' + team;
+    const CACHE_TTL = 5 * 60 * 1000;
+
+    // sessionStorage кеш
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Date.now() - ts < CACHE_TTL) {
+          teamMembers = data.members || [];
+          renderTeamMembers();
+          const cnt = teamMembers.length;
+          setText('kpiMV', cnt || '—');
+          setDelta('kpiMVDelta', cnt ? cnt + ' осіб у команді' : 'ще не додано', cnt ? 'up' : '');
+          return;
+        }
+      }
+    } catch(e) {}
+
+    const res  = await fetch(`${API_URL}?action=getTeamMembers&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
     const data = await res.json();
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
+
     teamMembers = data.members || [];
     renderTeamMembers();
-    const _cnt = teamMembers.length;
-    setText("kpiMV", _cnt || "—");
-    setDelta("kpiMVDelta", _cnt ? `${_cnt} осіб у команді` : "ще не додано", _cnt ? "up" : "");
+    const cnt = teamMembers.length;
+    setText('kpiMV', cnt || '—');
+    setDelta('kpiMVDelta', cnt ? cnt + ' осіб у команді' : 'ще не додано', cnt ? 'up' : '');
   } catch(e) {
     console.warn('Учасники:', e.message);
   }
@@ -1154,7 +1176,7 @@ function renderTeamMembers() {
   grid.innerHTML = teamMembers.map((m, i) => {
     const initials = (m.name||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const avatar = m.photo
-      ? `<img class="member-avatar" src="${m.photo}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
+      ? `<img class="member-avatar" src="${m.photo}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="" width="52" height="52">`
       : '';
     const placeholder = `<div class="member-avatar-placeholder" ${m.photo?'style="display:none"':''}>${initials}</div>`;
     return `<div class="member-card">
@@ -1174,6 +1196,7 @@ function removeMember(i) {
 
 async function saveTeamMembersToSheets() {
   try {
+    sessionStorage.removeItem('members_' + getSelectedTeam());
     const url = `${API_URL}?action=saveTeamMembers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(teamMembers))}`;
     await fetch(url);
     showToast('Учасників збережено', 'success');
