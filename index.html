@@ -1164,6 +1164,21 @@ async function loadTeamMembers() {
   }
 }
 
+// Зменшуємо URL фото до потрібного розміру
+function thumbUrl(url, size) {
+  if (!url) return '';
+  // Bitrix24 підтримує параметр resize через URL
+  try {
+    const u = new URL(url);
+    // Якщо є параметри resize — замінюємо
+    u.searchParams.set('width', size);
+    u.searchParams.set('height', size);
+    return u.toString();
+  } catch(e) {
+    return url; // повертаємо оригінал якщо URL некоректний
+  }
+}
+
 function renderTeamMembers() {
   const grid = document.getElementById('membersGrid');
   const count = document.getElementById('memberCount');
@@ -1179,8 +1194,9 @@ function renderTeamMembers() {
 
   grid.innerHTML = teamMembers.map((m, i) => {
     const initials = (m.name||'').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const avatar = m.photo
-      ? `<img class="member-avatar" src="${m.photo}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="" width="52" height="52">`
+    const photoUrl = m.photo ? thumbUrl(m.photo, 100) : '';
+    const avatar = photoUrl
+      ? `<img class="member-avatar" src="${photoUrl}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="" width="52" height="52">`
       : '';
     const placeholder = `<div class="member-avatar-placeholder" ${m.photo?'style="display:none"':''}>${initials}</div>`;
     return `<div class="member-card">
