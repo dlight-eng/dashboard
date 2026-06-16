@@ -885,7 +885,52 @@ select.field-input{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════════════
-const API_URL = 'https://dlight-dashboard.romashykhin.workers.dev';
+const SUPA_URL = 'https://ejljwgxdgoaejwaffxdv.supabase.co';
+const SUPA_KEY = 'sb_publishable_0PZhEVmTnywUa11GNgW9NQ_QkEaCYcE';
+// Worker використовується тільки для B24 фото і синхронізації
+const API_URL  = 'https://dlight-dashboard.romashykhin.workers.dev';
+const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Медоїди','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тойота','Фіксики'];
+
+// Supabase REST API хелпер
+async function supa(table, params = '', method = 'GET', body = null) {
+  const url = `${SUPA_URL}/rest/v1/${table}${params ? '?' + params : ''}`;
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+    },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase ${method} ${table}: ${err}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function supaGet(table, params = '') { return supa(table, params); }
+async function supaPost(table, body) { return supa(table, '', 'POST', body); }
+async function supaPatch(table, params, body) { return supa(table, params, 'PATCH', body); }
+async function supaDelete(table, params) { return supa(table, params, 'DELETE'); }
+async function supaUpsert(table, body, onConflict) {
+  const url = `${SUPA_URL}/rest/v1/${table}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': `resolution=merge-duplicates,return=minimal`,
+    },
+    body: JSON.stringify(body),
+  });
+  return res.ok;
+}
 // ═══════════════════════════════════════════════════
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -903,12 +948,8 @@ function getSelectedTeam() {
 }
 
 function onTeamChange() {
-  // Зберігаємо локально в sessionStorage (швидко)
+  // Зберігаємо тільки локально — не робимо запит до сервера
   try { sessionStorage.setItem('selected_team', getSelectedTeam()); } catch(e) {}
-  // Синхронізуємо з сервером у фоні (не чекаємо)
-  setTimeout(() => {
-    fetch(`${API_URL}?action=saveSelectedTeam&team=${encodeURIComponent(getSelectedTeam())}&userKey=default`).catch(()=>{});
-  }, 2000);
   // Скидаємо конфіг графіків до дефолту (завантажиться при loadData)
   chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
@@ -1150,8 +1191,8 @@ async function loadTeamMembers() {
       }
     } catch(e) {}
 
-    const res  = await fetch(`${API_URL}?action=getTeamMembers&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
-    const data = await res.json();
+    const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position,photo`);
+    const data = { members: (rows||[]).map(r => ({ id: r.b24_id, name: r.name, position: r.position, photo: r.photo })) };
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
 
     teamMembers = data.members || [];
@@ -1164,19 +1205,11 @@ async function loadTeamMembers() {
   }
 }
 
-// Зменшуємо URL фото до потрібного розміру
+// Стискаємо фото через Cloudflare Worker (webp 100px)
 function thumbUrl(url, size) {
   if (!url) return '';
-  // Bitrix24 підтримує параметр resize через URL
-  try {
-    const u = new URL(url);
-    // Якщо є параметри resize — замінюємо
-    u.searchParams.set('width', size);
-    u.searchParams.set('height', size);
-    return u.toString();
-  } catch(e) {
-    return url; // повертаємо оригінал якщо URL некоректний
-  }
+  // Проксіюємо через наш Worker який стискає до webp
+  return `${API_URL}?action=photo&url=${encodeURIComponent(url)}`;
 }
 
 function renderTeamMembers() {
@@ -1217,8 +1250,11 @@ function removeMember(i) {
 async function saveTeamMembersToSheets() {
   try {
     sessionStorage.removeItem('members_' + getSelectedTeam());
-    const url = `${API_URL}?action=saveTeamMembers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(teamMembers))}`;
-    await fetch(url);
+    const team = getSelectedTeam();
+    await supaDelete('team_members', `team=eq.${encodeURIComponent(team)}`);
+    if (teamMembers.length) {
+      await supaPost('team_members', teamMembers.map(m => ({ team, b24_id: m.id, name: m.name, position: m.position, photo: m.photo })));
+    }
     showToast('Учасників збережено', 'success');
   } catch(e) {
     showToast('Помилка збереження', 'error');
@@ -1339,7 +1375,7 @@ document.addEventListener('click', e => {
 });
 
 async function loadSavedTeam() {
-  // Спочатку з sessionStorage (миттєво)
+  // Тільки sessionStorage — без мережевих запитів
   try {
     const local = sessionStorage.getItem('selected_team');
     if (local) {
@@ -1347,22 +1383,6 @@ async function loadSavedTeam() {
       if (sel) {
         for (let opt of sel.options) {
           if (opt.value === local || opt.text === local) { sel.value = opt.value; break; }
-        }
-      }
-      return; // не йдемо на сервер якщо є локальне значення
-    }
-  } catch(e) {}
-
-  // Якщо немає локального — запитуємо сервер (один раз)
-  try {
-    const res  = await fetch(`${API_URL}?action=getSelectedTeam&userKey=default`);
-    const data = await res.json();
-    if (data.team) {
-      try { sessionStorage.setItem('selected_team', data.team); } catch(e) {}
-      const sel = document.getElementById('teamSelect');
-      if (sel) {
-        for (let opt of sel.options) {
-          if (opt.value === data.team || opt.text === data.team) { sel.value = opt.value; break; }
         }
       }
     }
@@ -1377,9 +1397,9 @@ async function loadData(forceReload = false) {
   try {
     const team = getSelectedTeam();
     const CACHE_KEY = 'dash_' + team;
-    const CACHE_TTL = 10 * 60 * 1000; // 10 хвилин
+    const CACHE_TTL = 10 * 60 * 1000;
 
-    // Показуємо кешовані дані миттєво, оновлюємо у фоні
+    // Перевіряємо кеш
     if (!forceReload) {
       try {
         const cached = sessionStorage.getItem(CACHE_KEY);
@@ -1387,34 +1407,89 @@ async function loadData(forceReload = false) {
           const { data, ts } = JSON.parse(cached);
           const age = Date.now() - ts;
           if (age < CACHE_TTL) {
-            // Миттєво показуємо кеш
             renderAll(data);
             loadTeamMembers();
             setUpdateTime(new Date(ts));
             setDotOk();
             showLoading(false);
-            // Якщо кеш старший 3 хвилин — оновлюємо у фоні
-            if (age > 3 * 60 * 1000) {
-              setTimeout(() => loadData(true), 100);
-            } else {
-              clearTimeout(refreshTimer);
-              refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL);
-            }
+            if (age > 3 * 60 * 1000) setTimeout(() => loadData(true), 100);
+            else { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL); }
             return;
           }
         }
       } catch(e) {}
     }
 
-    const res = await fetch(`${API_URL}?action=all&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
+    // Паралельно завантажуємо всі дані з Supabase
+    const enc = encodeURIComponent(team);
+    const [
+      configRows, chartDataRows, problemRows,
+      correctiveRows, escalationRows, commentRows,
+      chartsConfigRows, agreementsRows
+    ] = await Promise.all([
+      supaGet('team_config',   `team=eq.${enc}&select=key,value`),
+      supaGet('chart_data',    `team=eq.${enc}&select=chart_idx,label,value,plan&order=created_at.asc`),
+      supaGet('problems',      `team=eq.${enc}&select=*&order=created_at.desc`),
+      supaGet('corrective',    `team=eq.${enc}&select=*&order=created_at.desc`),
+      supaGet('escalations',   `team=eq.${enc}&select=*&order=created_at.desc`),
+      supaGet('comments',      `team=eq.${enc}&select=*&order=created_at.desc`),
+      supaGet('charts_config', `team=eq.${enc}&select=config`),
+      supaGet('agreements',    `or=(team_a.eq.${enc},team_b.eq.${enc})&select=*`),
+    ]);
 
-    // Зберігаємо в кеш
-    try {
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-    } catch(e) {}
+    // Формуємо конфігурацію
+    const cfg = {};
+    (configRows||[]).forEach(r => cfg[r.key] = r.value);
+
+    // Групуємо дані графіків по індексу
+    const charts = [0,1,2,3,4].map(i =>
+      (chartDataRows||[]).filter(r => r.chart_idx === i)
+        .map(r => ({ label: r.label, value: r.value, plan: r.plan }))
+    );
+
+    // Рахуємо угоди
+    const agRows = agreementsRows || [];
+    const today = new Date(); today.setHours(0,0,0,0);
+    const isExp = d => { if (!d) return false; const p = d.split('.'); return p.length===3 && new Date(+p[2],+p[1]-1,+p[0]) < today; };
+    const activeCnt = agRows.filter(r => r.accepted_us && r.accepted_partner && !isExp(r.valid_until)).length;
+    const inactiveCnt = agRows.filter(r => !r.accepted_us || !r.accepted_partner || isExp(r.valid_until)).length;
+    const problemAg = agRows.filter(r => !r.accepted_us || !r.accepted_partner || isExp(r.valid_until))
+      .map(r => ({
+        partner: r.team_a === team ? r.team_b : r.team_a,
+        desc: r.description || '',
+        date: r.valid_until || '',
+        acceptedUs: r.accepted_us,
+        acceptedPartner: r.accepted_partner,
+        status: isExp(r.valid_until) ? 'over' : (!r.accepted_us && !r.accepted_partner) ? 'over' : 'wait',
+      }));
+
+    const data = {
+      team,
+      meta: {
+        month: cfg.month || '',
+        teamName: cfg.teamName || team,
+        companyMission: cfg.companyMission || '',
+        companyValues: cfg.companyValues || '',
+        teamMission: cfg.teamMission || '',
+        teamGoal: cfg.teamGoal || '',
+        teamValues: cfg.teamValues || '',
+      },
+      monthly:     [],
+      daily:       [],
+      weekly:      [],
+      problems:    (problemRows||[]).map(r => ({ date:r.date, description:r.description, action:r.action, responsible:r.responsible, status:r.status, id:r.id })),
+      corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id })),
+      escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
+      partners:    [],
+      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, author:r.author, status:r.status, id:r.id })),
+      charts,
+      agreements:  { active: activeCnt, inactive: inactiveCnt, problem: problemAg, configured: true },
+      chartsConfig: chartsConfigRows?.[0]?.config || null,
+      updatedAt:   new Date().toISOString(),
+    };
+
+    // Кешуємо
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
 
     renderAll(data);
     loadTeamMembers();
@@ -1423,6 +1498,7 @@ async function loadData(forceReload = false) {
   } catch(err) {
     showError('Помилка: ' + err.message);
     setDotError();
+    console.error(err);
   } finally {
     showLoading(false);
   }
@@ -1640,8 +1716,8 @@ async function loadChartConfigs() {
   // Конфіг вже прийшов в data.chartsConfig при завантаженні
   // Ця функція використовується тільки при зміні команди
   try {
-    const res = await fetch(`${API_URL}?action=getChartsConfig&team=${encodeURIComponent(getSelectedTeam())}`);
-    const data = await res.json();
+    const rows3 = await supaGet('charts_config', `team=eq.${encodeURIComponent(getSelectedTeam())}&select=config`);
+    const data = { config: rows3?.[0]?.config || null };
     if (data.config && Array.isArray(data.config) && data.config.length > 0) {
       chartConfigs = data.config;
     } else {
@@ -1654,8 +1730,9 @@ async function loadChartConfigs() {
 
 async function saveChartConfigsToStorage() {
   try {
-    const url = `${API_URL}?action=saveChartsConfig&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(chartConfigs))}`;
-    await fetch(url);
+    const team2 = getSelectedTeam();
+    await supaUpsert('charts_config', { team: team2, config: chartConfigs, updated_at: new Date().toISOString() });
+    sessionStorage.removeItem('dash_' + team2);
   } catch(e) {
     console.warn('Не вдалось зберегти конфіг графіків:', e.message);
   }
@@ -2003,16 +2080,9 @@ async function saveChartEdit() {
     const ts = Date.now();
 
     // Очищаємо аркуш
-    await fetch(`${API_URL}?action=clearChartData&team=${encodeURIComponent(team)}&section=${section}&ts=${ts}`);
-    await new Promise(r=>setTimeout(r,200));
-
-    // Записуємо кожен рядок
-    for (let i=0; i<chartEditData.length; i++) {
-      const r = chartEditData[i];
-      if (!r.label && (r.value===null||r.value==='')) continue;
-      const url = `${API_URL}?action=add&team=${encodeURIComponent(team)}&section=${section}&data=${encodeURIComponent(JSON.stringify({label:r.label,value:r.value,plan:r.plan}))}&ts=${ts+i+1}`;
-      await fetch(url);
-    }
+    await supaDelete('chart_data', `team=eq.${encodeURIComponent(team)}&chart_idx=eq.${chartEditIdx}`);
+    const rows2 = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!=='')).map(r=>({team,chart_idx:chartEditIdx,label:r.label,value:r.value,plan:r.plan||null}));
+    if(rows2.length) await supaPost('chart_data', rows2);
 
     // Оновлюємо локальні дані
     const newData = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!==''));
@@ -2069,15 +2139,13 @@ window.submitQuickAdd = async function() {
   msg.className = 'form-msg';
 
   try {
-    const data = { label, value: +value };
-    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=chart${idx+1}&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Помилка');
+    const team = getSelectedTeam();
+    await supaPost('chart_data', { team, chart_idx: idx, label, value: +value, plan: null });
+    sessionStorage.removeItem('dash_' + team);
     msg.textContent = '✓ Збережено!';
     msg.className = 'form-msg success';
     showToast('Дані збережено', 'success');
-    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
+    setTimeout(() => { closeQuickAdd(); loadData(true); }, 900);
   } catch(e) {
     msg.textContent = '✕ ' + e.message;
     msg.className = 'form-msg error';
@@ -2158,22 +2226,21 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
   const inp = document.getElementById('inp_' + cellId);
   if (!inp) return;
   const newVal = inp.value.trim();
-
   const cell = document.getElementById(cellId);
   if (cell) cell.innerHTML = '<span style="color:var(--c-muted);font-size:11px">Збереження...</span>';
 
   try {
-    const url = `${API_URL}?action=update&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify({rowIndex, field, value: newVal}))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
-
-    // Оновлюємо локальний масив
+    // Знаходимо ID запису в Supabase
     const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
+    const tableMap = { problems: 'problems', escalations: 'escalations', corrective: 'corrective', comments: 'comments' };
+    const row = maps[section]?.[rowIndex];
+    if (!row?.id) throw new Error('ID не знайдено');
+
+    await supaPatch(tableMap[section], `id=eq.${row.id}`, { [field]: newVal });
     if (maps[section]?.[rowIndex]) maps[section][rowIndex][field] = newVal;
 
+    sessionStorage.removeItem('dash_' + getSelectedTeam());
     showToast('Збережено', 'success');
-    // Перерендер
     rerenderSection(section);
   } catch(e) {
     showToast('Помилка: ' + e.message, 'error');
@@ -2429,15 +2496,22 @@ async function submitForm() {
       }
     }
 
-    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Помилка сервера');
+    const team = getSelectedTeam();
+    const tableMap2 = {
+      problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
+      corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
+      escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: d.author, status: d.status || 'open' }) },
+    };
+    const mapping2 = tableMap2[section];
+    if (!mapping2) throw new Error('Невідома секція: ' + section);
+    await supaPost(mapping2.table, mapping2.row(data));
+    sessionStorage.removeItem('dash_' + team);
 
     msg.textContent = '✓ Збережено!';
     msg.className = 'form-msg success';
     showToast('Дані збережено', 'success');
-    setTimeout(() => { closeModal(); loadData(); }, 1200);
+    setTimeout(() => { closeModal(); loadData(true); }, 1200);
 
   } catch(err) {
     msg.textContent = '✕ ' + err.message;
@@ -2657,16 +2731,27 @@ async function submitQuickAdd() {
   msg.className = 'form-msg';
 
   try {
+    const team    = getSelectedTeam();
     const section = cfg.section;
-    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error || 'Помилка сервера');
+
+    // Маппінг секцій на таблиці Supabase
+    const tableMap = {
+      problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
+      corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
+      escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, status: d.status || 'wip' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: d.author, status: d.status || 'open' }) },
+    };
+
+    const mapping = tableMap[section];
+    if (!mapping) throw new Error('Невідома секція: ' + section);
+
+    await supaPost(mapping.table, mapping.row(data));
+    sessionStorage.removeItem('dash_' + team);
 
     msg.textContent = '✓ Збережено!';
     msg.className = 'form-msg success';
     showToast('Запис додано', 'success');
-    setTimeout(() => { closeQuickAdd(); loadData(); }, 900);
+    setTimeout(() => { closeQuickAdd(); loadData(true); }, 900);
   } catch(e) {
     msg.textContent = '✕ ' + e.message;
     msg.className = 'form-msg error';
@@ -2734,12 +2819,12 @@ async function saveMissionEdit() {
   };
 
   try {
-    const url = `${API_URL}?action=add&team=${encodeURIComponent(getSelectedTeam())}&section=config&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (!result.success) throw new Error(result.error);
+    const team = getSelectedTeam();
+    // Зберігаємо кожне поле в team_config
+    const rows = Object.entries(data).map(([key, value]) => ({ team, key, value, updated_at: new Date().toISOString() }));
+    await supaUpsert('team_config', rows);
+    sessionStorage.removeItem('dash_' + team);
 
-    // Оновлюємо відображення одразу
     if (fullData?.meta) Object.assign(fullData.meta, data);
     renderMeta(fullData?.meta || {});
 
@@ -2782,9 +2867,12 @@ async function prefetchAllTeams() {
     await new Promise(r => setTimeout(r, 800));
 
     try {
-      const res  = await fetch(`${API_URL}?action=all&team=${encodeURIComponent(team)}&ts=${Date.now()}`);
-      const data = await res.json();
-      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
+      // prefetch через Supabase
+      const enc2 = encodeURIComponent(team);
+      const [cfg2, charts2, probs2, corr2, esc2, com2, agCfg2, ag2] = await Promise.all([supaGet('team_config',`team=eq.${enc2}&select=key,value`),supaGet('chart_data',`team=eq.${enc2}&select=chart_idx,label,value,plan&order=created_at.asc`),supaGet('problems',`team=eq.${enc2}&select=*`),supaGet('corrective',`team=eq.${enc2}&select=*`),supaGet('escalations',`team=eq.${enc2}&select=*`),supaGet('comments',`team=eq.${enc2}&select=*`),supaGet('charts_config',`team=eq.${enc2}&select=config`),supaGet('agreements',`or=(team_a.eq.${enc2},team_b.eq.${enc2})&select=*`)]);
+      const cfgMap2 = {}; (cfg2||[]).forEach(r=>cfgMap2[r.key]=r.value);
+      const prefData = {team,meta:{teamName:cfgMap2.teamName||team,companyMission:cfgMap2.companyMission||'',companyValues:cfgMap2.companyValues||'',teamMission:cfgMap2.teamMission||'',teamGoal:cfgMap2.teamGoal||'',teamValues:cfgMap2.teamValues||''},monthly:[],daily:[],weekly:[],problems:(probs2||[]),corrective:(corr2||[]),escalations:(esc2||[]),partners:[],comments:(com2||[]),charts:[0,1,2,3,4].map(i=>(charts2||[]).filter(r=>r.chart_idx===i).map(r=>({label:r.label,value:r.value,plan:r.plan}))),agreements:{active:0,inactive:0,problem:[],configured:true},chartsConfig:agCfg2?.[0]?.config||null,updatedAt:new Date().toISOString()};
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: prefData, ts: Date.now() }));
     } catch(e) {
       // Тихо ігноруємо помилки prefetch
     }
