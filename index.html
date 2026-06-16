@@ -1444,7 +1444,7 @@ async function loadData(forceReload = false) {
     // Групуємо дані графіків по індексу
     const charts = [0,1,2,3,4].map(i =>
       (chartDataRows||[]).filter(r => r.chart_idx === i)
-        .map(r => ({ label: r.label, value: r.value, plan: r.plan }))
+        .map(r => ({ label: fmtLabel(r.label), value: r.value, plan: r.plan }))
     );
 
     // Рахуємо угоди
@@ -1739,6 +1739,32 @@ async function saveChartConfigsToStorage() {
 }
 
 // Рендер одного графіка з даних charts[idx]
+// Конвертує будь-який формат дати → дд.мм.рррр, або залишає рядок як є
+function fmtLabel(raw) {
+  if (raw == null) return '';
+  // Якщо вже рядок без дати — повертаємо як є (наприклад "Тиждень 4")
+  if (typeof raw === 'string') {
+    // Спробуємо розпізнати дату
+    const d = new Date(raw);
+    if (!isNaN(d.getTime()) && raw.length > 6) {
+      // Виглядає як дата — форматуємо
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      return `${dd}.${mm}.${yyyy}`;
+    }
+    return raw; // звичайний рядок
+  }
+  // Date об'єкт
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const dd = String(raw.getDate()).padStart(2,'0');
+    const mm = String(raw.getMonth()+1).padStart(2,'0');
+    const yyyy = raw.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  return String(raw);
+}
+
 function renderUserChart(idx, fullData) {
   const cfg = chartConfigs[idx];
   if (!cfg) return;
@@ -2880,7 +2906,7 @@ async function prefetchAllTeams() {
       const enc2 = encodeURIComponent(team);
       const [cfg2, charts2, probs2, corr2, esc2, com2, agCfg2, ag2] = await Promise.all([supaGet('team_config',`team=eq.${enc2}&select=key,value`),supaGet('chart_data',`team=eq.${enc2}&select=chart_idx,label,value,plan&order=created_at.asc`),supaGet('problems',`team=eq.${enc2}&select=*`),supaGet('corrective',`team=eq.${enc2}&select=*`),supaGet('escalations',`team=eq.${enc2}&select=*`),supaGet('comments',`team=eq.${enc2}&select=*`),supaGet('charts_config',`team=eq.${enc2}&select=config`),supaGet('agreements',`or=(team_a.eq.${enc2},team_b.eq.${enc2})&select=*`)]);
       const cfgMap2 = {}; (cfg2||[]).forEach(r=>cfgMap2[r.key]=r.value);
-      const prefData = {team,meta:{teamName:cfgMap2.teamName||team,companyMission:cfgMap2.companyMission||'',companyValues:cfgMap2.companyValues||'',teamMission:cfgMap2.teamMission||'',teamGoal:cfgMap2.teamGoal||'',teamValues:cfgMap2.teamValues||''},monthly:[],daily:[],weekly:[],problems:(probs2||[]),corrective:(corr2||[]),escalations:(esc2||[]),partners:[],comments:(com2||[]),charts:[0,1,2,3,4].map(i=>(charts2||[]).filter(r=>r.chart_idx===i).map(r=>({label:r.label,value:r.value,plan:r.plan}))),agreements:{active:0,inactive:0,problem:[],configured:true},chartsConfig:agCfg2?.[0]?.config||null,updatedAt:new Date().toISOString()};
+      const prefData = {team,meta:{teamName:cfgMap2.teamName||team,companyMission:cfgMap2.companyMission||'',companyValues:cfgMap2.companyValues||'',teamMission:cfgMap2.teamMission||'',teamGoal:cfgMap2.teamGoal||'',teamValues:cfgMap2.teamValues||''},monthly:[],daily:[],weekly:[],problems:(probs2||[]),corrective:(corr2||[]),escalations:(esc2||[]),partners:[],comments:(com2||[]),charts:[0,1,2,3,4].map(i=>(charts2||[]).filter(r=>r.chart_idx===i).map(r=>({label:fmtLabel(r.label),value:r.value,plan:r.plan}))),agreements:{active:0,inactive:0,problem:[],configured:true},chartsConfig:agCfg2?.[0]?.config||null,updatedAt:new Date().toISOString()};
       sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data: prefData, ts: Date.now() }));
     } catch(e) {
       // Тихо ігноруємо помилки prefetch
