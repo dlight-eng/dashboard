@@ -96,7 +96,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 <div class="toast" id="toast"></div>
 
 <!-- CARD MODAL -->
-<div class="modal-backdrop" id="cardModal" onclick="closeCardOutside(event)">
+<div class="modal-backdrop" id="cardModal">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="cardTitle">Картка угоди</div>
@@ -275,11 +275,12 @@ async function loadMatrix(forceReload = false) {
         return;
       }
     }
-    // Один запит — всі угоди
+    // БАГ 15: при forceReload завжди завантажуємо свіжі дані з сервера
+    if (forceReload) cacheDel(CACHE_KEY);
     const rows = await sbFetch(
       'agreements?select=id,team_a,team_b,description,valid_until,accepted_us,accepted_partner,comment,sort_order&order=sort_order.asc,id.asc&limit=5000'
     );
-    allRows = rows;
+    allRows = rows; // БАГ 15: allRows завжди оновлюється свіжими даними
     cacheSet(CACHE_KEY, allRows);
     buildMatrix(allRows);
     renderMatrix();
@@ -334,17 +335,27 @@ function updateStats() {
 // ── КАРТКА — миттєво з allRows ────────────
 let currentCard = { teamA:'',teamB:'',itemsAB:[],itemsBA:[],comment:'' };
 let editingRow = {};
+let cardSnapshot = null; // БАГ 13: знімок стану при відкритті
+
+function cardToSnapshot(itemsAB, itemsBA, comment) {
+  return JSON.stringify({
+    itemsAB: itemsAB.map(it=>({desc:it.desc,date:it.date,acceptedUs:it.acceptedUs,acceptedPartner:it.acceptedPartner})),
+    itemsBA: itemsBA.map(it=>({desc:it.desc,date:it.date,acceptedUs:it.acceptedUs,acceptedPartner:it.acceptedPartner})),
+    comment: comment
+  });
+}
 
 function openCard(teamA, teamB) {
   currentCard = { teamA, teamB, itemsAB:[], itemsBA:[], comment:'' };
   editingRow = {};
+  cardSnapshot = null;
   document.getElementById('cardComment').value = '';
   document.getElementById('cardTitle').textContent = `${teamA}  ↔  ${teamB}`;
   document.getElementById('labelAB').textContent = `${teamA} → ${teamB}`;
   document.getElementById('labelBA').textContent = `${teamB} → ${teamA}`;
   document.getElementById('cardMsg').textContent = '';
 
-  // Фільтруємо локально — 0мс затримки!
+  // БАГ 15: завжди фільтруємо з актуального allRows
   const rowsAB = allRows.filter(r=>r.team_a===teamA&&r.team_b===teamB).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.id-b.id);
   const rowsBA = allRows.filter(r=>r.team_a===teamB&&r.team_b===teamA).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.id-b.id);
 
@@ -352,6 +363,9 @@ function openCard(teamA, teamB) {
   currentCard.itemsBA = rowsBA.map(r=>({id:r.id,desc:r.description||'',date:r.valid_until||'',acceptedUs:r.accepted_us||false,acceptedPartner:r.accepted_partner||false}));
   currentCard.comment = rowsAB[0]?.comment || rowsBA[0]?.comment || '';
   document.getElementById('cardComment').value = currentCard.comment;
+
+  // БАГ 13: зберігаємо знімок при відкритті для порівняння перед збереженням
+  cardSnapshot = cardToSnapshot(currentCard.itemsAB, currentCard.itemsBA, currentCard.comment);
 
   updateStatusButtons();
   renderOblRows('AB');
@@ -433,16 +447,28 @@ function collectSide(side) { if(editingRow[side]!=null) saveOblRow(side,editingR
 // ── ЗБЕРЕЖЕННЯ → Supabase ─────────────────
 async function saveCard() {
   const msg = document.getElementById('cardMsg');
-  msg.textContent='Збереження...'; msg.className='form-msg';
   const {teamA,teamB} = currentCard;
   const itemsAB = collectSide('AB');
   const itemsBA = collectSide('BA');
   const comment = document.getElementById('cardComment')?.value.trim()||'';
+
+  // БАГ 13: перевіряємо чи є реальні зміни
+  const currentSnapshot = cardToSnapshot(itemsAB, itemsBA, comment);
+  if (cardSnapshot !== null && currentSnapshot === cardSnapshot) {
+    msg.textContent = 'Змін немає — збереження не потрібне';
+    msg.className = 'form-msg';
+    setTimeout(()=>{ msg.textContent=''; }, 2500);
+    return;
+  }
+
+  msg.textContent='Збереження...'; msg.className='form-msg';
   try {
     await saveSide(teamA, teamB, itemsAB, comment);
     await saveSide(teamB, teamA, itemsBA, comment);
     cacheDel('sb_agr_v1');
     await loadMatrix(true);
+    // БАГ 15: після збереження оновлюємо snapshot і allRows вже свіжі
+    cardSnapshot = currentSnapshot;
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
     showToast('Угоду збережено','success');
     setTimeout(()=>closeCard(),900);
