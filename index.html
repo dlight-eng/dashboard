@@ -1682,7 +1682,7 @@ function renderKPI(daily, problems, partners, comments, charts) {
 const CO = { gc:'rgba(226,230,240,.8)', tc:'#6b7491', tf:{size:10,family:'IBM Plex Mono'} };
 function cScales(yMin, yMax, yCb) {
   return {
-    x:{ticks:{color:CO.tc,font:CO.tf,maxRotation:45,autoSkip:true,maxTicksLimit:15},grid:{color:CO.gc}},
+    x:{type:'category',ticks:{color:CO.tc,font:CO.tf,maxRotation:45,autoSkip:true,maxTicksLimit:15},grid:{color:CO.gc}},
     y:{min:yMin,max:yMax,ticks:{color:CO.tc,font:CO.tf,callback:yCb||(v=>v)},grid:{color:CO.gc}}
   };
 }
@@ -1747,17 +1747,26 @@ function renderUserChart(idx, fullData) {
 
   let chartData = [...((fullData?.charts || [])[idx] || [])];
 
-  // Сортування по даті (старі зліва, нові зправа)
+  // Сортування по даті або номеру (старі зліва, нові зправа)
   chartData.sort((a, b) => {
     const parseD = s => {
-      const p = String(s).split('.');
-      if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
-      return new Date(s);
+      const str = String(s).trim();
+      // "Тиждень 4", "Week 4", "Тиж 4" — сортуємо по номеру
+      const wkMatch = str.match(/(\d+)/);
+      // дд.мм.рррр
+      const p = str.split('.');
+      if (p.length === 3 && p[2].length === 4) return new Date(+p[2], +p[1]-1, +p[0]).getTime();
+      // yyyy-mm-dd
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str).getTime();
+      // "Тиждень N" або просто число
+      if (wkMatch) return +wkMatch[1];
+      return 0;
     };
     return parseD(a.label) - parseD(b.label);
   });
 
-  const labels = chartData.map(r => r.label);
+  // Форматуємо мітки для осі X: рядок залишаємо як є
+  const labels = chartData.map(r => String(r.label ?? ''));
   const values = chartData.map(r => r.value);
   const plan   = cfg.planValue != null ? +cfg.planValue : null;
   const dir    = cfg.planDir || 'above'; // 'above' = добре вище, 'below' = добре нижче
