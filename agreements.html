@@ -306,16 +306,19 @@ function renderMatrix() {
       const cHL = ft && colTeam===ft;
       if (r===c) { html+=`<td class="matrix-cell cell-self">—</td>`; return; }
       if (r<c)  { html+=`<td class="matrix-cell" style="cursor:default;background:#e8eaf0;border:1px solid #d0d4e0"></td>`; return; }
-      const cell = matrixData[r]?.[c];
+      // Беремо дані обох напрямків: r→c та c→r (матриця симетрична)
+      const cellRC = matrixData[r]?.[c];
+      const cellCR = matrixData[c]?.[r];
       const hl = (rHL||cHL)?'style="filter:brightness(.88)"':'';
-      if (!cell) {
+      if (!cellRC && !cellCR) {
         html+=`<td class="matrix-cell" ${hl} style="background:#f8f9fc;border:2px dashed #c8ccd8;cursor:pointer;color:#b0b4c4;font-size:16px" title="Створити угоду ${rowTeam} ↔ ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">+</td>`;
         return;
       }
-      const {done,over} = cell;
+      const done = (cellRC?.done||0) + (cellCR?.done||0);
+      const over = (cellRC?.over||0) + (cellCR?.over||0);
       const bgCls = over===0?'cell-done':done===0?'cell-over':'cell-mix';
       const inner = (done+over)===0 ? '—' : `<span class="cell-ratio"><span class="ratio-done">${done}</span>/<span class="ratio-over">${over}</span></span>`;
-      html+=`<td class="matrix-cell ${bgCls}" ${hl} title="${rowTeam}→${colTeam}: ${done} підп., ${over} не підп." onclick="openCard('${rowTeam}','${colTeam}')">${inner}</td>`;
+      html+=`<td class="matrix-cell ${bgCls}" ${hl} title="${rowTeam}↔${colTeam}: ${done} підп., ${over} не підп." onclick="openCard('${rowTeam}','${colTeam}')">${inner}</td>`;
     });
     html += '</tr>';
   });
@@ -327,7 +330,18 @@ function highlightTeam() { renderMatrix(); }
 
 function updateStats() {
   let done=0,over=0;
-  matrixData.forEach(row=>row&&row.forEach(c=>{ if(!c)return; done+=c.done||0; over+=c.over||0; }));
+  // Рахуємо лише унікальні угоди з allRows напряму (без дублів матриці)
+  const today = new Date(); today.setHours(0,0,0,0);
+  allRows.forEach(row => {
+    let expired = false;
+    if (row.valid_until) {
+      const p = String(row.valid_until).split('.');
+      if (p.length===3) expired = new Date(+p[2],+p[1]-1,+p[0]) < today;
+      else if (/^\d{4}-\d{2}-\d{2}$/.test(row.valid_until)) expired = new Date(row.valid_until) < today;
+    }
+    if (row.accepted_us && row.accepted_partner && !expired) done++;
+    else over++;
+  });
   document.getElementById('statDone').textContent = done;
   document.getElementById('statOver').textContent = over;
 }
