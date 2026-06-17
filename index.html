@@ -924,18 +924,24 @@ async function supaPost(table, body) { return supa(table, '', 'POST', body); }
 async function supaPatch(table, params, body) { return supa(table, params, 'PATCH', body); }
 async function supaDelete(table, params) { return supa(table, params, 'DELETE'); }
 async function supaUpsert(table, body, onConflict) {
-  const url = `${SUPA_URL}/rest/v1/${table}`;
+  const conflictParam = onConflict ? `?on_conflict=${onConflict}` : '';
+  const url = `${SUPA_URL}/rest/v1/${table}${conflictParam}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'apikey': SUPA_KEY,
       'Authorization': 'Bearer ' + SUPA_KEY,
       'Content-Type': 'application/json',
-      'Prefer': `resolution=merge-duplicates,return=minimal`,
+      'Prefer': `resolution=merge-duplicates,return=representation`,
     },
     body: JSON.stringify(body),
   });
-  return res.ok;
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase upsert ${table}: ${err}`);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
 }
 // ═══════════════════════════════════════════════════
 
@@ -1773,7 +1779,7 @@ async function loadChartConfigs() {
 async function saveChartConfigsToStorage() {
   try {
     const team2 = getSelectedTeam();
-    await supaUpsert('charts_config', { team: team2, config: chartConfigs, updated_at: new Date().toISOString() });
+    await supaUpsert('charts_config', { team: team2, config: chartConfigs, updated_at: new Date().toISOString() }, 'team');
     sessionStorage.removeItem('dash_' + team2);
   } catch(e) {
     console.warn('Не вдалось зберегти конфіг графіків:', e.message);
@@ -2899,7 +2905,7 @@ async function saveMissionEdit() {
     const team = getSelectedTeam();
     // Зберігаємо кожне поле в team_config
     const rows = Object.entries(data).map(([key, value]) => ({ team, key, value, updated_at: new Date().toISOString() }));
-    await supaUpsert('team_config', rows);
+    await supaUpsert('team_config', rows, 'team,key');
     sessionStorage.removeItem('dash_' + team);
 
     if (fullData?.meta) Object.assign(fullData.meta, data);
@@ -2907,9 +2913,11 @@ async function saveMissionEdit() {
 
     msg.textContent = '✓ Збережено!'; msg.className = 'form-msg success';
     showToast('Місію збережено', 'success');
-    setTimeout(() => closeMissionEdit(), 1200);
+    // Перезавантажуємо дані з сервера, щоб переконатись що збереглось
+    setTimeout(() => { closeMissionEdit(); loadData(true); }, 1200);
   } catch(e) {
     msg.textContent = '✕ ' + e.message; msg.className = 'form-msg error';
+    console.error('saveMissionEdit error:', e);
   }
 }
 
