@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLight Дашборди</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Завантаження даних...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     МОДАЛЬНА ФОРМА ВЕфективністьЕННЯ
+══════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Введення даних</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- TABS -->
+    <div class="modal-tabs">
+      <button class="mtab active" onclick="switchTab('data',this)">Дані</button>
+      <button class="mtab" onclick="switchTab('comments',this)">Зауваження</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- ── ВКЛАДКА: ДАНІ ── -->
+      <div class="form-panel active" id="panel-data">
+
+        <!-- ПІДТИП -->
+        <div class="subtype-row">
+          <button class="stype-btn active" onclick="switchSubtype('problem',this)">Проблема</button>
+          <button class="stype-btn" onclick="switchSubtype('escalation',this)">Ескалація</button>
+          <button class="stype-btn" onclick="switchSubtype('partner',this)">Угода</button>
+        </div>
+
+        <!-- Нова проблема -->
+        <div class="data-subpanel" id="sub-problem">
+          <div class="form-section">
+            <div class="form-section-label">Нова проблема</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Дата виявлення</label>
+                <input class="field-input" type="date" id="p_date">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Відповідальний</label>
+                <input class="field-input" type="text" id="p_resp" placeholder="Прізвище">
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Опис проблеми</label>
+                <textarea class="field-input" id="p_desc" placeholder="Детальний опис..."></textarea>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Кроки вирішення</label>
+                <textarea class="field-input" id="p_steps" placeholder="Плановані дії..."></textarea>
+              </div>
+              <div class="form-field">
+                <label class="field-label">Статус</label>
+                <select class="field-input" id="p_status">
+                  <option value="wip">В роботі</option>
+                  <option value="wait">Очікує</option>
+                  <option value="done">Вирішено</option>
+                  <option value="over">Прострочено</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ескалація -->
+        <div class="data-subpanel" id="sub-escalation" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Ескалована проблема</div>
+            <div class="form-grid">
+              <div class="form-field">
+                <label class="field-label">Дата</label>
+                <input class="field-input" type="date" id="e_date">
+              </div>
+              <div class="form-field">
+                <label class="field-label">Статус</label>
+                <select class="field-input" id="e_status">
+                  <option value="wip">В роботі</option>
+                  <option value="wait">Очікує</option>
+                  <option value="done">Вирішено</option>
+                  <option value="over">Прострочено</option>
+                </select>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Опис проблеми</label>
+                <textarea class="field-input" id="e_desc" placeholder="Що ескаловано..."></textarea>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Дії рівня 2</label>
+                <textarea class="field-input" id="e_action" placeholder="Які дії вжито..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Партнерська угода -->
+        <div class="data-subpanel" id="sub-partner" style="display:none">
+          <div class="form-section">
+            <div class="form-section-label">Нова партнерська угода</div>
+            <div class="form-grid">
+              <div class="form-field full">
+                <label class="field-label">Назва партнера / відділу</label>
+                <input class="field-input" type="text" id="pr_name" placeholder="Назва партнера">
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Статуси по днях тижня (Пн–Сб)</label>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Пн<input type="checkbox" id="pr_d0" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Вт<input type="checkbox" id="pr_d1" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Ср<input type="checkbox" id="pr_d2" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Чт<input type="checkbox" id="pr_d3" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Пт<input type="checkbox" id="pr_d4" checked style="width:16px;height:16px"></label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">Сб<input type="checkbox" id="pr_d5" style="width:16px;height:16px"></label>
+                </div>
+              </div>
+              <div class="form-field full">
+                <label class="field-label">Коментар</label>
+                <input class="field-input" type="text" id="pr_comment" placeholder="Додатково...">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ВКЛАДКА: ЗАУВАЖЕННЯ ── -->
+      <div class="form-panel" id="panel-comments">
+        <div class="form-section">
+          <div class="form-section-label">Нове зауваження від дільниці</div>
+          <div class="form-grid">
+            <div class="form-field">
+              <label class="field-label">Дата</label>
+              <input class="field-input" type="date" id="c_date">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Від кого / Дільниця</label>
+              <input class="field-input" type="text" id="c_source" placeholder="Козловий — Навантажувачі">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Автор</label>
+              <input class="field-input" type="text" id="c_author" placeholder="Прізвище">
+            </div>
+            <div class="form-field">
+              <label class="field-label">Статус</label>
+              <select class="field-input" id="c_status">
+                <option value="wait">Очікує</option>
+                <option value="wip">В роботі</option>
+                <option value="done">Вирішено</option>
+                <option value="over">Прострочено</option>
+              </select>
+            </div>
+            <div class="form-field full">
+              <label class="field-label">Зміст зауваження</label>
+              <textarea class="field-input" id="c_text" style="min-height:80px" placeholder="Детальний опис зауваження..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <div class="form-msg" id="formMsg"></div>
+      <div style="display:flex;gap:8px">
+        <button class="hdr-btn" onclick="closeModal()">Скасувати</button>
+        <button class="submit-btn" onclick="submitForm()" id="submitBtn">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openModal()" title="Додати дані">＋</button>
+
+<!-- ══════════════════════════════════
+     ДАШБОРД
+══════════════════════════════════ -->
+<div class="dash">
+
+  <div id="errorBanner">
+    <span id="errorText">Помилка завантаження</span>
+    <button onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)" style="font-family:var(--mono);font-size:11px;padding:3px 10px;border:1px solid var(--c-red);background:transparent;color:var(--c-red);border-radius:3px;cursor:pointer">Повторити</button>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left" style="display:flex;align-items:center;gap:12px">
+      <div class="logo">
+        <img src="img_4e8a6b8cab.png" alt="DLight">
+      </div>
+      <div class="header-divider"></div>
+      <div class="brand-name" id="hTeamName"></div>
+      <select class="month-select" id="teamSelect" onchange="onTeamChange()">
+        <option>Беркут</option><option>Бухгалтерія</option><option>Ефективність</option>
+        <option>Кулібіни</option><option>Локомотив</option><option>Майстри ланцюгів</option>
+        <option>Медоїди</option><option>Портал знань</option><option>Ремкоплект</option>
+        <option>Синергія</option><option>Склад</option><option>Техкомпас</option>
+        <option selected>Тойота</option><option>Фіксики</option>
+      </select>
+      <select class="month-select" id="monthSelect" onchange="onMonthChange()">
+        <option value="">Всі місяці</option>
+        <option>Січень</option><option>Лютий</option><option>Березень</option>
+        <option>Квітень</option><option>Травень</option><option>Червень</option>
+        <option>Липень</option><option>Серпень</option><option>Вересень</option>
+        <option>Жовтень</option><option>Листопад</option><option>Грудень</option>
+      </select>
+    </div>
+    <div class="header-right" style="display:flex;align-items:center;gap:8px">
+      <div class="update-wrap" style="display:flex;align-items:center;gap:6px;margin-right:4px">
+        <div class="update-dot" id="statusDot"></div>
+        <span class="update-time" id="updateTime">—</span>
+      </div>
+      <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
+      <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
+      <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
+    </div>
+  </div>
+
+  <!-- ЛІДЕРБОРД ПЛЮШКА -->
+  <div id="leaderboardPanel" style="display:none">
+    <!-- БЛОК ПРАВИЛ — статичний, поза lbContent -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
+      <div id="rulesBlock" onclick="openRules()" class="lb-rules-block" style="margin-bottom:0">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:26px">📋</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:#1a1f36;letter-spacing:.5px">ПРАВИЛА «ПЛЮШКИ»</div>
+            <div style="font-family:var(--mono);font-size:10px;color:rgba(26,31,54,.65);margin-top:2px">Умови участі та підписання угод</div>
+          </div>
+        </div>
+        <div style="font-size:20px;color:#1a1f36;opacity:.6">→</div>
+      </div>
+      <div onclick="openCalc()" class="lb-rules-block" style="margin-bottom:0;background:linear-gradient(135deg,#1a1f36 0%,#2d3454 100%)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:26px">💰</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:#f5c518;letter-spacing:.5px">НАРАХУВАННЯ БАЛІВ</div>
+            <div style="font-family:var(--mono);font-size:10px;color:rgba(245,197,24,.65);margin-top:2px">Як рахуються лайти та гроші</div>
+          </div>
+        </div>
+        <div style="font-size:20px;color:#f5c518;opacity:.6">→</div>
+      </div>
+    </div>
+    <div id="lbContent"></div>
+  </div>
+
+  <!-- ОСНОВНИЙ ДАШБОРД -->
+  <div id="mainDash">
+
+  <!-- KPI -->
+  <div class="kpi-strip">
+    <div class="kpi-card" style="--accent:var(--c-green)" title="Ефективність команди у % від плану. ≥100% — зелений (план досягнуто), 80-99% — жовтий, <80% — червоний. Логіка єдина для всіх команд.">
+      <div class="kpi-label" id="kpiEffLabel">Ефективність команди</div>
+      <div class="kpi-val" id="kpiEff">—</div>
+      <div class="kpi-delta" id="kpiEffDelta">немає даних</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-yellow)" title="Кількість активних учасників команди. Натисніть «Команда» для редагування складу.">
+      <div class="kpi-label">Учасників команди</div>
+      <div class="kpi-val" id="kpiMV">—</div>
+      <div class="kpi-delta" id="kpiMVDelta">осіб</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-red)" title="Активні проблеми та КД (корегувальні дії), які ще не закриті. Прокрутіть нижче для деталей.">
+      <div class="kpi-label">Відкриті проблеми</div>
+      <div class="kpi-val" id="kpiProblems">—</div>
+      <div class="kpi-delta" id="kpiProblemsDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-blue)" title="Підписано / не підписано партнерських угод. Червона цифра — потребує уваги.">
+      <div class="kpi-label">Партнерські угоди</div>
+      <div class="kpi-val" id="kpiPartners">—</div>
+      <div class="kpi-delta" id="kpiPartnersDelta">завантаження...</div>
+    </div>
+    <div class="kpi-card" style="--accent:var(--c-orange)" title="Активні зауваження від керівництва, які потребують реакції команди.">
+      <div class="kpi-label">Зауваження</div>
+      <div class="kpi-val" id="kpiComments">—</div>
+      <div class="kpi-delta" id="kpiCommentsDelta">завантаження...</div>
+    </div>
+  </div>
+
+  <!-- MISSION -->
+  <div class="mission-row">
+    <div class="section">
+      <div class="section-title">
+        <span title="Місія, цінності та цілі компанії. Спільні принципи для всіх команд.">Цінності та місія компанії</span>
+        <button class="add-inline-btn" onclick="openMissionEdit('company')">✎ Редагувати</button>
+      </div>
+      <div class="mission-inner">
+        <div class="mission-block">
+          <div class="mission-block-label">Місія</div>
+          <div class="mission-text" id="companyMission">...</div>
+        </div>
+        <div class="mission-block">
+          <div class="mission-block-label">Наші цінності</div>
+          <ul class="values-list" id="companyValues"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">
+        <span title="Унікальні місія, мета та цінності цієї команди. Натисніть «Редагувати» для зміни.">Цінності та місія команди</span>
+        <button class="add-inline-btn" onclick="openMissionEdit('team')">✎ Редагувати</button>
+      </div>
+      <div class="mission-inner">
+        <div class="mission-block">
+          <div class="mission-block-label">Місія команди</div>
+          <div class="mission-text" id="teamMission">...</div>
+          <div class="mission-block-label" style="margin-top:8px">Наша мета</div>
+          <div class="mission-text" id="teamGoal">...</div>
+        </div>
+        <div class="mission-block">
+          <div class="mission-block-label">Наші цінності</div>
+          <ul class="values-list" id="teamValues"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION EDIT MODAL -->
+  <div class="modal-backdrop" id="missionEditBackdrop" onclick="closeMissionEditOutside(event)">
+    <div class="modal" style="width:min(560px,95vw)">
+      <div class="modal-header">
+        <div class="modal-title" id="missionEditTitle">Редагувати місію</div>
+        <button class="modal-close" onclick="closeMissionEdit()">✕</button>
+      </div>
+      <div class="modal-body" id="missionEditBody"></div>
+      <div class="modal-footer">
+        <div class="form-msg" id="missionEditMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="closeMissionEdit()">Скасувати</button>
+          <button class="submit-btn" onclick="saveMissionEdit()">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- КНОПКА НАЛАШТУВАННЯ ГРАФІКІВ -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+    <button onclick="openChartSettings()" style="font-family:var(--mono);font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text);cursor:pointer;transition:.15s;box-shadow:var(--shadow)" onmouseover="this.style.borderColor='#1a1f36'" onmouseout="this.style.borderColor='var(--c-border)'">⚙ Налаштувати графіки</button>
+  </div>
+
+  <!-- 5 НАЛАШТОВУВАНИХ ГРАФІКІВ -->
+  <div id="chartsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="section" id="chartBox0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle0">Графік 1</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(0)">+ Дані</button> <button class="add-inline-btn" onclick="openChartDataEdit(0)" style="color:var(--c-muted)">✎ Редагувати</button>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart0"></canvas></div>
+    </div>
+    <div class="section" id="chartBox1">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle1">Графік 2</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(1)">+ Дані</button> <button class="add-inline-btn" onclick="openChartDataEdit(1)" style="color:var(--c-muted)">✎ Редагувати</button>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart1"></canvas></div>
+    </div>
+    <div class="section" id="chartBox2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle2">Графік 3</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(2)">+ Дані</button> <button class="add-inline-btn" onclick="openChartDataEdit(2)" style="color:var(--c-muted)">✎ Редагувати</button>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart2"></canvas></div>
+    </div>
+    <div class="section" id="chartBox3">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle3">Графік 4</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(3)">+ Дані</button> <button class="add-inline-btn" onclick="openChartDataEdit(3)" style="color:var(--c-muted)">✎ Редагувати</button>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart3"></canvas></div>
+    </div>
+    <div class="section" style="grid-column:1/-1" id="chartBox4">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="section-title" style="margin-bottom:0;flex:1"><span id="chartTitle4">Графік 5</span></div>
+        <button class="add-inline-btn" onclick="openChartDataAdd(4)">+ Дані</button> <button class="add-inline-btn" onclick="openChartDataEdit(4)" style="color:var(--c-muted)">✎ Редагувати</button>
+      </div>
+      <div class="chart-wrap" style="height:160px"><canvas id="userChart4"></canvas></div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНЕ ВІКНО НАЛАШТУВАННЯ ГРАФІКІВ -->
+  <div class="modal-backdrop" id="chartSettingsBackdrop" onclick="closeChartSettingsOutside(event)">
+    <div class="modal" style="width:min(780px,96vw);max-height:92vh">
+      <div class="modal-header">
+        <div class="modal-title">⚙ Налаштування графіків</div>
+        <button class="modal-close" onclick="closeChartSettings()">✕</button>
+      </div>
+
+      <!-- ВКЛАДКИ ГРАФІКІВ -->
+      <div class="modal-tabs" id="chartTabRow">
+        <button class="mtab active" onclick="switchChartTab(0,this)">Графік 1</button>
+        <button class="mtab" onclick="switchChartTab(1,this)">Графік 2</button>
+        <button class="mtab" onclick="switchChartTab(2,this)">Графік 3</button>
+        <button class="mtab" onclick="switchChartTab(3,this)">Графік 4</button>
+        <button class="mtab" onclick="switchChartTab(4,this)">Графік 5</button>
+      </div>
+
+      <div class="modal-body" id="chartSettingsBody">
+        <!-- Генерується динамічно -->
+      </div>
+
+      <div class="modal-footer">
+        <div class="form-msg" id="chartSettingsMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="resetChartSettings()">Скинути до стандартних</button>
+          <button class="hdr-btn" onclick="closeChartSettings()">Скасувати</button>
+          <button class="submit-btn" onclick="saveChartSettings()">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ТРЕКЕР ПРОБЛЕМ -->
+  <div class="section" style="margin-bottom:10px">
+    <div class="section-title">
+      <span title="Поточні проблеми команди та корегувальні дії. Фільтри: всі / в роботі / прострочено / вирішено.">Трекер проблем</span>
+      <button class="add-inline-btn" onclick="openQuickAdd('problem')">+ Додати</button>
+    </div>
+    <div class="filter-bar">
+      <button class="chip active" onclick="filterProbs('all',this)">Всі</button>
+      <button class="chip" onclick="filterProbs('wip',this)">В роботі</button>
+      <button class="chip" onclick="filterProbs('over',this)">Прострочено</button>
+      <button class="chip" onclick="filterProbs('done',this)">Вирішено</button>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead><tr><th>Дата</th><th>Опис</th><th>Кроки</th><th>Відп.</th><th>Статус</th></tr></thead>
+        <tbody id="probBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ЕСКАЛАЦІЇ + ПАРТНЕРИ -->
+  <div class="bottom-grid">
+    <div class="section">
+      <div class="section-title">
+        <span title="Проблеми, які не вдалося вирішити на рівні команди — передані вищому керівництву.">Ескаловані проблеми</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('escalation')">+ Додати</button>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Дата</th><th>Проблема</th><th>Дії рівня 2</th><th>Статус</th></tr></thead>
+          <tbody id="escalBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">
+        <span title="Угоди з іншими командами: що ми робимо для них і що вони для нас. Зелені = всі підписали і дата не минула.">Партнерські угоди</span>
+        <button class="add-inline-btn" onclick="location.href='agreements.html?teamA='+encodeURIComponent(getSelectedTeam())">+ Додати</button>
+      </div>
+      <!-- Лічильники -->
+      <div style="display:flex;gap:12px;margin-bottom:10px">
+        <div style="background:var(--c-green-bg);border:1px solid var(--c-green);border-radius:6px;padding:6px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-green)" id="partnerActiveCount">0</span>
+          <span style="font-size:11px;color:var(--c-green);font-family:var(--mono)">діючих угод</span>
+        </div>
+        <div style="background:var(--c-red-bg);border:1px solid var(--c-red);border-radius:6px;padding:6px 14px;display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:18px;font-weight:500;color:var(--c-red)" id="partnerInactiveCount">0</span>
+          <span style="font-size:11px;color:var(--c-red);font-family:var(--mono)">не діючих угод</span>
+        </div>
+      </div>
+      <!-- Таблиця -->
+      <div class="table-scroll">
+        <table class="data-table" id="partnerTable">
+          <thead><tr><th>#</th><th>Команда / Партнер</th><th>Угода</th><th>Дата</th><th>Підписи</th><th>Статус</th><th></th></tr></thead>
+          <tbody id="partnerList"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЗАУВАЖЕННЯ + КОРИГУЮЧІ ДІЇ -->
+  <div class="full-bottom" style="margin-top:10px">
+    <div class="section">
+      <div class="section-title">
+        <span>Зауваження від дільниць — споживачів</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('comment')">+ Додати</button>
+      </div>
+      <div class="table-scroll" id="commentsList"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">
+        <span>Список коригуючих дій</span>
+        <button class="add-inline-btn" onclick="openQuickAdd('corrective')">+ Додати</button>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Опис</th><th>Коригуюча дія</th><th>Відп.</th><th>Дата</th><th>Статус</th></tr></thead>
+          <tbody id="corrBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- УЧАСНИКИ КОМАНДИ -->
+  <div class="section" style="margin-top:10px" id="membersSection">
+    <div class="section-title">
+      <span>👥 Учасники команди</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <span id="memberCount" style="font-family:var(--mono);font-size:11px;color:var(--c-muted)"></span>
+        <button class="add-inline-btn" onclick="openMembersPanel()">+ Додати учасника</button>
+      </div>
+    </div>
+
+    <!-- Сітка учасників -->
+    <div id="membersGrid" class="members-grid"></div>
+
+    <!-- Панель додавання -->
+    <div id="membersPanel" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--c-muted);margin-bottom:8px">Пошук співробітника в Bitrix24:</div>
+      <div class="members-select-wrap">
+        <input type="text" class="members-search" id="membersSearch" placeholder="Введіть ім'я або посаду..." oninput="filterB24Users(this.value)" onfocus="openMembersDropdown()">
+        <div class="members-dropdown" id="membersDropdown"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="hdr-btn" style="font-size:11px;padding:5px 12px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:4px;cursor:pointer" onclick="closeMembersPanel()">Закрити</button>
+        <button onclick="syncB24Users()" style="font-family:var(--mono);font-size:11px;padding:5px 12px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);border-radius:4px;cursor:pointer">↻ Оновити список з B24</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK ADD MODAL -->
+  <!-- CHART DATA EDITOR MODAL -->
+  <div class="modal-backdrop" id="chartEditModal" onclick="if(event.target===this)closeChartEdit()">
+    <div class="modal" style="width:min(600px,96vw);max-height:88vh">
+      <div class="modal-header">
+        <div class="modal-title" id="chartEditTitle">✎ Редагування даних графіка</div>
+        <button class="modal-close" onclick="closeChartEdit()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:12px">
+        <div style="font-size:11px;color:var(--c-muted);font-family:var(--mono);margin-bottom:10px">
+          Натисни на значення щоб редагувати. × — видалити точку.
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="chartEditTable">
+          <thead>
+            <tr style="background:#1a1f36;color:#fff">
+              <th style="padding:6px 10px;text-align:left;font-family:var(--mono);font-size:10px;font-weight:500">Мітка (дата)</th>
+              <th style="padding:6px 10px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:500">Значення</th>
+              <th style="padding:6px 10px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:500">План</th>
+              <th style="width:36px"></th>
+            </tr>
+          </thead>
+          <tbody id="chartEditBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <div id="chartEditMsg" style="font-family:var(--mono);font-size:11px;color:var(--c-muted)"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="closeChartEdit()" style="font-family:var(--mono);font-size:12px;padding:6px 16px;border:1px solid var(--c-border);background:transparent;border-radius:5px;cursor:pointer">Скасувати</button>
+          <button onclick="saveChartEdit()" style="font-family:var(--mono);font-size:12px;padding:6px 20px;border-radius:5px;border:none;background:#1a1f36;color:#f5c518;cursor:pointer">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="quickAddBackdrop" onclick="closeQuickAddOutside(event)">
+    <div class="modal" style="width:min(560px,95vw)">
+      <div class="modal-header">
+        <div class="modal-title" id="quickAddTitle">Додати запис</div>
+        <button class="modal-close" onclick="closeQuickAdd()">✕</button>
+      </div>
+      <div class="modal-body" id="quickAddBody"></div>
+      <div class="modal-footer">
+        <div class="form-msg" id="quickAddMsg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="closeQuickAdd()">Скасувати</button>
+          <button class="submit-btn" id="quickAddBtn" onclick="submitQuickAdd()">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  </div><!-- /mainDash -->
+
+  <!-- МОДАЛЬНЕ ВІКНО ПРАВИЛ -->
+  <div class="modal-backdrop" id="rulesModal" onclick="closeRulesOutside(event)" style="align-items:flex-start;padding:16px">
+    <div class="modal" style="width:min(1200px,98vw);max-height:96vh;margin:auto">
+      <div class="modal-header">
+        <div class="modal-title">✦ ПРАВИЛА ПРОГРАМИ «ПЛЮШКА»</div>
+        <button class="modal-close" onclick="closeRules()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:8px;text-align:center;overflow-y:auto">
+        <img src="img_0303e2c4a7.png" alt="Правила Плюшка" style="width:100%;height:auto;border-radius:6px;display:block;max-height:none">
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНЕ ВІКНО НАРАХУВАННЯ БАЛІВ -->
+  <div class="modal-backdrop" id="calcModal" onclick="if(event.target===this)closeCalc()" style="align-items:flex-start;padding:16px">
+    <div class="modal" style="width:min(1200px,98vw);max-height:96vh;margin:auto">
+      <div class="modal-header">
+        <div class="modal-title">💰 ЯК НАРАХОВУЮТЬСЯ РЕЗУЛЬТАТИ</div>
+        <button class="modal-close" onclick="closeCalc()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:12px;text-align:center">
+        <img src="img_54fb8d5cc9.png" alt="Нарахування балів" style="width:100%;height:auto;border-radius:6px;display:block;max-height:none">
+      </div>
+    </div>
+  </div>
+
+</div><!-- /dash -->
+
+<script src="app.js"></script>
+</body>
+</html>
