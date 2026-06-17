@@ -130,6 +130,12 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 /* KPI */
 .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
 .kpi-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+/* БАГ 7: стилізовані підказки при наведенні */
+.kpi-card[title]{cursor:help}
+[title]:hover{position:relative}
+.tip-hint{position:absolute;background:#1a1f36;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.4;max-width:260px;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .15s}
+.tip-hint.show{opacity:1}
+.tip-hint::after{content:'';position:absolute;bottom:-5px;left:20px;border:5px solid transparent;border-top-color:#1a1f36;border-bottom:0}
 .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,#1a1f36)}
 .kpi-label{font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;font-family:var(--mono)}
 .kpi-val{font-size:26px;font-weight:500;font-family:var(--mono);color:var(--c-text);line-height:1}
@@ -533,27 +539,27 @@ select.field-input{cursor:pointer}
 
   <!-- KPI -->
   <div class="kpi-strip">
-    <div class="kpi-card" style="--accent:var(--c-green)">
-      <div class="kpi-label" id="kpiEffLabel">Графік 1 (сер.)</div>
+    <div class="kpi-card" style="--accent:var(--c-green)" title="Ефективність команди у % від плану. ≥100% — зелений (план досягнуто), 80-99% — жовтий, <80% — червоний. Логіка єдина для всіх команд.">
+      <div class="kpi-label" id="kpiEffLabel">Ефективність команди</div>
       <div class="kpi-val" id="kpiEff">—</div>
       <div class="kpi-delta" id="kpiEffDelta">немає даних</div>
     </div>
-    <div class="kpi-card" style="--accent:var(--c-yellow)">
+    <div class="kpi-card" style="--accent:var(--c-yellow)" title="Кількість активних учасників команди. Натисніть «Команда» для редагування складу.">
       <div class="kpi-label">Учасників команди</div>
       <div class="kpi-val" id="kpiMV">—</div>
       <div class="kpi-delta" id="kpiMVDelta">осіб</div>
     </div>
-    <div class="kpi-card" style="--accent:var(--c-red)">
+    <div class="kpi-card" style="--accent:var(--c-red)" title="Активні проблеми та КД (корегувальні дії), які ще не закриті. Прокрутіть нижче для деталей.">
       <div class="kpi-label">Відкриті проблеми</div>
       <div class="kpi-val" id="kpiProblems">—</div>
       <div class="kpi-delta" id="kpiProblemsDelta">завантаження...</div>
     </div>
-    <div class="kpi-card" style="--accent:var(--c-blue)">
+    <div class="kpi-card" style="--accent:var(--c-blue)" title="Підписано / не підписано партнерських угод. Червона цифра — потребує уваги.">
       <div class="kpi-label">Партнерські угоди</div>
       <div class="kpi-val" id="kpiPartners">—</div>
       <div class="kpi-delta" id="kpiPartnersDelta">завантаження...</div>
     </div>
-    <div class="kpi-card" style="--accent:var(--c-orange)">
+    <div class="kpi-card" style="--accent:var(--c-orange)" title="Активні зауваження від керівництва, які потребують реакції команди.">
       <div class="kpi-label">Зауваження</div>
       <div class="kpi-val" id="kpiComments">—</div>
       <div class="kpi-delta" id="kpiCommentsDelta">завантаження...</div>
@@ -564,7 +570,7 @@ select.field-input{cursor:pointer}
   <div class="mission-row">
     <div class="section">
       <div class="section-title">
-        <span>Цінності та місія компанії</span>
+        <span title="Місія, цінності та цілі компанії. Спільні принципи для всіх команд.">Цінності та місія компанії</span>
         <button class="add-inline-btn" onclick="openMissionEdit('company')">✎ Редагувати</button>
       </div>
       <div class="mission-inner">
@@ -580,7 +586,7 @@ select.field-input{cursor:pointer}
     </div>
     <div class="section">
       <div class="section-title">
-        <span>Цінності та місія команди</span>
+        <span title="Унікальні місія, мета та цінності цієї команди. Натисніть «Редагувати» для зміни.">Цінності та місія команди</span>
         <button class="add-inline-btn" onclick="openMissionEdit('team')">✎ Редагувати</button>
       </div>
       <div class="mission-inner">
@@ -695,7 +701,7 @@ select.field-input{cursor:pointer}
   <!-- ТРЕКЕР ПРОБЛЕМ -->
   <div class="section" style="margin-bottom:10px">
     <div class="section-title">
-      <span>Трекер проблем</span>
+      <span title="Поточні проблеми команди та корегувальні дії. Фільтри: всі / в роботі / прострочено / вирішено.">Трекер проблем</span>
       <button class="add-inline-btn" onclick="openQuickAdd('problem')">+ Додати</button>
     </div>
     <div class="filter-bar">
@@ -716,7 +722,7 @@ select.field-input{cursor:pointer}
   <div class="bottom-grid">
     <div class="section">
       <div class="section-title">
-        <span>Ескаловані проблеми</span>
+        <span title="Проблеми, які не вдалося вирішити на рівні команди — передані вищому керівництву.">Ескаловані проблеми</span>
         <button class="add-inline-btn" onclick="openQuickAdd('escalation')">+ Додати</button>
       </div>
       <div class="table-scroll">
@@ -728,7 +734,7 @@ select.field-input{cursor:pointer}
     </div>
     <div class="section">
       <div class="section-title">
-        <span>Партнерські угоди</span>
+        <span title="Угоди з іншими командами: що ми робимо для них і що вони для нас. Зелені = всі підписали і дата не минула.">Партнерські угоди</span>
         <button class="add-inline-btn" onclick="location.href='agreements.html?teamA='+encodeURIComponent(getSelectedTeam())">+ Додати</button>
       </div>
       <!-- Лічильники -->
@@ -1507,6 +1513,12 @@ async function loadData(forceReload = false) {
 }
 
 function renderAll(data) {
+  // БАГ 5: захист від рендеру неправильної команди (race condition / стара відповідь)
+  const currentTeam = getSelectedTeam();
+  if (data && data.team && data.team !== currentTeam) {
+    console.warn('renderAll: відкинуто дані команди', data.team, '— зараз вибрана', currentTeam);
+    return;
+  }
   fullData = data;
   cachedFullData = data;
   // Завантажуємо конфіг графіків ПЕРЕД рендером KPI
@@ -1623,8 +1635,8 @@ function renderValuesList(id, valStr) {
 // KPI
 // ════════════════════════════════════════════════
 function renderKPI(daily, problems, partners, comments, charts) {
-  // Блок 1 — середнє значення Графіку 1 за місяць
-  // Використовуємо передані charts або беремо з cachedFullData
+  // БАГ 4: ЄДИНА ЛОГІКА ЕФЕКТИВНОСТІ — у % від плану для всіх команд
+  // Це дозволяє порівнювати команди на одній шкалі 0–100%+
   const chart1Data = (charts || cachedFullData?.charts || fullData?.charts || [])[0] || [];
   if (chart1Data.length) {
     const vals = chart1Data.map(r => r.value).filter(v => v !== null && v !== undefined);
@@ -1634,21 +1646,51 @@ function renderKPI(daily, problems, partners, comments, charts) {
       const unit  = cfg?.unit || '';
       const plan  = cfg?.planValue;
       const label = cfg?.title || 'Графік 1';
-      setText('kpiEffLabel', label);
-      setText('kpiEff', avg1 + (unit ? ' ' + unit : ''));
-      if (plan) {
-        const diff = +(avg1 - plan).toFixed(1);
-        const dir  = cfg?.planDir || 'above';
-        const good = dir === 'above' ? diff >= 0 : diff <= 0;
-        setDelta('kpiEffDelta', `план: ${plan}${unit ? ' '+unit : ''}`, good ? 'up' : 'dn');
+      const dir   = cfg?.planDir || 'above';
+
+      setText('kpiEffLabel', 'Ефективність команди');
+
+      if (plan && plan > 0) {
+        // Рахуємо ефективність у %
+        let eff;
+        if (dir === 'above') {
+          // Треба бути вище плану: 100% = факт досяг плану, більше = краще
+          eff = (avg1 / plan) * 100;
+        } else {
+          // Треба бути нижче плану (наприклад, час реагування, кількість помилок)
+          // 100% = факт досяг плану (= план); якщо менше — краще
+          eff = avg1 > 0 ? (plan / avg1) * 100 : 100;
+        }
+        eff = Math.round(eff);
+
+        setText('kpiEff', eff + '%');
+        // Підпис: показуємо факт vs план
+        const factStr = avg1 + (unit ? ' ' + unit : '');
+        const planStr = plan + (unit ? ' ' + unit : '');
+        const arrow = dir === 'above' ? '≥' : '≤';
+        setDelta('kpiEffDelta', `${factStr} ${arrow} ${planStr}`, eff >= 100 ? 'up' : 'dn');
+
+        // Колір картки: зелений ≥100%, жовтий 80-99%, червоний <80%
+        const card = document.getElementById('kpiEff')?.closest('.kpi-card');
+        if (card) {
+          if (eff >= 100) card.style.setProperty('--accent', 'var(--c-green)');
+          else if (eff >= 80) card.style.setProperty('--accent', 'var(--c-yellow)');
+          else card.style.setProperty('--accent', 'var(--c-red)');
+        }
       } else {
-        setDelta('kpiEffDelta', `${vals.length} записів`, 'up');
+        // Без плану — старий показ (середнє значення у власних одиницях)
+        setText('kpiEff', avg1 + (unit ? ' ' + unit : ''));
+        setDelta('kpiEffDelta', `немає плану (${vals.length} зап.)`, '');
+        const card = document.getElementById('kpiEff')?.closest('.kpi-card');
+        if (card) card.style.setProperty('--accent', 'var(--c-muted)');
       }
     } else {
+      setText('kpiEffLabel', 'Ефективність команди');
       setText('kpiEff', '—');
       setDelta('kpiEffDelta', 'немає даних', '');
     }
   } else {
+    setText('kpiEffLabel', 'Ефективність команди');
     setText('kpiEff', '—');
     setDelta('kpiEffDelta', 'немає даних', '');
   }
@@ -2874,6 +2916,46 @@ async function saveMissionEdit() {
 document.addEventListener('keydown', e => {
   if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); }
 });
+
+// БАГ 7: красиві спливаючі підказки (заміна нативного title)
+(function initNiceTooltips(){
+  let tipEl = null;
+  let currentTarget = null;
+  document.addEventListener('mouseenter', e => {
+    if (!e.target || !e.target.matches) return;
+    const el = e.target.closest('[title]');
+    if (!el || el === currentTarget) return;
+    const text = el.getAttribute('title');
+    if (!text) return;
+    // Зберігаємо оригінальний title та прибираємо його, щоб не з'явилась нативна підказка
+    el.setAttribute('data-tip', text);
+    el.removeAttribute('title');
+    currentTarget = el;
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.className = 'tip-hint';
+      document.body.appendChild(tipEl);
+    }
+    tipEl.textContent = text;
+    const r = el.getBoundingClientRect();
+    tipEl.style.left = (r.left + window.scrollX) + 'px';
+    tipEl.style.top  = (r.top + window.scrollY - tipEl.offsetHeight - 10) + 'px';
+    requestAnimationFrame(()=>{
+      tipEl.style.top = (r.top + window.scrollY - tipEl.offsetHeight - 10) + 'px';
+      tipEl.classList.add('show');
+    });
+  }, true);
+  document.addEventListener('mouseleave', e => {
+    if (!e.target || !e.target.matches) return;
+    const el = e.target.closest('[data-tip]');
+    if (!el) return;
+    // Повертаємо title
+    const text = el.getAttribute('data-tip');
+    if (text) { el.setAttribute('title', text); el.removeAttribute('data-tip'); }
+    if (tipEl) tipEl.classList.remove('show');
+    currentTarget = null;
+  }, true);
+})();
 
 loadSavedTeam().then(() => loadData()).then(() => {
   // Після завантаження поточної команди — фоново завантажуємо всі інші
