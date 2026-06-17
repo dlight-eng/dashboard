@@ -1623,13 +1623,55 @@ function renderMeta(meta) {
   renderValuesList('companyValues', meta.companyValues);
   renderValuesList('teamValues', meta.teamValues);
   // Встановлюємо місяць у дропдауні якщо ще не обраний
+  // Спочатку шукаємо ОСТАННІЙ місяць де реально є дані (по графіках і daily)
   const sel = document.getElementById('monthSelect');
-  if (sel && !sel.value && meta.month) {
-    const name = Object.keys(MONTH_MAP).find(m =>
-      meta.month.toUpperCase().includes(m.toUpperCase())
-    );
-    if (name) sel.value = name;
+  if (sel && !sel.value) {
+    const lastMonth = findLastMonthWithData(fullData);
+    if (lastMonth) {
+      sel.value = lastMonth;
+    } else if (meta.month) {
+      // Fallback: якщо даних немає — використовуємо значення з team_config
+      const name = Object.keys(MONTH_MAP).find(m =>
+        meta.month.toUpperCase().includes(m.toUpperCase())
+      );
+      if (name) sel.value = name;
+    }
   }
+}
+
+// Знаходить останній місяць у році, де є хоч якісь дані (графіки, daily, problems тощо)
+function findLastMonthWithData(data) {
+  if (!data) return null;
+  const monthsWithData = new Set();
+  const extractMonth = str => {
+    if (!str) return null;
+    const s = String(str);
+    // Формат "dd.mm.yyyy"
+    const m1 = s.split('.');
+    if (m1.length >= 2 && /^\d{1,2}$/.test(m1[1])) {
+      const n = parseInt(m1[1], 10);
+      if (n >= 1 && n <= 12) return n;
+    }
+    // Формат "yyyy-mm-dd"
+    const m2 = s.match(/^\d{4}-(\d{2})-\d{2}/);
+    if (m2) return parseInt(m2[1], 10);
+    return null;
+  };
+
+  // Перебираємо всі джерела дат
+  (data.daily || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
+  (data.problems || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
+  (data.corrective || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
+  (data.escalations || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
+  (data.comments || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
+  (data.charts || []).forEach(chartArr => {
+    (chartArr || []).forEach(r => { const m = extractMonth(r.label); if (m) monthsWithData.add(m); });
+  });
+
+  if (monthsWithData.size === 0) return null;
+  const maxMonth = Math.max(...monthsWithData);
+  // Знаходимо назву українською
+  return Object.keys(MONTH_MAP).find(name => MONTH_MAP[name] === maxMonth) || null;
 }
 function renderValuesList(id, valStr) {
   const el = document.getElementById(id);
