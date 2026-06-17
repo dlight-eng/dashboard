@@ -275,12 +275,11 @@ async function loadMatrix(forceReload = false) {
         return;
       }
     }
-    // БАГ 15: при forceReload завжди завантажуємо свіжі дані з сервера
     if (forceReload) cacheDel(CACHE_KEY);
     const rows = await sbFetch(
       'agreements?select=id,team_a,team_b,description,valid_until,accepted_us,accepted_partner,comment,sort_order&order=sort_order.asc,id.asc&limit=5000'
     );
-    allRows = rows; // БАГ 15: allRows завжди оновлюється свіжими даними
+    allRows = rows;
     cacheSet(CACHE_KEY, allRows);
     buildMatrix(allRows);
     renderMatrix();
@@ -306,7 +305,6 @@ function renderMatrix() {
       const cHL = ft && colTeam===ft;
       if (r===c) { html+=`<td class="matrix-cell cell-self">—</td>`; return; }
       if (r<c)  { html+=`<td class="matrix-cell" style="cursor:default;background:#e8eaf0;border:1px solid #d0d4e0"></td>`; return; }
-      // Беремо дані обох напрямків: r→c та c→r (матриця симетрична)
       const cellRC = matrixData[r]?.[c];
       const cellCR = matrixData[c]?.[r];
       const hl = (rHL||cHL)?'style="filter:brightness(.88)"':'';
@@ -330,7 +328,6 @@ function highlightTeam() { renderMatrix(); }
 
 function updateStats() {
   let done=0,over=0;
-  // Рахуємо лише унікальні угоди з allRows напряму (без дублів матриці)
   const today = new Date(); today.setHours(0,0,0,0);
   allRows.forEach(row => {
     let expired = false;
@@ -349,7 +346,7 @@ function updateStats() {
 // ── КАРТКА — миттєво з allRows ────────────
 let currentCard = { teamA:'',teamB:'',itemsAB:[],itemsBA:[],comment:'' };
 let editingRow = {};
-let cardSnapshot = null; // БАГ 13: знімок стану при відкритті
+let cardSnapshot = null;
 
 function cardToSnapshot(itemsAB, itemsBA, comment) {
   return JSON.stringify({
@@ -369,7 +366,6 @@ function openCard(teamA, teamB) {
   document.getElementById('labelBA').textContent = `${teamB} → ${teamA}`;
   document.getElementById('cardMsg').textContent = '';
 
-  // БАГ 15: завжди фільтруємо з актуального allRows
   const rowsAB = allRows.filter(r=>r.team_a===teamA&&r.team_b===teamB).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.id-b.id);
   const rowsBA = allRows.filter(r=>r.team_a===teamB&&r.team_b===teamA).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.id-b.id);
 
@@ -378,7 +374,6 @@ function openCard(teamA, teamB) {
   currentCard.comment = rowsAB[0]?.comment || rowsBA[0]?.comment || '';
   document.getElementById('cardComment').value = currentCard.comment;
 
-  // БАГ 13: зберігаємо знімок при відкритті для порівняння перед збереженням
   cardSnapshot = cardToSnapshot(currentCard.itemsAB, currentCard.itemsBA, currentCard.comment);
 
   updateStatusButtons();
@@ -413,7 +408,7 @@ function renderOblRows(side) {
     if (isEdit) return `<tr style="background:#f0f8ff">
       <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted);width:24px">${i+1}</td>
       <td><textarea class="obl-input" id="${side}-desc-${i}" rows="3" style="width:100%;min-width:160px;resize:vertical">${escHtml(it.desc||'')}</textarea></td>
-      <td style="width:130px"><input class="obl-input" id="${side}-date-${i}" type="date" value="${toDateInput(it.date||'')}" style="width:120px"></td>
+      <td style="width:130px"><input class="obl-input" id="${side}-date-${i}" type="date" value="${toDateInput(it.date||'')}" max="${getMaxDate()}" style="width:120px" title="Максимум +6 місяців від сьогодні"></td>
       <td style="text-align:center;width:40px"><input type="checkbox" class="obl-check" id="${side}-us-${i}" ${it.acceptedUs?'checked':''}></td>
       <td style="text-align:center;width:50px"><input type="checkbox" class="obl-check" id="${side}-pt-${i}" ${it.acceptedPartner?'checked':''}></td>
       <td style="width:80px;white-space:nowrap">
@@ -475,13 +470,29 @@ async function saveCard() {
     return;
   }
 
+  // БАГ 8: перевірка дат на максимум +6 місяців
+  const today = new Date(); today.setHours(0,0,0,0);
+  const maxDate = new Date(); maxDate.setMonth(maxDate.getMonth()+6); maxDate.setHours(23,59,59,999);
+  const allItems = [...itemsAB, ...itemsBA];
+  for (const it of allItems) {
+    if (!it.date) continue;
+    const p = String(it.date).split('.');
+    let d = null;
+    if (p.length===3) d = new Date(+p[2],+p[1]-1,+p[0]);
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(it.date)) d = new Date(it.date);
+    if (d && d > maxDate) {
+      msg.textContent='✕ Дата не може бути більше ніж +6 місяців від сьогодні: '+it.date;
+      msg.className='form-msg error';
+      return;
+    }
+  }
+
   msg.textContent='Збереження...'; msg.className='form-msg';
   try {
     await saveSide(teamA, teamB, itemsAB, comment);
     await saveSide(teamB, teamA, itemsBA, comment);
     cacheDel('sb_agr_v1');
     await loadMatrix(true);
-    // БАГ 15: після збереження оновлюємо snapshot і allRows вже свіжі
     cardSnapshot = currentSnapshot;
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
     showToast('Угоду збережено','success');
@@ -516,6 +527,12 @@ function toDateInput(d) {
   if(p.length===3) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
   if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
   return '';
+}
+function getMaxDate() {
+  // БАГ 8: повертає дату +6 місяців від сьогодні у форматі YYYY-MM-DD
+  const d = new Date();
+  d.setMonth(d.getMonth() + 6);
+  return d.toISOString().split('T')[0];
 }
 function formatDateDisplay(d) {
   if(!d) return '';
