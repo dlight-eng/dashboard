@@ -2125,7 +2125,7 @@ async function prefetchAllTeams() {
   const currentTeam = getSelectedTeam();
   const CACHE_TTL = 10 * 60 * 1000;
 
-  for (const team of TEAMS) {
+  for (const team of TEAMS_LIST) {
     if (team === currentTeam) continue; // вже завантажено
 
     const CACHE_KEY = 'dash_' + team;
