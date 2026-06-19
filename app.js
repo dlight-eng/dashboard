@@ -487,6 +487,15 @@ function escHtmlAttr(str) {
   return String(str||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 }
 
+function escHtml(str) {
+  return String(str||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 // Закрити dropdown при кліку поза
 document.addEventListener('click', e => {
   const panel = document.getElementById('membersPanel');
