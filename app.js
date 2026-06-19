@@ -676,28 +676,46 @@ function getSelectedMonth() {
 }
 
 function applyMonthFilter(data) {
-  const month = getSelectedMonth();
-  const mNum  = MONTH_MAP[month];
-
-  function filterByDate(arr) {
-    if (!arr || !month) return arr || [];
-    return arr.filter(r => {
-      const parts = String(r.date || '').split('.');
-      if (parts.length < 2) return true;
-      return parseInt(parts[1], 10) === mNum;
-    });
+  const period = getSelectedMonth();
+  // period може бути: "" (всі), "Червень" (старий формат - тільки місяць), або "Червень 2025"
+  let mNum = null, yNum = null;
+  if (period) {
+    const parts = period.split(' ');
+    const monthName = parts[0];
+    mNum = MONTH_MAP[monthName] || null;
+    if (parts[1] && /^\d{4}$/.test(parts[1])) yNum = parseInt(parts[1], 10);
   }
 
-  // Фільтруємо дані графіків по місяцю
+  function matchesPeriod(dateStr) {
+    if (!dateStr || !mNum) return true;
+    const s = String(dateStr);
+    // Формат "dd.mm.yyyy"
+    const p1 = s.split('.');
+    if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
+      if (parseInt(p1[1], 10) !== mNum) return false;
+      if (yNum && p1[2] && parseInt(p1[2], 10) !== yNum) return false;
+      return true;
+    }
+    // Формат "yyyy-mm-dd"
+    const p2 = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+    if (p2) {
+      if (parseInt(p2[2], 10) !== mNum) return false;
+      if (yNum && parseInt(p2[1], 10) !== yNum) return false;
+      return true;
+    }
+    return true;
+  }
+
+  function filterByDate(arr) {
+    if (!arr || !period) return arr || [];
+    return arr.filter(r => matchesPeriod(r.date));
+  }
+
+  // Фільтруємо дані графіків по місяцю+року
   function filterCharts(charts) {
-    if (!charts || !month) return charts || [];
+    if (!charts || !period) return charts || [];
     return charts.map(chartArr =>
-      (chartArr || []).filter(r => {
-        const label = String(r.label || '');
-        const parts = label.split('.');
-        if (parts.length < 2) return true;
-        return parseInt(parts[1], 10) === mNum;
-      })
+      (chartArr || []).filter(r => matchesPeriod(r.label))
     );
   }
 
@@ -707,8 +725,8 @@ function applyMonthFilter(data) {
   const escals   = filterByDate(data.escalations);
   const corr     = filterByDate(data.corrective);
   const comments = filterByDate(data.comments);
-  const monthly  = month
-    ? (data.monthly || []).filter(m => m.month === month)
+  const monthly  = period
+    ? (data.monthly || []).filter(m => m.month === period || m.month === (period.split(' ')[0]))
     : (data.monthly || []);
   const charts   = filterCharts(data.charts);
 
@@ -739,8 +757,9 @@ function renderMeta(meta) {
   setText('teamGoal', meta.teamGoal || '');
   renderValuesList('companyValues', meta.companyValues);
   renderValuesList('teamValues', meta.teamValues);
-  // Встановлюємо місяць у дропдауні якщо ще не обраний
-  // Спочатку шукаємо ОСТАННІЙ місяць де реально є дані (по графіках і daily)
+  // Спочатку наповнюємо дропдаун реальними періодами з даних
+  populateMonthDropdown(fullData);
+  // Потім встановлюємо значення (останній місяць де є дані)
   const sel = document.getElementById('monthSelect');
   if (sel && !sel.value) {
     const lastMonth = findLastMonthWithData(fullData);
@@ -756,39 +775,77 @@ function renderMeta(meta) {
   }
 }
 
-// Знаходить останній місяць у році, де є хоч якісь дані (графіки, daily, problems тощо)
-function findLastMonthWithData(data) {
-  if (!data) return null;
-  const monthsWithData = new Set();
-  const extractMonth = str => {
-    if (!str) return null;
-    const s = String(str);
-    // Формат "dd.mm.yyyy"
-    const m1 = s.split('.');
-    if (m1.length >= 2 && /^\d{1,2}$/.test(m1[1])) {
-      const n = parseInt(m1[1], 10);
-      if (n >= 1 && n <= 12) return n;
-    }
-    // Формат "yyyy-mm-dd"
-    const m2 = s.match(/^\d{4}-(\d{2})-\d{2}/);
-    if (m2) return parseInt(m2[1], 10);
-    return null;
+// Витягує {month, year} з рядка дати (підтримує "dd.mm.yyyy" і "yyyy-mm-dd")
+function extractPeriod(str) {
+  if (!str) return null;
+  const s = String(str);
+  const p1 = s.split('.');
+  if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
+    const m = parseInt(p1[1], 10);
+    if (m < 1 || m > 12) return null;
+    const y = (p1[2] && /^\d{4}$/.test(p1[2])) ? parseInt(p1[2], 10) : null;
+    return { month: m, year: y };
+  }
+  const p2 = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+  if (p2) return { month: parseInt(p2[2], 10), year: parseInt(p2[1], 10) };
+  return null;
+}
+
+// Збирає всі унікальні періоди {month, year} з даних
+function collectAllPeriods(data) {
+  if (!data) return [];
+  const periods = new Map(); // key="YYYY-MM" -> {month, year}
+  const collect = (str) => {
+    const p = extractPeriod(str);
+    if (!p) return;
+    const key = (p.year || 0) + '-' + String(p.month).padStart(2,'0');
+    periods.set(key, p);
   };
-
-  // Перебираємо всі джерела дат
-  (data.daily || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
-  (data.problems || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
-  (data.corrective || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
-  (data.escalations || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
-  (data.comments || []).forEach(r => { const m = extractMonth(r.date); if (m) monthsWithData.add(m); });
-  (data.charts || []).forEach(chartArr => {
-    (chartArr || []).forEach(r => { const m = extractMonth(r.label); if (m) monthsWithData.add(m); });
+  (data.daily       || []).forEach(r => collect(r.date));
+  (data.problems    || []).forEach(r => collect(r.date));
+  (data.corrective  || []).forEach(r => collect(r.date));
+  (data.escalations || []).forEach(r => collect(r.date));
+  (data.comments    || []).forEach(r => collect(r.date));
+  (data.charts      || []).forEach(arr => (arr || []).forEach(r => collect(r.label)));
+  // Сортуємо по спаданню (новіші зверху)
+  return Array.from(periods.values()).sort((a,b) => {
+    const ay = a.year || 0, by = b.year || 0;
+    if (ay !== by) return by - ay;
+    return b.month - a.month;
   });
+}
 
-  if (monthsWithData.size === 0) return null;
-  const maxMonth = Math.max(...monthsWithData);
-  // Знаходимо назву українською
-  return Object.keys(MONTH_MAP).find(name => MONTH_MAP[name] === maxMonth) || null;
+// Знаходить найновіший період у даних і повертає його як "Червень 2025"
+function findLastMonthWithData(data) {
+  const periods = collectAllPeriods(data);
+  if (!periods.length) return null;
+  const p = periods[0];
+  const name = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === p.month);
+  if (!name) return null;
+  return p.year ? `${name} ${p.year}` : name;
+}
+
+// Наповнює дропдаун `monthSelect` реальними періодами з даних
+function populateMonthDropdown(data) {
+  const sel = document.getElementById('monthSelect');
+  if (!sel) return;
+  const periods = collectAllPeriods(data);
+  const currentValue = sel.value;
+  // Лишаємо першу опцію "Всі періоди"
+  sel.innerHTML = '<option value="">Всі періоди</option>';
+  periods.forEach(p => {
+    const name = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === p.month);
+    if (!name) return;
+    const label = p.year ? `${name} ${p.year}` : name;
+    const opt = document.createElement('option');
+    opt.value = label;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+  // Відновлюємо вибране значення якщо воно ще існує в списку
+  if (currentValue && Array.from(sel.options).some(o => o.value === currentValue)) {
+    sel.value = currentValue;
+  }
 }
 function renderValuesList(id, valStr) {
   const el = document.getElementById(id);
