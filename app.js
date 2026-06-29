@@ -76,6 +76,10 @@ function onTeamChange() {
     btn.textContent = 'Графік '+(i+1);
   });
   loadData(false); // нова команда — спробуємо кеш
+  // Оновлюємо секцію пропозицій для нової команди (якщо вже завантажені)
+  if (typeof renderTeamProposals === 'function' && allProposals && allProposals.length !== undefined) {
+    renderTeamProposals();
+  }
 }
 
 
@@ -2138,7 +2142,7 @@ async function saveMissionEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); }
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); }
 });
 
 // БАГ 7: красиві спливаючі підказки (заміна нативного title)
@@ -2181,9 +2185,265 @@ document.addEventListener('keydown', e => {
   }, true);
 })();
 
+// ════════════════════════════════════════════════════════════
+// 💡 ПРОПОЗИЦІЇ
+// ════════════════════════════════════════════════════════════
+let allProposals = [];   // Кеш усіх пропозицій
+let currentPropId = null; // ID пропозиції відкритої в міні-модалці
+
+const PROP_STATUS_LABEL = {
+  submitted:   'Подана',
+  in_progress: 'В роботі',
+  implemented: 'Впроваджена',
+  rejected:    'Відхилена',
+};
+
+function propBadge(status) {
+  const label = PROP_STATUS_LABEL[status] || status;
+  return `<span class="prop-badge ${status}">${label}</span>`;
+}
+
+async function openProposalsModal() {
+  // Наповнюємо дропдаун команд
+  const teamSel = document.getElementById('propFormTeam');
+  const filterTeamSel = document.getElementById('propFilterTeam');
+  if (teamSel && !teamSel.options.length) {
+    TEAMS_LIST.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      teamSel.appendChild(o);
+      const o2 = document.createElement('option');
+      o2.value = t; o2.textContent = t;
+      filterTeamSel.appendChild(o2);
+    });
+  }
+  // За замовчуванням — поточна команда
+  teamSel.value = getSelectedTeam();
+  await populatePropFormAuthors(teamSel.value);
+
+  // Відкриваємо модалку
+  document.getElementById('proposalsModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Завантажуємо пропозиції
+  await loadProposals();
+}
+
+function closeProposalsModal() {
+  document.getElementById('proposalsModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function onPropFormTeamChange() {
+  const team = document.getElementById('propFormTeam').value;
+  await populatePropFormAuthors(team);
+}
+
+// Підтягуємо учасників обраної команди в дропдаун автора
+async function populatePropFormAuthors(team) {
+  const sel = document.getElementById('propFormAuthor');
+  sel.innerHTML = '<option value="">-- завантаження --</option>';
+  try {
+    const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position`);
+    sel.innerHTML = '';
+    if (!rows || !rows.length) {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '(немає учасників — спочатку додайте)';
+      sel.appendChild(o);
+      return;
+    }
+    const oEmpty = document.createElement('option');
+    oEmpty.value = ''; oEmpty.textContent = '-- виберіть --';
+    sel.appendChild(oEmpty);
+    rows.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.b24_id;
+      o.dataset.name = r.name;
+      o.textContent = r.position ? `${r.name} — ${r.position}` : r.name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = `<option value="">помилка: ${e.message}</option>`;
+  }
+}
+
+async function submitProposal() {
+  const msg = document.getElementById('propFormMsg');
+  const btn = document.getElementById('propSubmitBtn');
+  const team = document.getElementById('propFormTeam').value;
+  const authorSel = document.getElementById('propFormAuthor');
+  const authorId = authorSel.value;
+  const authorName = authorId ? (authorSel.options[authorSel.selectedIndex].dataset.name || '') : '';
+  const text = document.getElementById('propFormText').value.trim();
+
+  if (!team)  { msg.textContent='✕ Виберіть команду'; msg.style.color='var(--c-red)'; return; }
+  if (!text)  { msg.textContent='✕ Введіть текст пропозиції'; msg.style.color='var(--c-red)'; return; }
+  if (text.length < 5) { msg.textContent='✕ Текст занадто короткий'; msg.style.color='var(--c-red)'; return; }
+
+  btn.disabled = true; btn.textContent = 'Збереження...';
+  msg.textContent = ''; msg.style.color = '';
+  try {
+    await supaPost('proposals', {
+      from_team: team,
+      author_id: authorId || null,
+      author_name: authorName || null,
+      text: text,
+      status: 'submitted'
+    });
+    msg.textContent = '✓ Пропозицію подано'; msg.style.color = 'var(--c-green)';
+    document.getElementById('propFormText').value = '';
+    await loadProposals();
+    setTimeout(()=>{ msg.textContent=''; }, 2500);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Подати';
+  }
+}
+
+async function loadProposals() {
+  try {
+    const rows = await supaGet('proposals', 'select=*&order=created_at.desc&limit=500');
+    allProposals = rows || [];
+    renderProposalsTable();
+    // Також оновлюємо секцію на дашборді поточної команди
+    renderTeamProposals();
+  } catch(e) {
+    document.getElementById('proposalsTableBody').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;color:var(--c-red);padding:14px">Помилка: ${e.message}</td></tr>`;
+  }
+}
+
+function renderProposalsTable() {
+  const body = document.getElementById('proposalsTableBody');
+  const filterStatus = document.getElementById('propFilterStatus').value;
+  const filterTeam = document.getElementById('propFilterTeam').value;
+
+  let rows = allProposals;
+  if (filterStatus) rows = rows.filter(r => r.status === filterStatus);
+  if (filterTeam)   rows = rows.filter(r => r.from_team === filterTeam);
+
+  document.getElementById('propTotalCnt').textContent = `(${rows.length})`;
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--c-muted);padding:20px">Немає записів</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const d = new Date(r.created_at);
+    const dStr = isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    return `<tr class="prop-row" onclick="openProposalDetail(${r.id})">
+      <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
+      <td>${escHtml(r.from_team)}</td>
+      <td>${escHtml(r.author_name||'—')}</td>
+      <td class="prop-text-cell" title="${escHtmlAttr(r.text)}">${escHtml(r.text)}</td>
+      <td>${propBadge(r.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Рендер секції на дашборді (пропозиції поточної команди)
+function renderTeamProposals() {
+  const tbody = document.getElementById('teamProposalsBody');
+  if (!tbody) return;
+  const team = getSelectedTeam();
+  const rows = allProposals.filter(r => r.from_team === team);
+  document.getElementById('teamPropCount').textContent = rows.length ? `${rows.length} ${rows.length===1?'пропозиція':rows.length<5?'пропозиції':'пропозицій'}` : '';
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--c-muted);padding:14px">Немає записів</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const d = new Date(r.created_at);
+    const dStr = isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
+      <td>${escHtml(r.author_name||'—')}</td>
+      <td>${escHtml(r.text)}</td>
+      <td>${propBadge(r.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openProposalDetail(id) {
+  const p = allProposals.find(r => r.id === id);
+  if (!p) return;
+  currentPropId = id;
+  const d = new Date(p.created_at);
+  const dStr = isNaN(d) ? '—' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('pdDate').textContent   = dStr;
+  document.getElementById('pdTeam').textContent   = p.from_team;
+  document.getElementById('pdAuthor').textContent = p.author_name || '—';
+  document.getElementById('pdText').textContent   = p.text;
+  document.getElementById('pdStatus').value       = p.status || 'submitted';
+  document.getElementById('pdMsg').textContent    = '';
+  document.getElementById('proposalDetailModal').classList.add('open');
+}
+
+function closeProposalDetail() {
+  document.getElementById('proposalDetailModal').classList.remove('open');
+  currentPropId = null;
+}
+
+async function saveProposalStatus() {
+  if (!currentPropId) return;
+  const newStatus = document.getElementById('pdStatus').value;
+  const msg = document.getElementById('pdMsg');
+  const btn = document.getElementById('pdSaveBtn');
+  btn.disabled = true; btn.textContent = 'Збереження...';
+  try {
+    // PATCH через REST API: ?id=eq.X
+    const res = await fetch(`${SUPA_URL}/rest/v1/proposals?id=eq.${currentPropId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ status: newStatus, updated_at: new Date().toISOString() }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    msg.textContent = '✓ Збережено'; msg.style.color = 'var(--c-green)';
+    await loadProposals();
+    setTimeout(()=>closeProposalDetail(), 900);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Зберегти';
+  }
+}
+
+async function deleteProposal() {
+  if (!currentPropId) return;
+  if (!confirm('Видалити цю пропозицію? Дію не можна скасувати.')) return;
+  const msg = document.getElementById('pdMsg');
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/proposals?id=eq.${currentPropId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Prefer': 'return=minimal',
+      },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    msg.textContent = '✓ Видалено'; msg.style.color = 'var(--c-green)';
+    await loadProposals();
+    setTimeout(()=>closeProposalDetail(), 700);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  }
+}
+
 loadSavedTeam().then(() => loadData()).then(() => {
   // Після завантаження поточної команди — фоново завантажуємо всі інші
   prefetchAllTeams();
+  // Завантажуємо пропозиції для секції на дашборді
+  loadProposals();
 });
 
 // Попереднє завантаження даних для всіх команд у фоні
