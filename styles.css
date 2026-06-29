@@ -122,6 +122,16 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .kpi-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);padding:12px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
 /* БАГ 7: стилізовані підказки при наведенні */
 .kpi-card[title]{cursor:help}
+
+/* Пропозиції — бейджі статусів */
+.prop-badge{display:inline-block;padding:3px 9px;border-radius:11px;font-size:11px;font-weight:600;font-family:var(--mono);white-space:nowrap}
+.prop-badge.submitted{background:#e3e6ee;color:#5a6378}
+.prop-badge.in_progress{background:#fff4c2;color:#8a6d00}
+.prop-badge.implemented{background:#d4f1d7;color:#1f6f29}
+.prop-badge.rejected{background:#fdd9d9;color:#a32626}
+.prop-row{cursor:pointer;transition:background .12s}
+.prop-row:hover{background:#f6f7fb}
+.prop-text-cell{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 [title]:hover{position:relative}
 .tip-hint{position:absolute;background:#1a1f36;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.4;max-width:260px;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .15s}
 .tip-hint.show{opacity:1}
