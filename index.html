@@ -227,6 +227,7 @@
       </div>
       <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
+      <button class="hdr-btn" onclick="openProposalsModal()" title="Подати або переглянути пропозиції">💡 Пропозиції</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
     </div>
   </div>
@@ -533,6 +534,21 @@
     </div>
   </div>
 
+  <!-- ПРОПОЗИЦІЇ ЦІЄЇ КОМАНДИ -->
+  <div class="section" style="margin-top:10px" id="teamProposalsSection">
+    <div class="section-title">
+      <span title="Пропозиції щодо покращень, подані цією командою. Read-only — для подачі натисніть «💡 Пропозиції» вгорі.">💡 Пропозиції цієї команди</span>
+      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
+        <span id="teamPropCount" style="font-family:var(--mono);font-size:11px;color:var(--c-muted)"></span>
+        <button class="add-inline-btn" onclick="openProposalsModal()">+ Подати</button>
+      </div>
+    </div>
+    <table class="data-table" style="width:100%;font-size:12px">
+      <thead><tr><th style="width:90px">Дата</th><th style="width:160px">Автор</th><th>Текст</th><th style="width:120px">Статус</th></tr></thead>
+      <tbody id="teamProposalsBody"><tr><td colspan="4" style="text-align:center;color:var(--c-muted);padding:14px">Немає записів</td></tr></tbody>
+    </table>
+  </div>
+
   <!-- QUICK ADD MODAL -->
   <!-- CHART DATA EDITOR MODAL -->
   <div class="modal-backdrop" id="chartEditModal" onclick="if(event.target===this)closeChartEdit()">
@@ -613,6 +629,108 @@
   </div>
 
 </div><!-- /dash -->
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 💡 МОДАЛКА: ПРОПОЗИЦІЇ                         -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="proposalsModal">
+  <div class="modal" style="max-width:980px;width:96%">
+    <div class="modal-header">
+      <div class="modal-title">💡 Пропозиції щодо покращень</div>
+      <button class="modal-close" onclick="closeProposalsModal()">✕</button>
+    </div>
+
+    <!-- ФОРМА ПОДАЧІ -->
+    <div style="padding:14px 18px;background:#f6f7fb;border-bottom:1px solid var(--c-border)">
+      <div style="font-size:13px;font-weight:600;color:var(--c-text);margin-bottom:10px">📝 Подати нову пропозицію</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Команда</label>
+          <select id="propFormTeam" onchange="onPropFormTeamChange()" style="width:100%;padding:6px 8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:12px"></select>
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Автор (учасник команди)</label>
+          <select id="propFormAuthor" style="width:100%;padding:6px 8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:12px"></select>
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Текст пропозиції</label>
+        <textarea id="propFormText" rows="3" placeholder="Опишіть пропозицію..." style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="submit-btn" onclick="submitProposal()" id="propSubmitBtn">Подати</button>
+        <span id="propFormMsg" style="font-size:11px;font-family:var(--mono)"></span>
+      </div>
+    </div>
+
+    <!-- СПІЛЬНА ТАБЛИЦЯ -->
+    <div style="padding:14px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600">📋 Всі пропозиції <span id="propTotalCnt" style="color:var(--c-muted);font-weight:400"></span></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="propFilterStatus" onchange="renderProposalsTable()" style="padding:4px 8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:11px">
+            <option value="">Всі статуси</option>
+            <option value="submitted">Подана</option>
+            <option value="in_progress">В роботі</option>
+            <option value="implemented">Впроваджена</option>
+            <option value="rejected">Відхилена</option>
+          </select>
+          <select id="propFilterTeam" onchange="renderProposalsTable()" style="padding:4px 8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:11px">
+            <option value="">Всі команди</option>
+          </select>
+        </div>
+      </div>
+      <div style="max-height:380px;overflow-y:auto;border:1px solid var(--c-border);border-radius:6px">
+        <table class="data-table" style="width:100%;font-size:12px">
+          <thead style="position:sticky;top:0;background:#f6f7fb;z-index:1">
+            <tr><th style="width:90px">Дата</th><th style="width:130px">Команда</th><th style="width:140px">Автор</th><th>Текст</th><th style="width:110px">Статус</th></tr>
+          </thead>
+          <tbody id="proposalsTableBody"><tr><td colspan="5" style="text-align:center;color:var(--c-muted);padding:20px">Завантаження...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 💡 МІНІ-МОДАЛКА: ДЕТАЛІ ПРОПОЗИЦІЇ              -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="proposalDetailModal">
+  <div class="modal" style="max-width:560px;width:96%">
+    <div class="modal-header">
+      <div class="modal-title">📌 Деталі пропозиції</div>
+      <button class="modal-close" onclick="closeProposalDetail()">✕</button>
+    </div>
+    <div style="padding:18px">
+      <div style="margin-bottom:14px;font-size:12px;color:var(--c-muted)">
+        <div><b style="color:var(--c-text)">Дата:</b> <span id="pdDate"></span></div>
+        <div><b style="color:var(--c-text)">Команда:</b> <span id="pdTeam"></span></div>
+        <div><b style="color:var(--c-text)">Автор:</b> <span id="pdAuthor"></span></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:4px">Текст пропозиції:</div>
+        <div id="pdText" style="padding:10px;background:#f6f7fb;border-radius:6px;font-size:13px;line-height:1.5;white-space:pre-wrap"></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Статус:</label>
+        <select id="pdStatus" style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:13px">
+          <option value="submitted">⚪ Подана</option>
+          <option value="in_progress">🟡 В роботі</option>
+          <option value="implemented">🟢 Впроваджена</option>
+          <option value="rejected">🔴 Відхилена</option>
+        </select>
+      </div>
+      <div id="pdMsg" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:14px"></div>
+      <div style="display:flex;gap:8px;justify-content:space-between">
+        <button onclick="deleteProposal()" style="padding:8px 16px;background:transparent;border:1px solid var(--c-red);color:var(--c-red);border-radius:4px;cursor:pointer;font-size:12px">🗑 Видалити</button>
+        <div style="display:flex;gap:8px">
+          <button class="hdr-btn" onclick="closeProposalDetail()">Скасувати</button>
+          <button class="submit-btn" onclick="saveProposalStatus()" id="pdSaveBtn">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>
