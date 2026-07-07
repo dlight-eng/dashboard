@@ -45,7 +45,9 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .lb-bar{height:7px;border-radius:4px;transition:.3s}
 .lb-cat{font-family:var(--mono);font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:2px}
 .lb-val{font-family:var(--mono);font-size:12px}
+.lb-val-pos{color:#1a9e5c;font-weight:600}
 .lb-val-neg{color:#c0392b;font-weight:600}
+.lb-val-zero{color:#1a1f36}
 .hdr-btn.lb-active{background:#f5c518!important;color:#1a1f36!important;border-color:#f5c518!important;font-weight:600}
 #loadingOverlay{position:fixed;inset:0;background:rgba(240,242,247,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px);transition:opacity .3s}
 #loadingOverlay.hidden{opacity:0;pointer-events:none}
