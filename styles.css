@@ -28,6 +28,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .lb-table-wrap{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
 .lb-table{width:100%;border-collapse:collapse;font-size:12px}
 .lb-table th{font-family:var(--mono);font-size:10px;color:#fff;background:#1a1f36;padding:8px 10px;text-align:center;letter-spacing:.5px;border-right:1px solid rgba(255,255,255,.1)}
+.lb-table th[title]{cursor:help}
 .lb-table th.th-left{text-align:left}
 .lb-table td{padding:9px 10px;border-bottom:1px solid var(--c-border);text-align:center;vertical-align:middle}
 .lb-table tr:last-child td{border-bottom:none}
