@@ -217,7 +217,7 @@ function renderLeaderboard(teams) {
   const maxScore   = Math.max(...teams.map(t => t.totalScore), 1);
   const totalMoney = teams.reduce((s,t) => s + t.totalMoney, 0);
   const totalLikes = teams.reduce((s,t) => s + t.likes, 0);
-  const activeTeams = teams.filter(t => t.totalScore > 0).length;
+  const activeTeams = teams.length;
   const medals = ['🥇','🥈','🥉'];
   const barColors = ['#f5c518','#1a9e5c','#1a6fb5','#c0392b','#8e44ad','#e67e22','#27ae60','#2980b9','#e74c3c','#9b59b6','#f39c12','#16a085','#2c3e50','#d35400','#7f8c8d','#1abc9c'];
 
@@ -282,10 +282,13 @@ function renderLeaderboard(teams) {
     const rowBg = rank===1 ? 'background:linear-gradient(90deg,#fffbeb,#fff)' :
                   rank===2 ? 'background:linear-gradient(90deg,#f8f8f8,#fff)' : '';
     const note = t.note ? `<br><span class="lb-note">⭐ ${t.note}</span>` : '';
-    // Показуємо всі значення, включно з 0 та від'ємними
+    // Показуємо всі значення: >0 зелений, 0 чорний, <0 червоний
     const v = x => {
       if (x === null || x === undefined) return `<span style="color:var(--c-border)">—</span>`;
-      const cls = x < 0 ? 'lb-val lb-val-neg' : 'lb-val';
+      let cls = 'lb-val';
+      if (x > 0)      cls += ' lb-val-pos';
+      else if (x < 0) cls += ' lb-val-neg';
+      else            cls += ' lb-val-zero';
       return `<span class="${cls}">${x}</span>`;
     };
 
@@ -302,8 +305,8 @@ function renderLeaderboard(teams) {
         <div class="lb-bar-bg"><div class="lb-bar" style="width:${pct}%;background:${col}"></div></div>
       </td>
       <td>${v(t.likes)}</td>
-      <td>${t.money !== null && t.money !== undefined ? `<span class="lb-val">${t.money}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
-      <td>${t.totalMoney !== null && t.totalMoney !== undefined ? `<span class="lb-money">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
+      <td>${v(t.money)}</td>
+      <td>${t.totalMoney !== null && t.totalMoney !== undefined ? `<span class="lb-money ${t.totalMoney > 0 ? 'lb-val-pos' : t.totalMoney < 0 ? 'lb-val-neg' : 'lb-val-zero'}">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
     </tr>`;
   });
 
