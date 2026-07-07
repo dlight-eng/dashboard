@@ -276,14 +276,18 @@ function renderLeaderboard(teams) {
     const rank = i + 1;
     const pct  = maxScore > 0 ? Math.round(t.totalScore / maxScore * 100) : 0;
     const col  = barColors[i % barColors.length];
-    const rankEl = rank <= 3
-      ? `<span class="lb-rank lb-rank-${rank}">${medals[i]}</span>`
+    const rankEl = rank <= 2
+      ? `<span class="lb-rank lb-rank-${rank}" style="font-size:22px;font-weight:800">${rank}</span>`
       : `<span class="lb-rank lb-rank-n">${rank}</span>`;
     const rowBg = rank===1 ? 'background:linear-gradient(90deg,#fffbeb,#fff)' :
-                  rank===2 ? 'background:linear-gradient(90deg,#f8f8f8,#fff)' :
-                  rank===3 ? 'background:linear-gradient(90deg,#fdf5ee,#fff)' : '';
+                  rank===2 ? 'background:linear-gradient(90deg,#f8f8f8,#fff)' : '';
     const note = t.note ? `<br><span class="lb-note">⭐ ${t.note}</span>` : '';
-    const v = x => x > 0 ? `<span class="lb-val">${x}</span>` : `<span style="color:var(--c-border)">—</span>`;
+    // Показуємо всі значення, включно з 0 та від'ємними
+    const v = x => {
+      if (x === null || x === undefined) return `<span style="color:var(--c-border)">—</span>`;
+      const cls = x < 0 ? 'lb-val lb-val-neg' : 'lb-val';
+      return `<span class="${cls}">${x}</span>`;
+    };
 
     html += `<tr style="${rowBg}">
       <td style="text-align:center">${rankEl}</td>
@@ -298,8 +302,8 @@ function renderLeaderboard(teams) {
         <div class="lb-bar-bg"><div class="lb-bar" style="width:${pct}%;background:${col}"></div></div>
       </td>
       <td>${v(t.likes)}</td>
-      <td>${t.money > 0 ? `<span class="lb-val">${t.money}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
-      <td>${t.totalMoney > 0 ? `<span class="lb-money">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
+      <td>${t.money !== null && t.money !== undefined ? `<span class="lb-val">${t.money}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
+      <td>${t.totalMoney !== null && t.totalMoney !== undefined ? `<span class="lb-money">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
     </tr>`;
   });
 
