@@ -110,12 +110,19 @@ function closeCalc() {
   document.getElementById('calcModal').classList.remove('open');
   document.body.style.overflow = '';
 }
+let lbSelectedPeriod = 'total'; // 'total' | 'june_2025' | ...
+
 function toggleLeaderboard() {
   lbVisible = !lbVisible;
   document.getElementById('leaderboardPanel').style.display = lbVisible ? 'block' : 'none';
   document.getElementById('mainDash').style.display = lbVisible ? 'none' : 'block';
   document.getElementById('lbTabBtn').classList.toggle('lb-active', lbVisible);
   if (lbVisible && !lbData) loadLeaderboard();
+}
+
+function changeLbPeriod(period) {
+  lbSelectedPeriod = period;
+  if (lbData) renderLeaderboard(lbData);
 }
 
 async function loadLeaderboard() {
@@ -214,10 +221,24 @@ function renderLeaderboard(teams) {
   const medals = ['🥇','🥈','🥉'];
   const barColors = ['#f5c518','#1a9e5c','#1a6fb5','#c0392b','#8e44ad','#e67e22','#27ae60','#2980b9','#e74c3c','#9b59b6','#f39c12','#16a085','#2c3e50','#d35400','#7f8c8d','#1abc9c'];
 
+  const isTotal = lbSelectedPeriod === 'total';
+  const periodLabel = isTotal ? 'Загальні показники' : 'Червень 2025';
+  const periodSub   = isTotal
+    ? 'Рейтинг команд за весь період змагання'
+    : 'Рейтинг команд за червень 2025';
+
   let html = `
     <div class="lb-hero">
-      <div class="lb-hero-title">🏆 ЛІДЕРБОРД «ПЛЮШКА»</div>
-      <div class="lb-hero-sub">Рейтинг команд за показниками ефективності</div>
+      <div class="lb-hero-title">🏆 ЛІДЕРБОРД «ПЛЮШКА» — ${periodLabel}</div>
+      <div class="lb-hero-sub">${periodSub}</div>
+      <div style="margin-top:12px;display:flex;justify-content:center;gap:8px;align-items:center">
+        <span style="font-family:var(--mono);font-size:11px;color:rgba(245,197,24,.75)">Період:</span>
+        <select onchange="changeLbPeriod(this.value)"
+                style="font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,197,24,.35);background:rgba(255,255,255,.08);color:#f5c518;cursor:pointer;outline:none">
+          <option value="total"     ${isTotal ? 'selected' : ''}>📊 Загальні показники</option>
+          <option value="june_2025" ${!isTotal ? 'selected' : ''}>Червень 2025</option>
+        </select>
+      </div>
     </div>
 
     <div class="lb-stats">
