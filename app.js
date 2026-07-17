@@ -722,7 +722,7 @@ async function loadData(forceReload = false) {
       daily:       [],
       weekly:      [],
       problems:    (problemRows||[]).map(r => ({ date:r.date, description:r.description, action:r.action, responsible:r.responsible, status:r.status, id:r.id })),
-      corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id })),
+      corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id, source_problem_id:r.source_problem_id })),
       escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
       partners:    [],
       comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, author:r.author, status:r.status, id:r.id })),
@@ -1713,13 +1713,58 @@ function renderProblems(problems, filter) {
     ${editCell(i,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
     ${editCell(i,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
     <td>${statusSelect(i,'problems',p.status)}</td>
-  </tr>`).join('') || emptyRow(5,'Немає записів');
+    <td style="text-align:center"><button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button></td>
+  </tr>`).join('') || emptyRow(6,'Немає записів');
 }
 
 function filterProbs(filter, btn) {
   document.querySelectorAll('.filter-bar .chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderProblems(allProblems, filter);
+}
+
+// Створює коригуючу дію з обраної проблеми
+async function createCDFromProblem(problemId) {
+  const problem = allProblems.find(p => p.id === problemId);
+  if (!problem) {
+    showToast('Проблема не знайдена', 'error');
+    return;
+  }
+  if (!confirm(`Створити КД з цієї проблеми?\n\n"${problem.description || problem.desc || ''}"`)) return;
+
+  const team = getSelectedTeam();
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0,10); // YYYY-MM-DD
+
+  try {
+    const payload = {
+      team: team,
+      date: dateStr,
+      description: problem.description || problem.desc || '',
+      responsible: problem.responsible || problem.resp || '',
+      status: 'wait',
+      source_problem_id: problemId,
+    };
+    const rows = await supaPost('corrective', payload);
+    // Оновлюємо локальний список КД
+    if (rows && rows[0]) {
+      const r = rows[0];
+      allCorrective.unshift({
+        date: r.date,
+        description: r.description,
+        responsible: r.responsible,
+        deadline: r.deadline,
+        status: r.status,
+        id: r.id,
+        source_problem_id: r.source_problem_id,
+      });
+      renderCorrective(allCorrective);
+    }
+    sessionStorage.removeItem('dash_' + team);
+    showToast('✓ КД створено з проблеми №' + problemId, 'success');
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+  }
 }
 
 function renderEscalations(escalations) {
@@ -1838,14 +1883,19 @@ function renderComments(comments) {
 }
 
 function renderCorrective(corrective) {
-  document.getElementById('corrBody').innerHTML = corrective.map((r,i)=>`<tr>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n||(i+1)}</td>
-    <td style="font-size:11px;max-width:120px">${r.description||r.desc||'—'}</td>
-    ${editCell(i,'corrective','action', r.description||r.action||'', 'Написати дію')}
-    ${editCell(i,'corrective','resp',   r.responsible||r.resp||'',   'Відп.')}
-    <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
-    <td>${statusSelect(i,'corrective',r.status)}</td>
-  </tr>`).join('') || emptyRow(6,'Немає записів');
+  document.getElementById('corrBody').innerHTML = corrective.map((r,i)=>{
+    const sourceBadge = r.source_problem_id
+      ? ` <span class="cd-source-badge" title="Створено з проблеми №${r.source_problem_id}">🔗 з проблеми</span>`
+      : '';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n||(i+1)}</td>
+      <td style="font-size:11px;max-width:120px">${r.description||r.desc||'—'}${sourceBadge}</td>
+      ${editCell(i,'corrective','action', r.description||r.action||'', 'Написати дію')}
+      ${editCell(i,'corrective','resp',   r.responsible||r.resp||'',   'Відп.')}
+      <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
+      <td>${statusSelect(i,'corrective',r.status)}</td>
+    </tr>`;
+  }).join('') || emptyRow(6,'Немає записів');
 }
 
 // ════════════════════════════════════════════════
