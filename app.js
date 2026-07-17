@@ -2266,7 +2266,7 @@ async function saveMissionEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); }
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); }
 });
 
 // БАГ 7: красиві спливаючі підказки (заміна нативного title)
@@ -2561,6 +2561,203 @@ async function deleteProposal() {
   } catch(e) {
     msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
   }
+}
+
+// ════════════════════════════════════════════════════════════
+// 💰 ГАМАНЕЦЬ
+// ════════════════════════════════════════════════════════════
+let walletSelectedTeam = null;
+let walletMembersCache = {}; // team -> [members]
+
+async function openWalletModal() {
+  document.getElementById('walletModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Переконаємось що дані лідерборду завантажені
+  if (!lbRawData) {
+    document.getElementById('walletDetails').innerHTML =
+      '<div style="text-align:center;color:var(--c-muted);padding:60px 20px">Завантаження даних плюшки...</div>';
+    try { await loadLeaderboard(); } catch(e) {}
+  }
+
+  // Для першого відкриття — обираємо поточну команду
+  walletSelectedTeam = walletSelectedTeam || getSelectedTeam();
+  renderWalletTeamList();
+  renderWalletDetails(walletSelectedTeam);
+}
+
+function closeWalletModal() {
+  document.getElementById('walletModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Розраховує накопичувальні бали для команди на основі місць
+// Повертає: {totalPoints, totalLikes, totalMoneyPerPerson, wins, history}
+function calcTeamWallet(teamName) {
+  const raw = lbRawData || [];
+  if (!raw.length) return { totalPoints: 0, totalLikes: 0, totalMoneyPerPerson: 0, wins: [], history: [], members: 0 };
+
+  // Групуємо по місяцях
+  const byMonth = new Map();
+  raw.forEach(r => {
+    if (!r.month) return;
+    if (!byMonth.has(r.month)) byMonth.set(r.month, []);
+    byMonth.get(r.month).push(r);
+  });
+
+  let totalPoints = 0;
+  let members = 0;
+  const history = [];
+
+  // Для кожного місяця — сортуємо, знаходимо місце команди, нараховуємо
+  for (const [month, teams] of byMonth) {
+    const sorted = [...teams].sort((a, b) => b.totalScore - a.totalScore);
+    const idx = sorted.findIndex(t => t.name === teamName);
+    if (idx === -1) continue;
+
+    const row = sorted[idx];
+    if (row.members > members) members = row.members;
+
+    let percent = 0;
+    if (idx === 0) percent = 100;
+    else if (idx === 1) percent = 50;
+
+    const earnedPoints = Math.round(row.totalScore * percent / 100 * 10) / 10;
+    const earnedLikes  = Math.round(earnedPoints / 10 * 10) / 10;
+    const earnedMoneyTeam = earnedLikes * 200;
+    const earnedMoneyPerPerson = row.members > 0 ? Math.round(earnedMoneyTeam / row.members) : 0;
+
+    if (percent > 0) totalPoints += earnedPoints;
+
+    history.push({
+      month,
+      place: idx + 1,
+      teamScore: row.totalScore,
+      percent,
+      earnedPoints,
+      earnedLikes,
+      earnedMoneyPerPerson,
+      earnedMoneyTeam,
+      members: row.members,
+    });
+  }
+
+  const totalLikes = Math.round(totalPoints / 10 * 10) / 10;
+  const totalMoneyTeam = totalLikes * 200;
+  const totalMoneyPerPerson = members > 0 ? Math.round(totalMoneyTeam / members) : 0;
+  const wins = history.filter(h => h.percent > 0).length;
+
+  return { totalPoints, totalLikes, totalMoneyPerPerson, totalMoneyTeam, wins, history, members };
+}
+
+function renderWalletTeamList() {
+  const container = document.getElementById('walletTeamList');
+  container.innerHTML = TEAMS_LIST.map(team => {
+    const w = calcTeamWallet(team);
+    const isActive = team === walletSelectedTeam;
+    const isZero = w.totalMoneyPerPerson === 0;
+    return `<div class="wallet-team-item ${isActive ? 'active' : ''} ${isZero ? 'zero' : ''}" onclick="selectWalletTeam('${escHtmlAttr(team)}')">
+      <span>${escHtml(team)}</span>
+      <span class="wt-cash">${w.totalMoneyPerPerson > 0 ? '₴'+w.totalMoneyPerPerson : '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectWalletTeam(team) {
+  walletSelectedTeam = team;
+  renderWalletTeamList();
+  renderWalletDetails(team);
+}
+
+async function renderWalletDetails(team) {
+  const box = document.getElementById('walletDetails');
+  box.innerHTML = '<div style="text-align:center;color:var(--c-muted);padding:40px 20px">Завантаження...</div>';
+
+  const w = calcTeamWallet(team);
+
+  // Завантажимо учасників (з кешу або з Supabase)
+  let members = walletMembersCache[team];
+  if (!members) {
+    try {
+      const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position,photo`);
+      members = rows || [];
+      walletMembersCache[team] = members;
+    } catch(e) {
+      members = [];
+    }
+  }
+
+  // Підсумкові картки
+  const summary = `
+    <h3 style="margin:0 0 16px;font-size:16px;color:var(--c-text)">${escHtml(team)}</h3>
+    <div class="wallet-summary">
+      <div class="wallet-sum-card">
+        <div class="val">${w.totalPoints}</div>
+        <div class="lbl">Бали (накоп.)</div>
+      </div>
+      <div class="wallet-sum-card">
+        <div class="val">${w.totalLikes}</div>
+        <div class="lbl">Лайти</div>
+      </div>
+      <div class="wallet-sum-card">
+        <div class="val">₴${w.totalMoneyPerPerson}</div>
+        <div class="lbl">₴ на особу</div>
+      </div>
+      <div class="wallet-sum-card">
+        <div class="val">${w.wins}</div>
+        <div class="lbl">Перемог місяців</div>
+      </div>
+    </div>
+  `;
+
+  // Учасники
+  const perPerson = w.totalMoneyPerPerson;
+  const pointsPerPerson = members.length > 0 ? Math.round(w.totalPoints / members.length * 10) / 10 : 0;
+  const likesPerPerson  = members.length > 0 ? Math.round(w.totalLikes  / members.length * 10) / 10 : 0;
+
+  let membersHtml;
+  if (!members.length) {
+    membersHtml = '<div style="color:var(--c-muted);font-size:12px;padding:12px;text-align:center">Немає учасників у цій команді. Додайте їх у розділі «Учасники команди» на дашборді.</div>';
+  } else {
+    membersHtml = `<div class="wallet-member-list">
+      ${members.map(m => {
+        const initials = (m.name||'').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+        const photo = m.photo ? `<img src="${API_URL}?action=photo&url=${encodeURIComponent(m.photo)}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initials}'">` : initials;
+        return `<div class="wallet-member">
+          <div class="wallet-avatar">${photo}</div>
+          <div class="m-name">${escHtml(m.name||'—')}</div>
+          <div class="m-pos">${escHtml(m.position||'')}</div>
+          <div class="m-row"><span>Бали:</span><span>${pointsPerPerson}</span></div>
+          <div class="m-row"><span>Лайти:</span><span>${likesPerPerson}</span></div>
+          <div class="m-row"><span>Гроші:</span><span class="m-cash">₴${perPerson}</span></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Історія по місяцях
+  let historyHtml = '';
+  if (w.history.length) {
+    historyHtml = `
+      <div class="wallet-history-block">
+        <div class="wh-title">📅 Історія по місяцях</div>
+        ${w.history.map(h => {
+          const placeText = h.place === 1 ? '🥇 1 місце (100%)' :
+                            h.place === 2 ? '🥈 2 місце (50%)' :
+                            `${h.place} місце (0%)`;
+          const cls = h.percent > 0 ? `place-${h.place}` : 'zero';
+          return `<div class="wallet-history-row ${cls}">
+            <span class="wh-month">${escHtml(h.month)}</span>
+            <span class="wh-place">${placeText}</span>
+            <span style="font-family:var(--mono);font-size:11px">${h.teamScore} балів → ${h.earnedPoints}</span>
+            <span class="wh-cash">${h.earnedMoneyPerPerson > 0 ? '₴'+h.earnedMoneyPerPerson+'/особу' : '—'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  box.innerHTML = summary + membersHtml + historyHtml;
 }
 
 loadSavedTeam().then(() => loadData()).then(() => {
