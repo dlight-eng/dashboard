@@ -343,12 +343,13 @@ function renderLeaderboard(rawTeams) {
         <thead><tr>
           <th style="width:44px">#</th>
           <th class="th-left">Команда</th>
+          ${isTotal ? '' : `
           <th>Задачі<br><span style="font-size:9px;opacity:.7">/30</span></th>
           <th>Угоди<br><span style="font-size:9px;opacity:.7">/5</span></th>
           <th>Реакція<br><span style="font-size:9px;opacity:.7">/25</span></th>
           <th>Дашборд<br><span style="font-size:9px;opacity:.7">/20</span></th>
           <th>Пропозиції<br><span style="font-size:9px;opacity:.7">/20</span></th>
-          <th>Бали</th>
+          <th>Бали</th>`}
           <th title="Всього лайтів у команди — сума нарахованих балів у вигляді лайтів (1 бал = 0,1 лайта)">👍</th>
           <th title="Грошей на кожного учасника команди (розрахунок індивідуального виграшу)">₴/ос</th>
           <th title="Всього грошовий фонд команди — сума грошей за всіх учасників (₴/ос × кількість учасників)">Всього ₴</th>
@@ -378,6 +379,7 @@ function renderLeaderboard(rawTeams) {
     html += `<tr style="${rowBg}">
       <td style="text-align:center">${rankEl}</td>
       <td class="lb-team">${t.name}${note}</td>
+      ${isTotal ? '' : `
       <td>${v(t.tasksGreen)}</td>
       <td>${v(t.partnerAgreements)}</td>
       <td>${v(t.reactionViol)}</td>
@@ -386,7 +388,7 @@ function renderLeaderboard(rawTeams) {
       <td>
         <span class="lb-score">${t.totalScore}</span>
         <div class="lb-bar-bg"><div class="lb-bar" style="width:${pct}%;background:${col}"></div></div>
-      </td>
+      </td>`}
       <td>${v(t.likes)}</td>
       <td>${v(t.money)}</td>
       <td>${t.totalMoney !== null && t.totalMoney !== undefined ? `<span class="lb-money ${t.totalMoney > 0 ? 'lb-val-pos' : t.totalMoney < 0 ? 'lb-val-neg' : 'lb-val-zero'}">₴${t.totalMoney.toLocaleString('uk-UA')}</span>` : '<span style="color:var(--c-border)">—</span>'}</td>
