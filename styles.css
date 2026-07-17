@@ -166,6 +166,13 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .wallet-history-row.place-2 .wh-place{color:#7a7a7a;font-weight:600}
 .wallet-history-row .wh-cash{font-family:var(--mono);font-size:11px;color:var(--c-green)}
 .wallet-history-row.zero .wh-cash{color:var(--c-muted)}
+
+/* Кнопка "Створити КД" в трекері проблем */
+.mkcd-btn{font-size:10px;font-family:var(--mono);padding:4px 8px;border-radius:4px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;white-space:nowrap;transition:.15s}
+.mkcd-btn:hover{background:var(--c-blue-bg);border-color:var(--c-blue)}
+
+/* Мітка "з проблеми" в списку КД */
+.cd-source-badge{display:inline-block;font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:8px;background:#fff4c2;color:#8a6d00;font-weight:600;margin-left:4px;vertical-align:middle;cursor:help}
 [title]:hover{position:relative}
 .tip-hint{position:absolute;background:#1a1f36;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.4;max-width:260px;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .15s}
 .tip-hint.show{opacity:1}
