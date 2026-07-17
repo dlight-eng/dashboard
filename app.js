@@ -1604,12 +1604,28 @@ async function changeStatus(rowIndex, section, selectEl) {
 
 // ── INLINE EDIT CELL ─────────────────────────────
 function editCell(rowIndex, section, field, currentVal, label) {
+  // Для полів з переліком кроків — перетворюємо "1. ... 2. ..." на нові рядки
+  const displayVal = formatSteps(currentVal);
   return `<td class="edit-cell" id="cell_${section}_${rowIndex}_${field}">
     ${currentVal
-      ? `<span class="cell-val" onclick="activateEdit('${section}',${rowIndex},'${field}','${escQ(currentVal)}','${label}')">${currentVal}</span>`
+      ? `<span class="cell-val" onclick="activateEdit('${section}',${rowIndex},'${field}','${escQ(currentVal)}','${label}')">${displayVal}</span>`
       : `<button class="write-btn" onclick="activateEdit('${section}',${rowIndex},'${field}','','${label}')">✎ ${label}</button>`
     }
   </td>`;
+}
+
+// Розбиває суцільний текст типу "1. Один. 2. Два. 3. Три." на окремі рядки
+function formatSteps(val) {
+  if (!val) return '';
+  let s = String(val).trim();
+  // Якщо вже є переноси — не чіпаємо
+  if (s.includes('\n')) return escHtml(s);
+  // Шукаємо шаблон "N. " або "N) " після пробілу — це ознака списку
+  // Розбиваємо на кроки, зберігаючи номери
+  const pattern = /(?<=\s)(?=\d+[\.\)]\s)/g;
+  const parts = s.split(pattern).map(p => p.trim()).filter(Boolean);
+  if (parts.length > 1) return parts.map(p => escHtml(p)).join('\n');
+  return escHtml(s);
 }
 
 function escQ(str) {
