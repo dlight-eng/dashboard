@@ -88,6 +88,7 @@ function onTeamChange() {
 // ════════════════════════════════════════════════
 let lbVisible = false;
 let lbData = null;
+let lbRawData = null; // всі рядки з таблиці (усі місяці)
 
 
 // ── ПРАВИЛА ПЛЮШКИ ────────────────────────────
@@ -110,19 +111,64 @@ function closeCalc() {
   document.getElementById('calcModal').classList.remove('open');
   document.body.style.overflow = '';
 }
-let lbSelectedPeriod = 'total'; // 'total' | 'june_2026' | ...
+let lbSelectedPeriod = 'total'; // 'total' | 'Червень' | 'Липень' | ...
 
 function toggleLeaderboard() {
   lbVisible = !lbVisible;
   document.getElementById('leaderboardPanel').style.display = lbVisible ? 'block' : 'none';
   document.getElementById('mainDash').style.display = lbVisible ? 'none' : 'block';
   document.getElementById('lbTabBtn').classList.toggle('lb-active', lbVisible);
-  if (lbVisible && !lbData) loadLeaderboard();
+  if (lbVisible && !lbRawData) loadLeaderboard();
 }
 
 function changeLbPeriod(period) {
   lbSelectedPeriod = period;
-  if (lbData) renderLeaderboard(lbData);
+  if (lbRawData) renderLeaderboard(lbRawData);
+}
+
+// Знаходить унікальні місяці з даних, повертає у порядку появи
+function lbGetAvailableMonths(raw) {
+  const seen = new Set();
+  const months = [];
+  raw.forEach(r => {
+    if (r.month && !seen.has(r.month)) {
+      seen.add(r.month);
+      months.push(r.month);
+    }
+  });
+  return months;
+}
+
+// Агрегує (сумує) значення для команди за всі місяці
+function lbAggregateAll(raw) {
+  const byTeam = new Map();
+  raw.forEach(r => {
+    if (!r.name) return;
+    let t = byTeam.get(r.name);
+    if (!t) {
+      t = {
+        name: r.name,
+        tasksGreen: 0, partnerAgreements: 0, reactionViol: 0,
+        dashboardData: 0, proposals: 0, totalScore: 0,
+        likes: 0, money: 0, members: 0, totalMoney: 0,
+        month: 'Всього',
+      };
+      byTeam.set(r.name, t);
+    }
+    t.tasksGreen        += r.tasksGreen;
+    t.partnerAgreements += r.partnerAgreements;
+    t.reactionViol      += r.reactionViol;
+    t.dashboardData     += r.dashboardData;
+    t.proposals         += r.proposals;
+    t.totalScore        += r.totalScore;
+    t.likes             += r.likes;
+    t.money             += r.money;
+    t.totalMoney        += r.totalMoney;
+    // Кількість учасників беремо максимальну (не сумуємо, бо це одні й ті самі люди)
+    if (r.members > t.members) t.members = r.members;
+  });
+  // Округлимо лайти до 1 знака
+  return Array.from(byTeam.values()).map(t => ({ ...t, likes: Math.round(t.likes * 10) / 10 }));
 }
 
 async function loadLeaderboard() {
@@ -190,13 +236,14 @@ async function loadLeaderboard() {
         money:             get(10),  // K
         members:           get(11),  // L
         totalMoney:        get(12),  // M
-        note:              getStr(13), // N
+        month:             getStr(13), // N — місяць рядка
       });
     }
 
-    teams.sort((a,b) => b.totalScore - a.totalScore);
-    console.log('LB teams scores:', teams.map(t => t.name + ':' + t.totalScore));
-    lbData = teams;
+    // Зберігаємо СИРІ дані (всі рядки за всі місяці) для фільтрації
+    lbRawData = teams;
+    lbData = teams; // для сумісності зі старим кодом
+    console.log('LB loaded rows:', teams.length);
     renderLeaderboard(teams);
   } catch(e) {
     document.getElementById('lbContent').innerHTML = `
@@ -208,9 +255,40 @@ async function loadLeaderboard() {
   }
 }
 
-function renderLeaderboard(teams) {
-  if (!teams.length) {
+function renderLeaderboard(rawTeams) {
+  if (!rawTeams || !rawTeams.length) {
     document.getElementById('lbContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--c-muted)">Немає даних</div>';
+    return;
+  }
+
+  // Фільтруємо/агрегуємо залежно від обраного періоду
+  const isTotal = lbSelectedPeriod === 'total';
+  let teams;
+  if (isTotal) {
+    teams = lbAggregateAll(rawTeams);
+  } else {
+    teams = rawTeams.filter(t => t.month === lbSelectedPeriod);
+  }
+  teams.sort((a,b) => b.totalScore - a.totalScore);
+
+  if (!teams.length) {
+    // На випадок якщо для обраного місяця немає даних
+    const availableMonths = lbGetAvailableMonths(rawTeams);
+    const monthOptions = availableMonths.map(m =>
+      `<option value="${escHtmlAttr(m)}" ${lbSelectedPeriod === m ? 'selected' : ''}>${escHtml(m)} 2026</option>`
+    ).join('');
+    document.getElementById('lbContent').innerHTML = `
+      <div class="lb-hero">
+        <div class="lb-hero-title">🏆 ЛІДЕРБОРД «ПЛЮШКА»</div>
+        <div style="margin-top:12px;display:flex;justify-content:center;gap:8px;align-items:center">
+          <span style="font-family:var(--mono);font-size:11px;color:rgba(245,197,24,.75)">Період:</span>
+          <select onchange="changeLbPeriod(this.value)" style="font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,197,24,.35);background:rgba(255,255,255,.08);color:#f5c518;cursor:pointer;outline:none">
+            <option value="total">📊 Загальні показники</option>
+            ${monthOptions}
+          </select>
+        </div>
+      </div>
+      <div style="text-align:center;padding:40px;color:var(--c-muted)">Немає даних за обраний період</div>`;
     return;
   }
 
@@ -221,11 +299,16 @@ function renderLeaderboard(teams) {
   const medals = ['🥇','🥈','🥉'];
   const barColors = ['#f5c518','#1a9e5c','#1a6fb5','#c0392b','#8e44ad','#e67e22','#27ae60','#2980b9','#e74c3c','#9b59b6','#f39c12','#16a085','#2c3e50','#d35400','#7f8c8d','#1abc9c'];
 
-  const isTotal = lbSelectedPeriod === 'total';
-  const periodLabel = isTotal ? 'Загальні показники' : 'Червень 2026';
+  // Побудова динамічного дропдауна місяців
+  const availableMonths = lbGetAvailableMonths(rawTeams);
+  const monthOptions = availableMonths.map(m =>
+    `<option value="${escHtmlAttr(m)}" ${lbSelectedPeriod === m ? 'selected' : ''}>${escHtml(m)} 2026</option>`
+  ).join('');
+
+  const periodLabel = isTotal ? 'Загальні показники' : `${lbSelectedPeriod} 2026`;
   const periodSub   = isTotal
-    ? 'Рейтинг команд за весь період змагання'
-    : 'Рейтинг команд за червень 2025';
+    ? 'Рейтинг команд за весь період змагання (сума за всі місяці)'
+    : `Рейтинг команд за ${lbSelectedPeriod.toLowerCase()} 2026`;
 
   let html = `
     <div class="lb-hero">
@@ -235,8 +318,8 @@ function renderLeaderboard(teams) {
         <span style="font-family:var(--mono);font-size:11px;color:rgba(245,197,24,.75)">Період:</span>
         <select onchange="changeLbPeriod(this.value)"
                 style="font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:6px;border:1px solid rgba(245,197,24,.35);background:rgba(255,255,255,.08);color:#f5c518;cursor:pointer;outline:none">
-          <option value="total"     ${isTotal ? 'selected' : ''}>📊 Загальні показники</option>
-          <option value="june_2026" ${!isTotal ? 'selected' : ''}>Червень 2026</option>
+          <option value="total" ${isTotal ? 'selected' : ''}>📊 Загальні показники</option>
+          ${monthOptions}
         </select>
       </div>
     </div>
@@ -1560,15 +1643,28 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
   const cell = document.getElementById(cellId);
   if (cell) cell.innerHTML = '<span style="color:var(--c-muted);font-size:11px">Збереження...</span>';
 
+  // Мапінг UI-полів → колонки Supabase
+  // (в UI історично використовуються "steps", "resp", "action", а в БД — "action", "responsible")
+  const FIELD_MAP = {
+    problems:    { steps: 'action',     resp: 'responsible' },
+    escalations: { action: 'action',    resp: 'responsible' },
+    corrective:  { action: 'action',    resp: 'responsible' },
+    comments:    {},
+  };
+  const dbField = FIELD_MAP[section]?.[field] || field;
+
   try {
-    // Знаходимо ID запису в Supabase
     const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
     const tableMap = { problems: 'problems', escalations: 'escalations', corrective: 'corrective', comments: 'comments' };
     const row = maps[section]?.[rowIndex];
     if (!row?.id) throw new Error('ID не знайдено');
 
-    await supaPatch(tableMap[section], `id=eq.${row.id}`, { [field]: newVal });
-    if (maps[section]?.[rowIndex]) maps[section][rowIndex][field] = newVal;
+    await supaPatch(tableMap[section], `id=eq.${row.id}`, { [dbField]: newVal });
+    // Оновлюємо і UI-поле, і DB-поле локально
+    if (maps[section]?.[rowIndex]) {
+      maps[section][rowIndex][field] = newVal;
+      maps[section][rowIndex][dbField] = newVal;
+    }
 
     sessionStorage.removeItem('dash_' + getSelectedTeam());
     showToast('Збережено', 'success');
@@ -1597,9 +1693,9 @@ function renderProblems(problems, filter) {
   const filtered = currentProbFilter==='all' ? problems : problems.filter(p=>p.status===currentProbFilter);
   document.getElementById('probBody').innerHTML = filtered.map((p,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
-    <td style="max-width:160px;font-size:12px">${p.desc||'—'}</td>
-    ${editCell(i,'problems','steps', p.steps||'', 'Написати кроки')}
-    ${editCell(i,'problems','resp',  p.resp||'',  'Відп.')}
+    <td style="max-width:160px;font-size:12px">${p.description||p.desc||'—'}</td>
+    ${editCell(i,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
+    ${editCell(i,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
     <td>${statusSelect(i,'problems',p.status)}</td>
   </tr>`).join('') || emptyRow(5,'Немає записів');
 }
@@ -1613,8 +1709,8 @@ function filterProbs(filter, btn) {
 function renderEscalations(escalations) {
   document.getElementById('escalBody').innerHTML = escalations.map((e,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
-    <td style="font-size:11px;max-width:160px">${e.desc||'—'}</td>
-    ${editCell(i,'escalations','action', e.action||'', 'Написати дію')}
+    <td style="font-size:11px;max-width:160px">${e.description||e.desc||'—'}</td>
+    ${editCell(i,'escalations','action', e.responsible||e.action||'', 'Написати дію')}
     <td>${statusSelect(i,'escalations',e.status)}</td>
   </tr>`).join('') || emptyRow(4,'Немає записів');
 }
@@ -1727,10 +1823,10 @@ function renderComments(comments) {
 
 function renderCorrective(corrective) {
   document.getElementById('corrBody').innerHTML = corrective.map((r,i)=>`<tr>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n}</td>
-    <td style="font-size:11px;max-width:120px">${r.desc||'—'}</td>
-    ${editCell(i,'corrective','action', r.action||'', 'Написати дію')}
-    ${editCell(i,'corrective','resp',   r.resp||'',   'Відп.')}
+    <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n||(i+1)}</td>
+    <td style="font-size:11px;max-width:120px">${r.description||r.desc||'—'}</td>
+    ${editCell(i,'corrective','action', r.description||r.action||'', 'Написати дію')}
+    ${editCell(i,'corrective','resp',   r.responsible||r.resp||'',   'Відп.')}
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${r.date}</td>
     <td>${statusSelect(i,'corrective',r.status)}</td>
   </tr>`).join('') || emptyRow(6,'Немає записів');
