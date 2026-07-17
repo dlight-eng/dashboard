@@ -100,16 +100,16 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .members-option-pos{font-size:10px;color:var(--c-muted)}
 .add-inline-btn{padding:3px 9px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;transition:.15s;white-space:nowrap;margin-left:auto}
 .add-inline-btn:hover{border-color:var(--c-blue);background:var(--c-blue-bg)}
-.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text)}
+.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text);white-space:pre-line;word-wrap:break-word;line-height:1.55}
 .cell-val:hover{background:var(--c-blue-bg);color:var(--c-blue)}
-.edit-cell{min-width:120px;vertical-align:top;padding:4px 8px!important}
+.edit-cell{min-width:180px;vertical-align:top;padding:4px 8px!important}
 .inline-input{width:100%;font-family:var(--font);font-size:12px;padding:4px 7px;border:1px solid var(--c-blue);border-radius:4px;outline:none;background:#fff;color:var(--c-text);resize:vertical}
 .inline-actions{display:flex;gap:4px;margin-top:4px}
 .inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
 .inline-cancel{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer}
-.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text)}
+.cell-val{font-size:11px;cursor:pointer;display:block;padding:2px 4px;border-radius:3px;transition:.15s;color:var(--c-text);white-space:pre-line;word-wrap:break-word;line-height:1.55}
 .cell-val:hover{background:var(--c-blue-bg);color:var(--c-blue)}
-.edit-cell{min-width:120px;vertical-align:top;padding:4px 8px!important}
+.edit-cell{min-width:180px;vertical-align:top;padding:4px 8px!important}
 .inline-input{width:100%;font-family:var(--font);font-size:12px;padding:4px 7px;border:1px solid var(--c-blue);border-radius:4px;outline:none;background:#fff;color:var(--c-text);resize:vertical}
 .inline-actions{display:flex;gap:4px;margin-top:4px}
 .inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
