@@ -2624,8 +2624,9 @@ function calcTeamWallet(teamName) {
 
     const earnedPoints = Math.round(row.totalScore * percent / 100 * 10) / 10;
     const earnedLikes  = Math.round(earnedPoints / 10 * 10) / 10;
-    const earnedMoneyTeam = earnedLikes * 200;
-    const earnedMoneyPerPerson = row.members > 0 ? Math.round(earnedMoneyTeam / row.members) : 0;
+    // Гроші = бали × 20 (бо 10 балів = 1 лайт = 200 грн ⇒ 1 бал = 20 грн)
+    // Нараховується КОЖНОМУ учаснику однаково, не ділиться
+    const earnedMoneyPerPerson = Math.round(earnedLikes * 200);
 
     if (percent > 0) totalPoints += earnedPoints;
 
@@ -2637,17 +2638,16 @@ function calcTeamWallet(teamName) {
       earnedPoints,
       earnedLikes,
       earnedMoneyPerPerson,
-      earnedMoneyTeam,
       members: row.members,
     });
   }
 
   const totalLikes = Math.round(totalPoints / 10 * 10) / 10;
-  const totalMoneyTeam = totalLikes * 200;
-  const totalMoneyPerPerson = members > 0 ? Math.round(totalMoneyTeam / members) : 0;
+  // Гроші на особу = лайти × 200 (кожному однаково, не ділиться)
+  const totalMoneyPerPerson = Math.round(totalLikes * 200);
   const wins = history.filter(h => h.percent > 0).length;
 
-  return { totalPoints, totalLikes, totalMoneyPerPerson, totalMoneyTeam, wins, history, members };
+  return { totalPoints, totalLikes, totalMoneyPerPerson, wins, history, members };
 }
 
 function renderWalletTeamList() {
@@ -2750,7 +2750,7 @@ async function renderWalletDetails(team) {
             <span class="wh-month">${escHtml(h.month)}</span>
             <span class="wh-place">${placeText}</span>
             <span style="font-family:var(--mono);font-size:11px">${h.teamScore} балів → ${h.earnedPoints}</span>
-            <span class="wh-cash">${h.earnedMoneyPerPerson > 0 ? '₴'+h.earnedMoneyPerPerson+'/особу' : '—'}</span>
+            <span class="wh-cash">${h.earnedMoneyPerPerson > 0 ? '₴'+h.earnedMoneyPerPerson : '—'}</span>
           </div>`;
         }).join('')}
       </div>
