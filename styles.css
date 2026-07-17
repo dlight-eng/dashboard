@@ -136,6 +136,36 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .prop-row{cursor:pointer;transition:background .12s}
 .prop-row:hover{background:#f6f7fb}
 .prop-text-cell{max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Гаманець */
+.wallet-team-item{padding:10px 16px;cursor:pointer;font-size:13px;border-left:3px solid transparent;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:all .12s}
+.wallet-team-item:hover{background:#fff;border-left-color:#c8ccd8}
+.wallet-team-item.active{background:#fff;border-left-color:#f5c518;font-weight:600}
+.wallet-team-item .wt-cash{font-family:var(--mono);font-size:11px;color:var(--c-green);white-space:nowrap}
+.wallet-team-item.zero .wt-cash{color:var(--c-muted)}
+.wallet-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.wallet-sum-card{background:linear-gradient(135deg,#1a1f36,#2d3454);color:#fff;border-radius:8px;padding:12px 14px;text-align:center}
+.wallet-sum-card .val{font-size:22px;font-weight:700;color:#f5c518;font-family:var(--mono)}
+.wallet-sum-card .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-top:4px}
+.wallet-member-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.wallet-member{background:#fff;border:1px solid var(--c-border);border-radius:8px;padding:12px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.wallet-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#1a1f36,#2d3454);color:#f5c518;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;margin-bottom:8px;overflow:hidden}
+.wallet-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.wallet-member .m-name{font-size:12px;font-weight:600;color:var(--c-text);line-height:1.3;margin-bottom:2px}
+.wallet-member .m-pos{font-size:10px;color:var(--c-muted);margin-bottom:8px;line-height:1.3;min-height:12px}
+.wallet-member .m-row{display:flex;justify-content:space-between;width:100%;font-size:11px;font-family:var(--mono);padding:2px 0;border-top:1px dashed var(--c-border)}
+.wallet-member .m-row:first-of-type{border-top:none}
+.wallet-member .m-row span:last-child{font-weight:600}
+.wallet-member .m-cash{color:var(--c-green)}
+.wallet-history-block{margin-top:20px;padding-top:16px;border-top:1px solid var(--c-border)}
+.wallet-history-block .wh-title{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--c-muted);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono)}
+.wallet-history-row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed var(--c-border)}
+.wallet-history-row .wh-month{font-family:var(--mono);font-size:11px;color:var(--c-text)}
+.wallet-history-row .wh-place{font-family:var(--mono);font-size:11px}
+.wallet-history-row.place-1 .wh-place{color:#d4a300;font-weight:600}
+.wallet-history-row.place-2 .wh-place{color:#7a7a7a;font-weight:600}
+.wallet-history-row .wh-cash{font-family:var(--mono);font-size:11px;color:var(--c-green)}
+.wallet-history-row.zero .wh-cash{color:var(--c-muted)}
 [title]:hover{position:relative}
 .tip-hint{position:absolute;background:#1a1f36;color:#fff;padding:8px 12px;border-radius:6px;font-size:11px;line-height:1.4;max-width:260px;z-index:9999;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.25);opacity:0;transition:opacity .15s}
 .tip-hint.show{opacity:1}
