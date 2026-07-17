@@ -1606,12 +1606,24 @@ async function changeStatus(rowIndex, section, selectEl) {
 function editCell(rowIndex, section, field, currentVal, label) {
   // Для полів з переліком кроків — перетворюємо "1. ... 2. ..." на нові рядки
   const displayVal = formatSteps(currentVal);
-  return `<td class="edit-cell" id="cell_${section}_${rowIndex}_${field}">
+  const encoded = encodeURIComponent(currentVal || '');
+  return `<td class="edit-cell" id="cell_${section}_${rowIndex}_${field}" data-val="${encoded}" data-section="${section}" data-row="${rowIndex}" data-field="${field}" data-label="${escHtmlAttr(label)}">
     ${currentVal
-      ? `<span class="cell-val" onclick="activateEdit('${section}',${rowIndex},'${field}','${escQ(currentVal)}','${label}')">${displayVal}</span>`
-      : `<button class="write-btn" onclick="activateEdit('${section}',${rowIndex},'${field}','','${label}')">✎ ${label}</button>`
+      ? `<span class="cell-val" onclick="activateEditFromCell(this.parentNode)">${displayVal}</span>`
+      : `<button class="write-btn" onclick="activateEditFromCell(this.parentNode)">✎ ${label}</button>`
     }
   </td>`;
+}
+
+// Викликається з cell — читає всі параметри з data-* атрибутів
+function activateEditFromCell(cellEl) {
+  if (!cellEl) return;
+  const section  = cellEl.dataset.section;
+  const rowIndex = parseInt(cellEl.dataset.row, 10);
+  const field    = cellEl.dataset.field;
+  const label    = cellEl.dataset.label;
+  const val      = decodeURIComponent(cellEl.dataset.val || '');
+  activateEdit(section, rowIndex, field, val, label);
 }
 
 // Розбиває суцільний текст типу "1. Один. 2. Два. 3. Три." на окремі рядки
@@ -1629,27 +1641,39 @@ function formatSteps(val) {
 }
 
 function escQ(str) {
-  return String(str).replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+  return String(str)
+    .replace(/\\/g,'\\\\')      // спочатку — бекслеші
+    .replace(/'/g,'&#39;')
+    .replace(/"/g,'&quot;')
+    .replace(/\r/g,'')          // прибираємо CR
+    .replace(/\n/g,'\\n');      // переноси → escape-послідовність
 }
 
 function activateEdit(section, rowIndex, field, currentVal, label) {
   const cellId = `cell_${section}_${rowIndex}_${field}`;
   const cell = document.getElementById(cellId);
   if (!cell) return;
-  const isMultiline = ['steps','action','desc','text'].includes(field);
+  const isMultiline = ['steps','action','desc','text','description'].includes(field);
+  // Зберігаємо старе значення у data-old щоб cancel міг його відновити
+  cell.setAttribute('data-old', encodeURIComponent(currentVal || ''));
   cell.innerHTML = isMultiline
-    ? `<textarea class="inline-input" id="inp_${cellId}" rows="3" style="width:100%;min-width:140px">${currentVal}</textarea>
+    ? `<textarea class="inline-input" id="inp_${cellId}" rows="3" style="width:100%;min-width:140px">${escHtml(currentVal)}</textarea>
        <div class="inline-actions">
-         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${label}')">✓</button>
-         <button class="inline-cancel" onclick="cancelInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escQ(currentVal)}','${label}')">✕</button>
+         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escHtmlAttr(label)}')">✓</button>
+         <button class="inline-cancel" onclick="cancelInlineEditFromCell(this.closest('.edit-cell'))">✕</button>
        </div>`
-    : `<input class="inline-input" id="inp_${cellId}" type="text" value="${currentVal}" style="width:100%;min-width:120px">
+    : `<input class="inline-input" id="inp_${cellId}" type="text" value="${escHtmlAttr(currentVal)}" style="width:100%;min-width:120px">
        <div class="inline-actions">
-         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${label}')">✓</button>
-         <button class="inline-cancel" onclick="cancelInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escQ(currentVal)}','${label}')">✕</button>
+         <button class="inline-save" onclick="saveInlineEdit('${section}',${rowIndex},'${field}','${cellId}','${escHtmlAttr(label)}')">✓</button>
+         <button class="inline-cancel" onclick="cancelInlineEditFromCell(this.closest('.edit-cell'))">✕</button>
        </div>`;
   const inp = document.getElementById('inp_' + cellId);
   if (inp) { inp.focus(); inp.select && inp.select(); }
+}
+
+function cancelInlineEditFromCell(cellEl) {
+  if (!cellEl) return;
+  cancelInlineEdit(cellEl.dataset.section, +cellEl.dataset.row, cellEl.dataset.field);
 }
 
 async function saveInlineEdit(section, rowIndex, field, cellId, label) {
@@ -1691,7 +1715,7 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
   }
 }
 
-function cancelInlineEdit(section, rowIndex, field, cellId, oldVal, label) {
+function cancelInlineEdit(section, rowIndex, field) {
   rerenderSection(section);
 }
 
@@ -1709,11 +1733,14 @@ function renderProblems(problems, filter) {
   const filtered = currentProbFilter==='all' ? problems : problems.filter(p=>p.status===currentProbFilter);
   document.getElementById('probBody').innerHTML = filtered.map((p,i)=>`<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
-    <td style="max-width:160px;font-size:12px">${p.description||p.desc||'—'}</td>
+    ${editCell(i,'problems','description', p.description||p.desc||'', 'Написати опис')}
     ${editCell(i,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
     ${editCell(i,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
     <td>${statusSelect(i,'problems',p.status)}</td>
-    <td style="text-align:center"><button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button></td>
+    <td style="text-align:center;white-space:nowrap">
+      <button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button>
+      <button class="row-del-btn" onclick="deleteProblem(${p.id})" title="Видалити проблему">🗑</button>
+    </td>
   </tr>`).join('') || emptyRow(6,'Немає записів');
 }
 
@@ -1723,9 +1750,26 @@ function filterProbs(filter, btn) {
   renderProblems(allProblems, filter);
 }
 
-// Створює коригуючу дію з обраної проблеми
-async function createCDFromProblem(problemId) {
+// Видаляє проблему з БД
+async function deleteProblem(problemId) {
   const problem = allProblems.find(p => p.id === problemId);
+  if (!problem) return;
+  const desc = problem.description || problem.desc || '(без опису)';
+  if (!confirm(`Видалити проблему?\n\n"${desc}"\n\nДію не можна скасувати.`)) return;
+
+  try {
+    await supaDelete('problems', `id=eq.${problemId}`);
+    allProblems = allProblems.filter(p => p.id !== problemId);
+    sessionStorage.removeItem('dash_' + getSelectedTeam());
+    renderProblems(allProblems, currentProbFilter);
+    showToast('Видалено', 'success');
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+  }
+}
+
+// Створює коригуючу дію з обраної проблеми
+async function createCDFromProblem(problemId) {  const problem = allProblems.find(p => p.id === problemId);
   if (!problem) {
     showToast('Проблема не знайдена', 'error');
     return;
