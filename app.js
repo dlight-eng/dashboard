@@ -2824,8 +2824,9 @@ async function renderWalletDetails(team) {
 
   // Учасники
   const perPerson = w.totalMoneyPerPerson;
-  const pointsPerPerson = members.length > 0 ? Math.round(w.totalPoints / members.length * 10) / 10 : 0;
-  const likesPerPerson  = members.length > 0 ? Math.round(w.totalLikes  / members.length * 10) / 10 : 0;
+  // Бали і лайти показуємо однаковими для кожного учасника (не діляться)
+  const pointsPerPerson = w.totalPoints;
+  const likesPerPerson  = w.totalLikes;
 
   let membersHtml;
   if (!members.length) {
