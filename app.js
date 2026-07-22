@@ -984,12 +984,41 @@ function renderKPI(daily, problems, partners, comments, charts) {
       const cfg   = chartConfigs[0];
       const unit  = cfg?.unit || '';
       const plan  = cfg?.planValue;
+      const planMin = cfg?.planMin != null && cfg?.planMin !== '' ? +cfg.planMin : null;
+      const planMax = cfg?.planMax != null && cfg?.planMax !== '' ? +cfg.planMax : null;
+      const hasCorridor = planMin != null || planMax != null;
       const label = cfg?.title || 'Графік 1';
       const dir   = cfg?.planDir || 'above';
 
       setText('kpiEffLabel', 'Ефективність команди');
 
-      if (plan && plan > 0) {
+      if (hasCorridor) {
+        // Логіка коридору: якщо середнє в коридорі → 100%, поза → % відхилення від найближчої межі
+        const okMin = planMin == null || avg1 >= planMin;
+        const okMax = planMax == null || avg1 <= planMax;
+        let eff;
+        if (okMin && okMax) {
+          eff = 100;
+        } else {
+          let deviationPct = 0;
+          if (planMin != null && avg1 < planMin && planMin !== 0) {
+            deviationPct = Math.abs((planMin - avg1) / planMin) * 100;
+          } else if (planMax != null && avg1 > planMax && planMax !== 0) {
+            deviationPct = Math.abs((avg1 - planMax) / planMax) * 100;
+          }
+          eff = Math.max(0, Math.round(100 - deviationPct));
+        }
+        setText('kpiEff', eff + '%');
+        const factStr = avg1 + (unit ? ' ' + unit : '');
+        const rangeStr = (planMin != null ? planMin : '−∞') + '..' + (planMax != null ? planMax : '+∞') + (unit ? ' ' + unit : '');
+        setDelta('kpiEffDelta', `${factStr} у коридорі ${rangeStr}`, eff >= 100 ? 'up' : 'dn');
+        const card = document.getElementById('kpiEff')?.closest('.kpi-card');
+        if (card) {
+          if (eff >= 100) card.style.setProperty('--accent', 'var(--c-green)');
+          else if (eff >= 80) card.style.setProperty('--accent', 'var(--c-yellow)');
+          else card.style.setProperty('--accent', 'var(--c-red)');
+        }
+      } else if (plan && plan > 0) {
         // Рахуємо ефективність у %
         let eff;
         if (dir === 'above') {
@@ -1175,22 +1204,44 @@ function renderUserChart(idx, fullData) {
   // Форматуємо мітки для осі X: рядок залишаємо як є
   const labels = chartData.map(r => String(r.label ?? ''));
   const values = chartData.map(r => r.value);
-  const plan   = cfg.planValue != null ? +cfg.planValue : null;
-  const dir    = cfg.planDir || 'above'; // 'above' = добре вище, 'below' = добре нижче
+
+  // Пороги коридору мають пріоритет; planValue — застарілий одиничний варіант (для сумісності)
+  const planMin = cfg.planMin != null && cfg.planMin !== '' ? +cfg.planMin : null;
+  const planMax = cfg.planMax != null && cfg.planMax !== '' ? +cfg.planMax : null;
+  const plan    = cfg.planValue != null ? +cfg.planValue : null;
+  const dir     = cfg.planDir || 'above';
+  const hasCorridor = planMin != null || planMax != null;
   const unitSuffix = cfg.unit ? ' ' + cfg.unit : '';
 
   // Кольори стовпців залежно від плану
   function getColor(val) {
+    if (val == null) return '#e2e6f0';
+    // Пріоритет: коридор
+    if (hasCorridor) {
+      const okMin = planMin == null || val >= planMin;
+      const okMax = planMax == null || val <= planMax;
+      if (okMin && okMax) return 'rgba(26,158,92,0.82)'; // зелений — у коридорі
+      // Обчислюємо відхилення від найближчої межі у % від межі
+      let deviationPct = 0;
+      if (planMin != null && val < planMin && planMin !== 0) {
+        deviationPct = Math.abs((planMin - val) / planMin) * 100;
+      } else if (planMax != null && val > planMax && planMax !== 0) {
+        deviationPct = Math.abs((val - planMax) / planMax) * 100;
+      } else {
+        deviationPct = 100;
+      }
+      if (deviationPct <= 20) return 'rgba(212,160,23,0.82)'; // жовтий
+      return 'rgba(192,57,43,0.82)'; // червоний
+    }
+    // Одиничне значення (стара логіка)
     if (plan == null) return '#d4a017bb';
     if (dir === 'above') {
-      // Добре — вище плану
-      if (val >= plan)                    return 'rgba(26,158,92,0.82)';   // зелений
-      if (val >= plan * 0.9)              return 'rgba(212,160,23,0.82)';  // жовтий
-      return 'rgba(192,57,43,0.82)';                                        // червоний
+      if (val >= plan)       return 'rgba(26,158,92,0.82)';
+      if (val >= plan * 0.9) return 'rgba(212,160,23,0.82)';
+      return 'rgba(192,57,43,0.82)';
     } else {
-      // Добре — нижче плану
-      if (val <= plan)                    return 'rgba(26,158,92,0.82)';
-      if (val <= plan * 1.1)              return 'rgba(212,160,23,0.82)';
+      if (val <= plan)       return 'rgba(26,158,92,0.82)';
+      if (val <= plan * 1.1) return 'rgba(212,160,23,0.82)';
       return 'rgba(192,57,43,0.82)';
     }
   }
@@ -1216,18 +1267,51 @@ function renderUserChart(idx, fullData) {
     });
   }
 
-  // Лінія плану з налаштувань (горизонтальна через весь графік)
-  if (cfg.showPlan !== false && plan != null) {
-    datasets.push({
-      label: 'План',
-      data: Array(labels.length).fill(plan),
-      type: 'line',
-      borderColor: 'rgba(26,158,92,0.9)',
-      borderWidth: 2,
-      borderDash: [6, 4],
-      pointRadius: 0,
-      fill: false,
-    });
+  // План на графіку
+  if (cfg.showPlan !== false) {
+    if (hasCorridor) {
+      // Коридор — верхня і нижня межа + напівпрозора зафарбована зона між ними
+      // Зона малюється як fill між двома лініями
+      if (planMax != null) {
+        datasets.push({
+          label: 'Верхній поріг',
+          data: Array(labels.length).fill(planMax),
+          type: 'line',
+          borderColor: 'rgba(26,158,92,0.9)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: planMin != null ? '+1' : false, // зафарбовуємо до наступного датасету (нижнього порога)
+          backgroundColor: 'rgba(26,158,92,0.08)',
+          order: 99,
+        });
+      }
+      if (planMin != null) {
+        datasets.push({
+          label: 'Нижній поріг',
+          data: Array(labels.length).fill(planMin),
+          type: 'line',
+          borderColor: 'rgba(26,158,92,0.9)',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+          order: 100,
+        });
+      }
+    } else if (plan != null) {
+      // Стара логіка: одна лінія плану
+      datasets.push({
+        label: 'План',
+        data: Array(labels.length).fill(plan),
+        type: 'line',
+        borderColor: 'rgba(26,158,92,0.9)',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        fill: false,
+      });
+    }
   }
 
   const yMax = cfg.max != null && cfg.max !== '' ? +cfg.max : undefined;
@@ -1243,7 +1327,9 @@ function renderUserChart(idx, fullData) {
         tooltip: {
           callbacks: {
             label: ctx => {
-              if (ctx.dataset.label === 'План') return `План: ${ctx.raw}${unitSuffix}`;
+              if (ctx.dataset.label === 'План')            return `План: ${ctx.raw}${unitSuffix}`;
+              if (ctx.dataset.label === 'Верхній поріг')   return `Верх. поріг: ${ctx.raw}${unitSuffix}`;
+              if (ctx.dataset.label === 'Нижній поріг')    return `Ниж. поріг: ${ctx.raw}${unitSuffix}`;
               return `${ctx.dataset.label}: ${ctx.raw}${unitSuffix}`;
             }
           }
@@ -1312,19 +1398,26 @@ function renderChartSettingsPanel(idx) {
       </div>
     </div>
     <div class="form-section">
-      <div class="form-section-label">Лінія плану</div>
+      <div class="form-section-label">План (можна задати як одне значення, коридор, тільки верхню або тільки нижню межу)</div>
       <div class="form-grid">
-        <div class="form-field"><label class="field-label">Значення плану</label>
+        <div class="form-field"><label class="field-label">Нижній поріг (порожньо = немає)</label>
+          <input class="field-input" type="number" id="cs_planMin" value="${cfg.planMin??''}" placeholder="напр. 80"></div>
+        <div class="form-field"><label class="field-label">Верхній поріг (порожньо = немає)</label>
+          <input class="field-input" type="number" id="cs_planMax" value="${cfg.planMax??''}" placeholder="напр. 100"></div>
+        <div class="form-field"><label class="field-label">Одне значення плану (застаріле, для сумісності)</label>
           <input class="field-input" type="number" id="cs_planValue" value="${cfg.planValue??''}" placeholder="напр. 85"></div>
-        <div class="form-field"><label class="field-label">Умова виконання</label>
+        <div class="form-field"><label class="field-label">Умова виконання (для одиничного значення)</label>
           <select class="field-input" id="cs_planDir">
-            <option value="above" ${(cfg.planDir||'above')==='above'?'selected':''}>Добре — перетнути (вище плану)</option>
-            <option value="below" ${cfg.planDir==='below'?'selected':''}>Добре — не перетнути (нижче плану)</option>
+            <option value="above" ${(cfg.planDir||'above')==='above'?'selected':''}>Добре — вище плану</option>
+            <option value="below" ${cfg.planDir==='below'?'selected':''}>Добре — нижче плану</option>
           </select></div>
         <div class="form-field"><label class="field-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="cs_showPlan" ${cfg.showPlan!==false?'checked':''} style="width:16px;height:16px">
-          Показувати лінію плану
+          Показувати план на графіку
         </label></div>
+      </div>
+      <div style="font-size:11px;color:var(--c-muted);margin-top:8px;line-height:1.5">
+        💡 <b>Як це працює:</b> якщо задати обидва пороги — з'явиться коридор із зафарбованою зоною і двома пунктирними лініями. Тільки нижній — значення мають бути «не нижче». Тільки верхній — «не вище». Якщо задано лише «Одне значення» — стара логіка з однією лінією.
       </div>
     </div>
     <div class="form-section">
@@ -1375,6 +1468,8 @@ async function saveChartSettings() {
     min:        +document.getElementById('cs_min').value || 0,
     max:        maxVal !== '' ? +maxVal : null,
     showPlan:   document.getElementById('cs_showPlan').checked,
+    planMin:    document.getElementById('cs_planMin').value !== '' ? +document.getElementById('cs_planMin').value : null,
+    planMax:    document.getElementById('cs_planMax').value !== '' ? +document.getElementById('cs_planMax').value : null,
     planValue:  document.getElementById('cs_planValue').value !== '' ? +document.getElementById('cs_planValue').value : null,
     planDir:    document.getElementById('cs_planDir').value,
     triggerRed:    document.getElementById('cs_triggerRed')?.value !== '' ? +document.getElementById('cs_triggerRed').value : null,
@@ -1404,6 +1499,8 @@ async function saveAllTriggers() {
         triggerRed:    cfg.triggerRed    || 0,
         triggerYellow: cfg.triggerYellow || 0,
         planValue:     cfg.planValue     || 0,
+        planMin:       cfg.planMin       ?? null,
+        planMax:       cfg.planMax       ?? null,
         planDir:       cfg.planDir       || 'above',
         desc:          cfg.triggerDesc   || `Відхилення показника "${cfg.title||'Графік '+(i+1)}"`,
         resp:          cfg.triggerResp   || '',
