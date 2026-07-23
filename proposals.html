@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DLight — Пропозиції</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* Специфічні стилі для сторінки пропозицій */
+.pp-page{max-width:1280px;margin:0 auto;padding:20px 24px 60px}
+.pp-hero{background:linear-gradient(135deg,#1a1f36 0%,#2d3454 100%);border-radius:16px;padding:24px 32px;color:#fff;position:relative;overflow:hidden;margin-bottom:20px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.pp-hero-text{position:relative;z-index:2}
+.pp-hero-title{font-size:28px;font-weight:800;letter-spacing:-.5px;margin:0 0 6px}
+.pp-hero-sub{font-size:14px;opacity:.8;line-height:1.5;max-width:520px}
+.pp-hero-actions{display:flex;gap:10px;margin-top:14px}
+.pp-hero img{max-width:340px;max-height:200px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.pp-btn{padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.pp-btn-yellow{background:#f5c518;color:#1a1f36}
+.pp-btn-yellow:hover{background:#ffd633}
+.pp-btn-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.pp-btn-ghost:hover{background:rgba(255,255,255,.18)}
+.pp-back{display:inline-flex;align-items:center;gap:6px;color:var(--c-muted);font-size:12px;text-decoration:none;margin-bottom:12px;font-family:var(--mono)}
+.pp-back:hover{color:var(--c-blue)}
+
+.pp-section{background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow)}
+.pp-section-title{font-size:16px;font-weight:700;color:var(--c-text);margin:0 0 14px;display:flex;align-items:center;gap:8px}
+
+.pp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+.pp-field label{display:block;font-size:11px;color:var(--c-muted);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;font-family:var(--mono)}
+.pp-field select,.pp-field input,.pp-field textarea{width:100%;padding:10px 12px;border:1px solid var(--c-border);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;box-sizing:border-box}
+.pp-field textarea{resize:vertical;min-height:80px;line-height:1.5}
+.pp-form-actions{display:flex;align-items:center;gap:12px;margin-top:12px}
+.pp-submit{padding:11px 24px;border-radius:8px;background:linear-gradient(135deg,#f5c518,#e8b100);color:#1a1f36;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.15s}
+.pp-submit:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(245,197,24,.35)}
+.pp-submit:disabled{opacity:.5;cursor:wait;transform:none}
+.pp-msg{font-size:12px;font-family:var(--mono)}
+
+.pp-filters{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.pp-filters select{padding:6px 10px;border:1px solid var(--c-border);border-radius:6px;background:#fff;font-size:12px;font-family:inherit}
+
+.pp-table{width:100%;border-collapse:collapse;font-size:13px}
+.pp-table thead{background:#1a1f36;color:#fff}
+.pp-table th{padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono);font-weight:600}
+.pp-table td{padding:10px 12px;border-bottom:1px solid var(--c-border);vertical-align:top}
+.pp-table tr.prop-row:hover{background:#f6f7fb;cursor:pointer}
+
+/* Модалка правил */
+.pp-rules-modal .modal{max-width:1000px;width:96%;max-height:92vh}
+.pp-rules-modal img{width:100%;height:auto;border-radius:8px;display:block}
+
+@media(max-width:720px){
+  .pp-hero{grid-template-columns:1fr}
+  .pp-hero img{max-width:100%;order:-1}
+  .pp-form-grid{grid-template-columns:1fr}
+  .pp-page{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="pp-page">
+
+  <a href="index.html" class="pp-back">← Повернутися на дашборд</a>
+
+  <!-- HERO БАННЕР -->
+  <div class="pp-hero">
+    <div class="pp-hero-text">
+      <div class="pp-hero-title">💡 ПОДАВАЙ ПРОПОЗИЦІЇ!</div>
+      <div class="pp-hero-sub">Твоя ідея може змінити багато. Разом робимо DLight кращим щодня — запропонуй, як зробити нашу роботу ще ефективнішою.</div>
+      <div class="pp-hero-actions">
+        <button class="pp-btn pp-btn-yellow" onclick="scrollToForm()">✎ Подати пропозицію</button>
+        <button class="pp-btn pp-btn-ghost" onclick="openRulesModal()">📋 Правила розгляду</button>
+      </div>
+    </div>
+    <img src="proposal_hero.jpg" alt="DLight пропозиції">
+  </div>
+
+  <!-- ФОРМА ПОДАЧІ -->
+  <div class="pp-section" id="formSection">
+    <div class="pp-section-title">📝 Подати нову пропозицію</div>
+    <div class="pp-form-grid">
+      <div class="pp-field">
+        <label>Команда</label>
+        <select id="propFormTeam" onchange="onPropFormTeamChange()"></select>
+      </div>
+      <div class="pp-field">
+        <label>Автор (учасник команди)</label>
+        <select id="propFormAuthor"></select>
+      </div>
+    </div>
+    <div class="pp-field" style="margin-bottom:12px">
+      <label>Текст пропозиції</label>
+      <textarea id="propFormText" rows="4" placeholder="Опишіть пропозицію: яку проблему вирішує, як пропонуєте зробити..."></textarea>
+    </div>
+    <div class="pp-form-actions">
+      <button class="pp-submit" onclick="submitProposal()" id="propSubmitBtn">Подати пропозицію</button>
+      <span id="propFormMsg" class="pp-msg"></span>
+    </div>
+  </div>
+
+  <!-- СПІЛЬНА ТАБЛИЦЯ -->
+  <div class="pp-section">
+    <div class="pp-section-title" style="justify-content:space-between">
+      <span>📋 Всі пропозиції <span id="propTotalCnt" style="color:var(--c-muted);font-weight:400;font-size:13px"></span></span>
+      <div class="pp-filters">
+        <select id="propFilterStatus" onchange="renderProposalsTable()">
+          <option value="">Всі статуси</option>
+          <option value="submitted">Подана</option>
+          <option value="in_review">На розгляді</option>
+          <option value="in_progress">В роботі</option>
+          <option value="implemented">Впроваджена</option>
+          <option value="rejected">Відхилена</option>
+        </select>
+        <select id="propFilterTeam" onchange="renderProposalsTable()">
+          <option value="">Всі команди</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow:auto;border:1px solid var(--c-border);border-radius:8px">
+      <table class="pp-table">
+        <thead>
+          <tr>
+            <th style="width:90px">Дата</th>
+            <th style="width:140px">Команда</th>
+            <th style="width:140px">Автор</th>
+            <th>Текст</th>
+            <th style="width:130px">Статус</th>
+          </tr>
+        </thead>
+        <tbody id="proposalsTableBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--c-muted);padding:24px">Завантаження...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- МОДАЛКА ПРАВИЛ РОЗГЛЯДУ                          -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop pp-rules-modal" id="rulesModal" onclick="if(event.target===this)closeRulesModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📋 Процес роботи з пропозиціями</div>
+      <button class="modal-close" onclick="closeRulesModal()">✕</button>
+    </div>
+    <div style="padding:16px;overflow-y:auto">
+      <img src="proposal_rules.png" alt="Процес роботи з пропозиціями">
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- МІНІ-МОДАЛКА ДЕТАЛЕЙ ПРОПОЗИЦІЇ                  -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="proposalDetailModal" onclick="if(event.target===this)closeProposalDetail()">
+  <div class="modal" style="max-width:640px;width:96%;max-height:92vh;display:flex;flex-direction:column">
+    <div class="modal-header">
+      <div class="modal-title">📌 Деталі пропозиції</div>
+      <button class="modal-close" onclick="closeProposalDetail()">✕</button>
+    </div>
+    <div style="padding:18px;overflow-y:auto;flex:1">
+      <div style="margin-bottom:14px;font-size:12px;color:var(--c-muted)">
+        <div><b style="color:var(--c-text)">Дата:</b> <span id="pdDate"></span></div>
+        <div><b style="color:var(--c-text)">Команда:</b> <span id="pdTeam"></span></div>
+        <div><b style="color:var(--c-text)">Автор:</b> <span id="pdAuthor"></span></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:4px">📝 Текст пропозиції:</div>
+        <div id="pdText" style="padding:10px;background:#f6f7fb;border-radius:6px;font-size:13px;line-height:1.55;white-space:pre-wrap;max-height:280px;overflow-y:auto"></div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Статус:</label>
+        <select id="pdStatus" style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:13px">
+          <option value="submitted">⚪ Подана</option>
+          <option value="in_review">🔵 На розгляді</option>
+          <option value="in_progress">🟡 В роботі</option>
+          <option value="implemented">🟢 Впроваджена</option>
+          <option value="rejected">🔴 Відхилена</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">👤 Відповідальний:</label>
+          <input id="pdAssignee" type="text" placeholder="хто впроваджує..." style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">⏰ Строк виконання:</label>
+          <input id="pdDeadline" type="date" style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">💬 Коментар керівництва:</label>
+        <textarea id="pdComment" rows="3" placeholder="Примітки, рішення, пояснення..." style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit;resize:vertical;line-height:1.5;box-sizing:border-box"></textarea>
+      </div>
+      <div id="pdMsg" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:14px"></div>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--c-border);display:flex;gap:8px;justify-content:space-between;background:#f6f7fb">
+      <button onclick="deleteProposal()" style="padding:8px 16px;background:transparent;border:1px solid var(--c-red);color:var(--c-red);border-radius:4px;cursor:pointer;font-size:12px">🗑 Видалити</button>
+      <div style="display:flex;gap:8px">
+        <button class="pp-btn pp-btn-ghost" style="background:#e3e6ee;color:var(--c-text);border:1px solid var(--c-border)" onclick="closeProposalDetail()">Скасувати</button>
+        <button class="pp-submit" onclick="saveProposalStatus()" id="pdSaveBtn">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// КОНСТАНТИ
+// ═══════════════════════════════════════════════════════════
+const SUPA_URL = 'https://ejljwgxdgoaejwaffxdv.supabase.co';
+const SUPA_KEY = 'sb_publishable_0PZhEVmTnywUa11GNgW9NQ_QkEaCYcE';
+const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Медоїди','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тойота','Фіксики'];
+const PROP_STATUS_LABEL = {
+  submitted: 'Подана',
+  in_review: 'На розгляді',
+  in_progress: 'В роботі',
+  implemented: 'Впроваджена',
+  rejected: 'Відхилена',
+};
+
+let allProposals = [];
+let currentPropId = null;
+
+// ═══════════════════════════════════════════════════════════
+// УТИЛІТИ
+// ═══════════════════════════════════════════════════════════
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escHtmlAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtDDMM(d) {
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(d)) {
+    const p = d.split('-');
+    return `${p[2].slice(0,2)}.${p[1]}.${p[0]}`;
+  }
+  return d;
+}
+function propBadge(status) {
+  const label = PROP_STATUS_LABEL[status] || status;
+  return `<span class="prop-badge ${status}">${label}</span>`;
+}
+function propStatusLabel(s) { return PROP_STATUS_LABEL[s] || s || ''; }
+
+async function supaGet(path) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${path}`, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function supaPost(table, body) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + await r.text());
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════
+// ФОРМА
+// ═══════════════════════════════════════════════════════════
+function scrollToForm() {
+  document.getElementById('formSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => document.getElementById('propFormText').focus(), 400);
+}
+
+function initForm() {
+  const teamSel = document.getElementById('propFormTeam');
+  const filterTeamSel = document.getElementById('propFilterTeam');
+  TEAMS_LIST.forEach(t => {
+    const o1 = document.createElement('option');
+    o1.value = t; o1.textContent = t;
+    teamSel.appendChild(o1);
+    const o2 = document.createElement('option');
+    o2.value = t; o2.textContent = t;
+    filterTeamSel.appendChild(o2);
+  });
+  // Пробуємо відновити останню обрану команду
+  try {
+    const savedTeam = sessionStorage.getItem('selected_team');
+    if (savedTeam && TEAMS_LIST.includes(savedTeam)) {
+      teamSel.value = savedTeam;
+    } else {
+      teamSel.value = TEAMS_LIST[0];
+    }
+  } catch(e) { teamSel.value = TEAMS_LIST[0]; }
+  populatePropFormAuthors(teamSel.value);
+}
+
+async function onPropFormTeamChange() {
+  await populatePropFormAuthors(document.getElementById('propFormTeam').value);
+}
+
+async function populatePropFormAuthors(team) {
+  const sel = document.getElementById('propFormAuthor');
+  sel.innerHTML = '<option value="">-- завантаження --</option>';
+  try {
+    const rows = await supaGet(`team_members?team=eq.${encodeURIComponent(team)}&select=b24_id,name,position`);
+    sel.innerHTML = '';
+    if (!rows || !rows.length) {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '(немає учасників — додайте на дашборді)';
+      sel.appendChild(o);
+      return;
+    }
+    const oEmpty = document.createElement('option');
+    oEmpty.value = ''; oEmpty.textContent = '-- виберіть --';
+    sel.appendChild(oEmpty);
+    rows.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.b24_id;
+      o.dataset.name = r.name;
+      o.textContent = r.position ? `${r.name} — ${r.position}` : r.name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = `<option value="">помилка: ${e.message}</option>`;
+  }
+}
+
+async function submitProposal() {
+  const msg = document.getElementById('propFormMsg');
+  const btn = document.getElementById('propSubmitBtn');
+  const team = document.getElementById('propFormTeam').value;
+  const authorSel = document.getElementById('propFormAuthor');
+  const authorId = authorSel.value;
+  const authorName = authorId ? (authorSel.options[authorSel.selectedIndex].dataset.name || '') : '';
+  const text = document.getElementById('propFormText').value.trim();
+
+  if (!team)  { msg.textContent='✕ Виберіть команду'; msg.style.color='var(--c-red)'; return; }
+  if (!text)  { msg.textContent='✕ Введіть текст пропозиції'; msg.style.color='var(--c-red)'; return; }
+  if (text.length < 5) { msg.textContent='✕ Текст занадто короткий'; msg.style.color='var(--c-red)'; return; }
+
+  btn.disabled = true; btn.textContent = 'Збереження...';
+  msg.textContent = '';
+  try {
+    await supaPost('proposals', {
+      from_team: team,
+      author_id: authorId || null,
+      author_name: authorName || null,
+      text: text,
+      status: 'submitted'
+    });
+    msg.textContent = '✓ Пропозицію подано. Дякуємо за твою ініціативу! 💛'; msg.style.color = 'var(--c-green)';
+    document.getElementById('propFormText').value = '';
+    await loadProposals();
+    setTimeout(()=>{ msg.textContent=''; }, 5000);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Подати пропозицію';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ТАБЛИЦЯ
+// ═══════════════════════════════════════════════════════════
+async function loadProposals() {
+  try {
+    const rows = await supaGet('proposals?select=*&order=created_at.desc&limit=500');
+    allProposals = rows || [];
+    renderProposalsTable();
+  } catch(e) {
+    document.getElementById('proposalsTableBody').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;color:var(--c-red);padding:14px">Помилка: ${e.message}</td></tr>`;
+  }
+}
+
+function renderProposalsTable() {
+  const body = document.getElementById('proposalsTableBody');
+  const filterStatus = document.getElementById('propFilterStatus').value;
+  const filterTeam = document.getElementById('propFilterTeam').value;
+
+  let rows = allProposals;
+  if (filterStatus) rows = rows.filter(r => r.status === filterStatus);
+  if (filterTeam)   rows = rows.filter(r => r.from_team === filterTeam);
+
+  document.getElementById('propTotalCnt').textContent = `(${rows.length})`;
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--c-muted);padding:24px">Немає записів</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(r => {
+    const d = new Date(r.created_at);
+    const dStr = isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    const extra = [];
+    if (r.assignee_name) extra.push(`👤 ${escHtml(r.assignee_name)}`);
+    if (r.deadline)      extra.push(`⏰ ${escHtml(fmtDDMM(r.deadline))}`);
+    const extraLine = extra.length ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--mono);margin-top:2px">${extra.join(' · ')}</div>` : '';
+    const commentLine = r.admin_comment ? `<div style="font-size:11px;color:var(--c-text);background:#fff4c2;padding:4px 8px;border-radius:4px;margin-top:4px;border-left:3px solid #d4a017;white-space:pre-wrap"><b>💬</b> ${escHtml(r.admin_comment)}</div>` : '';
+    return `<tr class="prop-row" onclick="openProposalDetail(${r.id})">
+      <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
+      <td>${escHtml(r.from_team)}</td>
+      <td>${escHtml(r.author_name||'—')}</td>
+      <td>${escHtml(r.text)}${extraLine}${commentLine}</td>
+      <td>${propBadge(r.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ДЕТАЛІ / ЗБЕРЕЖЕННЯ / ВИДАЛЕННЯ
+// ═══════════════════════════════════════════════════════════
+function openProposalDetail(id) {
+  const p = allProposals.find(r => r.id === id);
+  if (!p) return;
+  currentPropId = id;
+  const d = new Date(p.created_at);
+  const dStr = isNaN(d) ? '—' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('pdDate').textContent   = dStr;
+  document.getElementById('pdTeam').textContent   = p.from_team;
+  document.getElementById('pdAuthor').textContent = p.author_name || '—';
+  document.getElementById('pdText').textContent   = p.text;
+  document.getElementById('pdStatus').value       = p.status || 'submitted';
+  document.getElementById('pdAssignee').value     = p.assignee_name || '';
+  document.getElementById('pdDeadline').value     = p.deadline || '';
+  document.getElementById('pdComment').value      = p.admin_comment || '';
+  document.getElementById('pdMsg').textContent    = '';
+  document.getElementById('proposalDetailModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProposalDetail() {
+  document.getElementById('proposalDetailModal').classList.remove('open');
+  document.body.style.overflow = '';
+  currentPropId = null;
+}
+
+async function saveProposalStatus() {
+  if (!currentPropId) return;
+  const newStatus    = document.getElementById('pdStatus').value;
+  const assignee     = document.getElementById('pdAssignee').value.trim() || null;
+  const deadline     = document.getElementById('pdDeadline').value || null;
+  const adminComment = document.getElementById('pdComment').value.trim() || null;
+  const msg = document.getElementById('pdMsg');
+  const btn = document.getElementById('pdSaveBtn');
+  btn.disabled = true; btn.textContent = 'Збереження...';
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/proposals?id=eq.${currentPropId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPA_KEY,
+        'Authorization': 'Bearer ' + SUPA_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        assignee_name: assignee,
+        deadline: deadline,
+        admin_comment: adminComment,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
+    msg.textContent = '✓ Збережено'; msg.style.color = 'var(--c-green)';
+    await loadProposals();
+    setTimeout(()=>closeProposalDetail(), 900);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Зберегти';
+  }
+}
+
+async function deleteProposal() {
+  if (!currentPropId) return;
+  if (!confirm('Видалити цю пропозицію? Дію не можна скасувати.')) return;
+  const msg = document.getElementById('pdMsg');
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/proposals?id=eq.${currentPropId}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Prefer': 'return=minimal' },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    msg.textContent = '✓ Видалено'; msg.style.color = 'var(--c-green)';
+    await loadProposals();
+    setTimeout(()=>closeProposalDetail(), 700);
+  } catch(e) {
+    msg.textContent = '✕ ' + e.message; msg.style.color = 'var(--c-red)';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// МОДАЛКИ / КЛАВІШИ
+// ═══════════════════════════════════════════════════════════
+function openRulesModal() {
+  document.getElementById('rulesModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeRulesModal() {
+  document.getElementById('rulesModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeRulesModal(); closeProposalDetail(); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// ІНІЦІАЛІЗАЦІЯ
+// ═══════════════════════════════════════════════════════════
+initForm();
+loadProposals();
+</script>
+
+</body>
+</html>
