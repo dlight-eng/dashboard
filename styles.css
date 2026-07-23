@@ -171,6 +171,24 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .mkcd-btn{font-size:10px;font-family:var(--mono);padding:4px 8px;border-radius:4px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;white-space:nowrap;transition:.15s}
 .mkcd-btn:hover{background:var(--c-blue-bg);border-color:var(--c-blue)}
 
+/* Кнопка видалення рядка */
+.row-del-btn{font-size:12px;padding:3px 7px;border-radius:4px;border:1px solid var(--c-border);background:transparent;color:var(--c-muted);cursor:pointer;margin-left:4px;transition:.15s}
+.row-del-btn:hover{background:#fdd9d9;border-color:var(--c-red);color:var(--c-red)}
+
+/* Пошук */
+.search-group{padding:6px 0}
+.search-group-header{padding:6px 16px;font-size:10px;font-family:var(--mono);letter-spacing:.5px;color:var(--c-muted);text-transform:uppercase;font-weight:600;background:#f6f7fb;border-bottom:1px solid var(--c-border)}
+.search-item{padding:8px 16px;cursor:pointer;transition:.12s;display:flex;gap:10px;align-items:center;border-bottom:1px solid #f6f7fb}
+.search-item:hover,.search-item.active{background:var(--c-blue-bg)}
+.search-item-icon{font-size:16px;flex-shrink:0}
+.search-item-body{flex:1;min-width:0}
+.search-item-title{font-size:13px;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.search-item-meta{font-size:11px;color:var(--c-muted);font-family:var(--mono);margin-top:2px}
+.search-item mark{background:#fff4c2;color:#8a6d00;padding:0 2px;border-radius:2px;font-weight:600}
+.search-empty{padding:40px 20px;text-align:center;color:var(--c-muted);font-size:12px}
+.search-highlighted{animation:searchHighlight 2s ease-out;border-radius:4px}
+@keyframes searchHighlight{0%{background:#fff4c2}100%{background:transparent}}
+
 /* Мітка "з проблеми" в списку КД */
 .cd-source-badge{display:inline-block;font-size:9px;font-family:var(--mono);padding:1px 6px;border-radius:8px;background:#fff4c2;color:#8a6d00;font-weight:600;margin-left:4px;vertical-align:middle;cursor:help}
 [title]:hover{position:relative}
