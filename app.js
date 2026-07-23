@@ -2526,6 +2526,7 @@ let currentPropId = null; // ID пропозиції відкритої в мі�
 
 const PROP_STATUS_LABEL = {
   submitted:   'Подана',
+  in_review:   'На розгляді',
   in_progress: 'В роботі',
   implemented: 'Впроваджена',
   rejected:    'Відхилена',
@@ -2670,11 +2671,12 @@ function renderProposalsTable() {
     if (r.assignee_name) extra.push(`👤 ${escHtml(r.assignee_name)}`);
     if (r.deadline)      extra.push(`⏰ ${escHtml(fmtDDMM(r.deadline))}`);
     const extraLine = extra.length ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--mono);margin-top:2px">${extra.join(' · ')}</div>` : '';
+    const commentLine = r.admin_comment ? `<div style="font-size:11px;color:var(--c-text);background:#fff4c2;padding:4px 8px;border-radius:4px;margin-top:4px;border-left:3px solid #d4a017;white-space:pre-wrap"><b>💬</b> ${escHtml(r.admin_comment)}</div>` : '';
     return `<tr class="prop-row" onclick="openProposalDetail(${r.id})">
       <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
       <td>${escHtml(r.from_team)}</td>
       <td>${escHtml(r.author_name||'—')}</td>
-      <td class="prop-text-cell" title="${escHtmlAttr(r.text)}">${escHtml(r.text)}${extraLine}</td>
+      <td class="prop-text-cell" title="${escHtmlAttr(r.text)}">${escHtml(r.text)}${extraLine}${commentLine}</td>
       <td>${propBadge(r.status)}</td>
     </tr>`;
   }).join('');
@@ -2709,10 +2711,11 @@ function renderTeamProposals() {
     if (r.assignee_name) extra.push(`👤 ${escHtml(r.assignee_name)}`);
     if (r.deadline)      extra.push(`⏰ ${escHtml(fmtDDMM(r.deadline))}`);
     const extraLine = extra.length ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--mono);margin-top:2px">${extra.join(' · ')}</div>` : '';
+    const commentLine = r.admin_comment ? `<div style="font-size:11px;color:var(--c-text);background:#fff4c2;padding:4px 8px;border-radius:4px;margin-top:4px;border-left:3px solid #d4a017;white-space:pre-wrap"><b>💬</b> ${escHtml(r.admin_comment)}</div>` : '';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
       <td>${escHtml(r.author_name||'—')}</td>
-      <td>${escHtml(r.text)}${extraLine}</td>
+      <td>${escHtml(r.text)}${extraLine}${commentLine}</td>
       <td>${propBadge(r.status)}</td>
     </tr>`;
   }).join('');
