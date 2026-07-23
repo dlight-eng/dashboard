@@ -226,6 +226,7 @@
         <span class="update-time" id="updateTime">—</span>
       </div>
       <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
+      <button class="hdr-btn" onclick="openSearchModal()" title="Пошук по дашборду (Ctrl+K)">🔍 Пошук</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
       <button class="hdr-btn" onclick="openProposalsModal()" title="Подати або переглянути пропозиції">💡 Пропозиції</button>
       <button class="hdr-btn" onclick="openWalletModal()" title="Гаманці учасників — накопичувальні бали та гроші">💰 Гаманець</button>
@@ -697,20 +698,20 @@
 <!-- 💡 МІНІ-МОДАЛКА: ДЕТАЛІ ПРОПОЗИЦІЇ              -->
 <!-- ════════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="proposalDetailModal">
-  <div class="modal" style="max-width:560px;width:96%">
+  <div class="modal" style="max-width:640px;width:96%;max-height:92vh;display:flex;flex-direction:column">
     <div class="modal-header">
       <div class="modal-title">📌 Деталі пропозиції</div>
       <button class="modal-close" onclick="closeProposalDetail()">✕</button>
     </div>
-    <div style="padding:18px">
+    <div style="padding:18px;overflow-y:auto;flex:1">
       <div style="margin-bottom:14px;font-size:12px;color:var(--c-muted)">
         <div><b style="color:var(--c-text)">Дата:</b> <span id="pdDate"></span></div>
         <div><b style="color:var(--c-text)">Команда:</b> <span id="pdTeam"></span></div>
         <div><b style="color:var(--c-text)">Автор:</b> <span id="pdAuthor"></span></div>
       </div>
       <div style="margin-bottom:14px">
-        <div style="font-size:11px;color:var(--c-muted);margin-bottom:4px">Текст пропозиції:</div>
-        <div id="pdText" style="padding:10px;background:#f6f7fb;border-radius:6px;font-size:13px;line-height:1.5;white-space:pre-wrap"></div>
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:4px">📝 Текст пропозиції:</div>
+        <div id="pdText" style="padding:10px;background:#f6f7fb;border-radius:6px;font-size:13px;line-height:1.55;white-space:pre-wrap;max-height:280px;overflow-y:auto"></div>
       </div>
       <div style="margin-bottom:14px">
         <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Статус:</label>
@@ -721,13 +722,27 @@
           <option value="rejected">🔴 Відхилена</option>
         </select>
       </div>
-      <div id="pdMsg" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:14px"></div>
-      <div style="display:flex;gap:8px;justify-content:space-between">
-        <button onclick="deleteProposal()" style="padding:8px 16px;background:transparent;border:1px solid var(--c-red);color:var(--c-red);border-radius:4px;cursor:pointer;font-size:12px">🗑 Видалити</button>
-        <div style="display:flex;gap:8px">
-          <button class="hdr-btn" onclick="closeProposalDetail()">Скасувати</button>
-          <button class="submit-btn" onclick="saveProposalStatus()" id="pdSaveBtn">Зберегти</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">👤 Відповідальний:</label>
+          <input id="pdAssignee" type="text" placeholder="хто впроваджує..." style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit">
         </div>
+        <div>
+          <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">⏰ Строк виконання:</label>
+          <input id="pdDeadline" type="date" style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit">
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">💬 Коментар керівництва:</label>
+        <textarea id="pdComment" rows="3" placeholder="Примітки, рішення, пояснення..." style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;font-size:12px;font-family:inherit;resize:vertical;line-height:1.5"></textarea>
+      </div>
+      <div id="pdMsg" style="font-size:11px;font-family:var(--mono);margin-bottom:10px;min-height:14px"></div>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--c-border);display:flex;gap:8px;justify-content:space-between;background:#f6f7fb">
+      <button onclick="deleteProposal()" style="padding:8px 16px;background:transparent;border:1px solid var(--c-red);color:var(--c-red);border-radius:4px;cursor:pointer;font-size:12px">🗑 Видалити</button>
+      <div style="display:flex;gap:8px">
+        <button class="hdr-btn" onclick="closeProposalDetail()">Скасувати</button>
+        <button class="submit-btn" onclick="saveProposalStatus()" id="pdSaveBtn">Зберегти</button>
       </div>
     </div>
   </div>
@@ -756,6 +771,28 @@
           <div style="text-align:center;color:var(--c-muted);padding:60px 20px;font-size:12px">Оберіть команду ліворуч</div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- 🔍 МОДАЛКА: ПОШУК (Ctrl+K)                       -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="searchModal" onclick="if(event.target===this)closeSearchModal()">
+  <div class="modal search-modal" style="max-width:640px;width:96%;max-height:80vh;display:flex;flex-direction:column">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--c-border);display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px;color:var(--c-muted)">🔍</span>
+      <input id="searchInput" type="text"
+             placeholder="Пошук по проблемах, КД, ескалаціях, учасниках, пропозиціях..."
+             oninput="onSearchInput()"
+             style="flex:1;border:none;outline:none;font-size:14px;background:transparent;color:var(--c-text);font-family:inherit">
+      <span id="searchHint" style="font-size:10px;color:var(--c-muted);font-family:var(--mono);white-space:nowrap">від 2 символів</span>
+      <button class="modal-close" onclick="closeSearchModal()" style="font-size:16px">✕</button>
+    </div>
+    <div id="searchResults" style="overflow-y:auto;padding:8px 0;flex:1"></div>
+    <div style="padding:8px 16px;border-top:1px solid var(--c-border);font-size:10px;color:var(--c-muted);font-family:var(--mono);display:flex;justify-content:space-between">
+      <span>💡 Використовуйте <b>Ctrl+K</b> для швидкого відкриття</span>
+      <span id="searchStats"></span>
     </div>
   </div>
 </div>
