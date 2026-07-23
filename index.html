@@ -673,6 +673,7 @@
           <select id="propFilterStatus" onchange="renderProposalsTable()" style="padding:4px 8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:11px">
             <option value="">Всі статуси</option>
             <option value="submitted">Подана</option>
+            <option value="in_review">На розгляді</option>
             <option value="in_progress">В роботі</option>
             <option value="implemented">Впроваджена</option>
             <option value="rejected">Відхилена</option>
@@ -717,6 +718,7 @@
         <label style="display:block;font-size:11px;color:var(--c-muted);margin-bottom:4px">Статус:</label>
         <select id="pdStatus" style="width:100%;padding:8px;border:1px solid var(--c-border);border-radius:4px;background:#fff;font-size:13px">
           <option value="submitted">⚪ Подана</option>
+          <option value="in_review">🔵 На розгляді</option>
           <option value="in_progress">🟡 В роботі</option>
           <option value="implemented">🟢 Впроваджена</option>
           <option value="rejected">🔴 Відхилена</option>
