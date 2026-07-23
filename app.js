@@ -2475,7 +2475,7 @@ async function saveMissionEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); }
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); closeSearchModal(); }
 });
 
 // БАГ 7: красиві спливаючі підказки (заміна нативного title)
@@ -2666,14 +2666,27 @@ function renderProposalsTable() {
   body.innerHTML = rows.map(r => {
     const d = new Date(r.created_at);
     const dStr = isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    const extra = [];
+    if (r.assignee_name) extra.push(`👤 ${escHtml(r.assignee_name)}`);
+    if (r.deadline)      extra.push(`⏰ ${escHtml(fmtDDMM(r.deadline))}`);
+    const extraLine = extra.length ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--mono);margin-top:2px">${extra.join(' · ')}</div>` : '';
     return `<tr class="prop-row" onclick="openProposalDetail(${r.id})">
       <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
       <td>${escHtml(r.from_team)}</td>
       <td>${escHtml(r.author_name||'—')}</td>
-      <td class="prop-text-cell" title="${escHtmlAttr(r.text)}">${escHtml(r.text)}</td>
+      <td class="prop-text-cell" title="${escHtmlAttr(r.text)}">${escHtml(r.text)}${extraLine}</td>
       <td>${propBadge(r.status)}</td>
     </tr>`;
   }).join('');
+}
+
+// Дата у форматі dd.mm.yyyy з YYYY-MM-DD
+function fmtDDMM(d) {
+  if (!d) return '';
+  const s = String(d);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+  return s;
 }
 
 // Рендер секції на дашборді (пропозиції поточної команди)
@@ -2692,10 +2705,14 @@ function renderTeamProposals() {
   tbody.innerHTML = rows.map(r => {
     const d = new Date(r.created_at);
     const dStr = isNaN(d) ? '' : `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+    const extra = [];
+    if (r.assignee_name) extra.push(`👤 ${escHtml(r.assignee_name)}`);
+    if (r.deadline)      extra.push(`⏰ ${escHtml(fmtDDMM(r.deadline))}`);
+    const extraLine = extra.length ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--mono);margin-top:2px">${extra.join(' · ')}</div>` : '';
     return `<tr>
       <td style="font-family:var(--mono);font-size:11px">${dStr}</td>
       <td>${escHtml(r.author_name||'—')}</td>
-      <td>${escHtml(r.text)}</td>
+      <td>${escHtml(r.text)}${extraLine}</td>
       <td>${propBadge(r.status)}</td>
     </tr>`;
   }).join('');
@@ -2712,6 +2729,9 @@ function openProposalDetail(id) {
   document.getElementById('pdAuthor').textContent = p.author_name || '—';
   document.getElementById('pdText').textContent   = p.text;
   document.getElementById('pdStatus').value       = p.status || 'submitted';
+  document.getElementById('pdAssignee').value     = p.assignee_name || '';
+  document.getElementById('pdDeadline').value     = p.deadline || '';
+  document.getElementById('pdComment').value      = p.admin_comment || '';
   document.getElementById('pdMsg').textContent    = '';
   document.getElementById('proposalDetailModal').classList.add('open');
 }
@@ -2723,12 +2743,14 @@ function closeProposalDetail() {
 
 async function saveProposalStatus() {
   if (!currentPropId) return;
-  const newStatus = document.getElementById('pdStatus').value;
+  const newStatus   = document.getElementById('pdStatus').value;
+  const assignee    = document.getElementById('pdAssignee').value.trim() || null;
+  const deadline    = document.getElementById('pdDeadline').value || null;
+  const adminComment = document.getElementById('pdComment').value.trim() || null;
   const msg = document.getElementById('pdMsg');
   const btn = document.getElementById('pdSaveBtn');
   btn.disabled = true; btn.textContent = 'Збереження...';
   try {
-    // PATCH через REST API: ?id=eq.X
     const res = await fetch(`${SUPA_URL}/rest/v1/proposals?id=eq.${currentPropId}`, {
       method: 'PATCH',
       headers: {
@@ -2737,9 +2759,15 @@ async function saveProposalStatus() {
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal',
       },
-      body: JSON.stringify({ status: newStatus, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({
+        status: newStatus,
+        assignee_name: assignee,
+        deadline: deadline,
+        admin_comment: adminComment,
+        updated_at: new Date().toISOString(),
+      }),
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
     msg.textContent = '✓ Збережено'; msg.style.color = 'var(--c-green)';
     await loadProposals();
     setTimeout(()=>closeProposalDetail(), 900);
@@ -2968,6 +2996,318 @@ async function renderWalletDetails(team) {
   }
 
   box.innerHTML = summary + membersHtml + historyHtml;
+}
+
+// ════════════════════════════════════════════════════════════
+// 🔍 ПОШУК (Ctrl+K)
+// ════════════════════════════════════════════════════════════
+let searchDebounceTimer = null;
+let searchActiveIndex = -1;
+let searchLastResults = [];
+
+function openSearchModal() {
+  document.getElementById('searchModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const inp = document.getElementById('searchInput');
+  setTimeout(() => { inp.focus(); inp.select && inp.select(); }, 50);
+  onSearchInput(); // рендерить пусто або результати
+}
+
+function closeSearchModal() {
+  document.getElementById('searchModal').classList.remove('open');
+  document.body.style.overflow = '';
+  searchActiveIndex = -1;
+}
+
+function onSearchInput() {
+  const q = document.getElementById('searchInput').value.trim();
+  const hint = document.getElementById('searchHint');
+  const results = document.getElementById('searchResults');
+  const stats = document.getElementById('searchStats');
+
+  clearTimeout(searchDebounceTimer);
+
+  if (q.length < 2) {
+    hint.textContent = 'від 2 символів';
+    hint.style.color = 'var(--c-muted)';
+    results.innerHTML = '<div class="search-empty">Введіть запит для пошуку<br><span style="font-size:10px">по проблемах, КД, ескалаціях, угодах, пропозиціях, учасниках, зауваженнях</span></div>';
+    stats.textContent = '';
+    searchLastResults = [];
+    return;
+  }
+
+  hint.textContent = 'live-пошук';
+  hint.style.color = 'var(--c-blue)';
+
+  searchDebounceTimer = setTimeout(() => {
+    doSearch(q);
+  }, 200);
+}
+
+function doSearch(query) {
+  const q = query.toLowerCase();
+  const results = [];
+
+  // Хелпер для перевірки збігу
+  const match = (str) => str && String(str).toLowerCase().includes(q);
+  const highlight = (str) => {
+    if (!str) return '';
+    const s = String(str);
+    const idx = s.toLowerCase().indexOf(q);
+    if (idx === -1) return escHtml(s);
+    return escHtml(s.slice(0, idx)) + '<mark>' + escHtml(s.slice(idx, idx+query.length)) + '</mark>' + escHtml(s.slice(idx+query.length));
+  };
+
+  // 1. Проблеми
+  (allProblems || []).forEach((p, i) => {
+    const desc = p.description || p.desc || '';
+    const action = p.action || p.steps || '';
+    const resp = p.responsible || p.resp || '';
+    if (match(desc) || match(action) || match(resp)) {
+      results.push({
+        icon: '🔴',
+        group: 'Проблеми',
+        title: highlight(desc || '(без опису)'),
+        meta: `${p.status || 'wait'} · ${highlight(resp || 'без відп.')} · ${p.date || ''}`,
+        target: 'problems',
+        idx: i,
+        id: p.id,
+      });
+    }
+  });
+
+  // 2. КД
+  (allCorrective || []).forEach((r, i) => {
+    const desc = r.description || r.desc || '';
+    const resp = r.responsible || r.resp || '';
+    if (match(desc) || match(resp)) {
+      results.push({
+        icon: '🔵',
+        group: 'Коригуючі дії',
+        title: highlight(desc || '(без опису)'),
+        meta: `${r.status || 'wait'} · ${highlight(resp || 'без відп.')} · ${r.date || ''}`,
+        target: 'corrective',
+        idx: i,
+        id: r.id,
+      });
+    }
+  });
+
+  // 3. Ескалації
+  (allEscalations || []).forEach((e, i) => {
+    const desc = e.description || e.desc || '';
+    const resp = e.responsible || e.action || '';
+    if (match(desc) || match(resp)) {
+      results.push({
+        icon: '🟠',
+        group: 'Ескалації',
+        title: highlight(desc || '(без опису)'),
+        meta: `${e.status || 'wait'} · ${highlight(resp || '')} · ${e.date || ''}`,
+        target: 'escalations',
+        idx: i,
+        id: e.id,
+      });
+    }
+  });
+
+  // 4. Пропозиції (з поточної команди)
+  const currentTeam = getSelectedTeam();
+  (allProposals || []).filter(p => p.from_team === currentTeam).forEach(p => {
+    const text = p.text || '';
+    const author = p.author_name || '';
+    if (match(text) || match(author)) {
+      results.push({
+        icon: '💡',
+        group: 'Пропозиції',
+        title: highlight(text),
+        meta: `${propStatusLabel(p.status)} · ${highlight(author || 'без автора')}`,
+        target: 'proposal',
+        id: p.id,
+      });
+    }
+  });
+
+  // 5. Учасники команди
+  (teamMembers || []).forEach((m, i) => {
+    if (match(m.name) || match(m.position)) {
+      results.push({
+        icon: '👤',
+        group: 'Учасники',
+        title: highlight(m.name || ''),
+        meta: highlight(m.position || 'без посади'),
+        target: 'member',
+        idx: i,
+      });
+    }
+  });
+
+  // 6. Зауваження
+  (allComments || []).forEach((c, i) => {
+    const text = c.description || c.text || '';
+    const author = c.author || '';
+    if (match(text) || match(author)) {
+      results.push({
+        icon: '💬',
+        group: 'Зауваження',
+        title: highlight(text || '(без опису)'),
+        meta: `${highlight(author || 'без автора')} · ${c.date || ''}`,
+        target: 'comments',
+        idx: i,
+        id: c.id,
+      });
+    }
+  });
+
+  searchLastResults = results;
+  searchActiveIndex = results.length > 0 ? 0 : -1;
+  renderSearchResults(results);
+
+  const stats = document.getElementById('searchStats');
+  stats.textContent = `${results.length} результатів`;
+}
+
+function propStatusLabel(s) {
+  return (PROP_STATUS_LABEL && PROP_STATUS_LABEL[s]) || s || '';
+}
+
+function renderSearchResults(results) {
+  const container = document.getElementById('searchResults');
+  if (!results.length) {
+    container.innerHTML = '<div class="search-empty">Нічого не знайдено</div>';
+    return;
+  }
+
+  // Групуємо
+  const groups = new Map();
+  results.forEach(r => {
+    if (!groups.has(r.group)) groups.set(r.group, []);
+    groups.get(r.group).push(r);
+  });
+
+  let html = '';
+  let globalIdx = 0;
+  for (const [groupName, items] of groups) {
+    html += `<div class="search-group">
+      <div class="search-group-header">${groupName} (${items.length})</div>`;
+    items.forEach(item => {
+      const isActive = globalIdx === searchActiveIndex;
+      html += `<div class="search-item ${isActive ? 'active' : ''}" onclick="selectSearchResult(${globalIdx})" data-idx="${globalIdx}">
+        <div class="search-item-icon">${item.icon}</div>
+        <div class="search-item-body">
+          <div class="search-item-title">${item.title}</div>
+          <div class="search-item-meta">${item.meta}</div>
+        </div>
+      </div>`;
+      globalIdx++;
+    });
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function selectSearchResult(idx) {
+  const r = searchLastResults[idx];
+  if (!r) return;
+  closeSearchModal();
+
+  // Знаходимо цільовий елемент і скролимо
+  setTimeout(() => {
+    let targetEl = null;
+
+    switch (r.target) {
+      case 'problems':
+        // Скролимо до трекера проблем, знаходимо рядок за id
+        targetEl = findRowByRecordId('probBody', r.id);
+        break;
+      case 'corrective':
+        targetEl = findRowByRecordId('corrBody', r.id);
+        break;
+      case 'escalations':
+        targetEl = findRowByRecordId('escalBody', r.id);
+        break;
+      case 'comments':
+        targetEl = findRowByRecordId('commentsBody', r.id);
+        break;
+      case 'member':
+        // Скрол до сітки учасників
+        const grid = document.getElementById('membersGrid');
+        if (grid) targetEl = grid.children[r.idx];
+        break;
+      case 'proposal':
+        // Відкриваємо детальну модалку
+        openProposalDetail(r.id);
+        return;
+    }
+
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetEl.classList.add('search-highlighted');
+      setTimeout(() => targetEl.classList.remove('search-highlighted'), 2000);
+    } else {
+      // Fallback: скролимо просто до секції
+      const sectionMap = {
+        problems: 'probBody',
+        corrective: 'corrBody',
+        escalations: 'escalBody',
+        comments: 'commentsBody',
+      };
+      const section = document.getElementById(sectionMap[r.target]);
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 100);
+}
+
+// Шукає рядок таблиці за реальним ID запису у масиві-джерелі (не за index)
+function findRowByRecordId(tbodyId, recordId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return null;
+  const mapping = {
+    probBody: allProblems,
+    corrBody: allCorrective,
+    escalBody: allEscalations,
+    commentsBody: allComments,
+  };
+  const list = mapping[tbodyId] || [];
+  const filteredIdx = list.findIndex(r => r.id === recordId);
+  if (filteredIdx === -1) return tbody.firstElementChild;
+  // Для problems потрібно врахувати фільтр — беремо перший рядок якщо є
+  return tbody.children[filteredIdx] || tbody.firstElementChild;
+}
+
+// Гарячі клавіші
+document.addEventListener('keydown', e => {
+  // Ctrl+K або Cmd+K — відкрити пошук
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openSearchModal();
+    return;
+  }
+  // Клавіатурна навігація в пошуку
+  const modal = document.getElementById('searchModal');
+  if (!modal || !modal.classList.contains('open')) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    searchActiveIndex = Math.min(searchLastResults.length - 1, searchActiveIndex + 1);
+    updateSearchActive();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    searchActiveIndex = Math.max(0, searchActiveIndex - 1);
+    updateSearchActive();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (searchActiveIndex >= 0) selectSearchResult(searchActiveIndex);
+  }
+});
+
+function updateSearchActive() {
+  document.querySelectorAll('.search-item').forEach(el => {
+    el.classList.toggle('active', +el.dataset.idx === searchActiveIndex);
+  });
+  // Скрол до активного елемента
+  const activeEl = document.querySelector('.search-item.active');
+  if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
 }
 
 loadSavedTeam().then(() => loadData()).then(() => {
