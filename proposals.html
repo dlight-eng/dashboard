@@ -12,15 +12,13 @@
 .pp-hero{position:relative;overflow:hidden;border-radius:16px;margin-bottom:20px;box-shadow:var(--shadow);background:#fff;line-height:0}
 .pp-hero img{width:100%;height:auto;display:block}
 .pp-hero-area{position:absolute;cursor:pointer;border-radius:8px;transition:.18s;background:transparent}
-.pp-hero-area:hover{background:rgba(245,197,24,.18);box-shadow:0 0 0 3px rgba(245,197,24,.5);transform:scale(1.02)}
-.pp-hero-area:active{transform:scale(0.98)}
+.pp-hero-area:hover{background:rgba(245,197,24,.18);box-shadow:0 0 0 3px rgba(245,197,24,.5)}
 /* Кліковна область "Алгоритм роботи з пропозиціями" — жовта плашка вгорі зліва */
 .pp-hero-area.rules{top:2.5%;left:6%;width:36%;height:24%}
 /* Кліковна область "Подавай пропозицію вже зараз!" — темна плашка внизу */
 .pp-hero-area.submit{bottom:2%;left:6%;width:36%;height:12%}
 /* Alt-tooltip замість підказки */
-.pp-hero-area::after{content:attr(data-hint);position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);background:#1a1f36;color:#fff;padding:5px 10px;border-radius:4px;font-size:11px;font-family:var(--mono);white-space:nowrap;opacity:0;pointer-events:none;transition:.15s;line-height:1}
-.pp-hero-area:hover::after{opacity:1}
+
 .pp-btn{padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:.15s}
 .pp-btn-yellow{background:#f5c518;color:#1a1f36}
 .pp-btn-yellow:hover{background:#ffd633}
