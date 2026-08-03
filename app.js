@@ -8,13 +8,16 @@ const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективні�
 // Supabase REST API хелпер
 async function supa(table, params = '', method = 'GET', body = null) {
   const url = `${SUPA_URL}/rest/v1/${table}${params ? '?' + params : ''}`;
+  // Для PATCH і DELETE теж просимо return=representation щоб перевірити що оновлення реально відбулось
+  const prefer = (method === 'POST' || method === 'PATCH' || method === 'DELETE')
+    ? 'return=representation' : 'return=minimal';
   const opts = {
     method,
     headers: {
       'apikey': SUPA_KEY,
       'Authorization': 'Bearer ' + SUPA_KEY,
       'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+      'Prefer': prefer,
     },
   };
   if (body) opts.body = JSON.stringify(body);
@@ -24,7 +27,13 @@ async function supa(table, params = '', method = 'GET', body = null) {
     throw new Error(`Supabase ${method} ${table}: ${err}`);
   }
   const text = await res.text();
-  return text ? JSON.parse(text) : null;
+  const data = text ? JSON.parse(text) : null;
+  // Для PATCH/DELETE — якщо повернувся порожній масив, значить запис не знайдено
+  if ((method === 'PATCH' || method === 'DELETE') && Array.isArray(data) && data.length === 0) {
+    console.warn(`Supabase ${method} ${table}: 0 rows affected (filter: ${params})`);
+    throw new Error('Запис не знайдено або не оновлено — можливо дані застарілі. Перезавантажте сторінку.');
+  }
+  return data;
 }
 
 async function supaGet(table, params = '') { return supa(table, params); }
@@ -1589,11 +1598,15 @@ async function saveChartEdit() {
   msg.textContent='Збереження...'; msg.style.color='var(--c-muted)';
   try {
     const team = getSelectedTeam();
-    const section = 'chart'+(chartEditIdx+1);
-    const ts = Date.now();
 
-    // Очищаємо аркуш
-    await supaDelete('chart_data', `team=eq.${encodeURIComponent(team)}&chart_idx=eq.${chartEditIdx}`);
+    // Очищаємо старі дані (може бути 0 рядків — це нормально)
+    try {
+      await supaDelete('chart_data', `team=eq.${encodeURIComponent(team)}&chart_idx=eq.${chartEditIdx}`);
+    } catch(e) {
+      // Якщо 0 рядків видалено — не помилка для графіків
+      if (!e.message.includes('не знайдено')) throw e;
+    }
+
     const rows2 = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!=='')).map(r=>({team,chart_idx:chartEditIdx,label:r.label,value:r.value,plan:r.plan||null}));
     if(rows2.length) await supaPost('chart_data', rows2);
 
@@ -1601,6 +1614,7 @@ async function saveChartEdit() {
     const newData = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!==''));
     if (fullData?.charts) fullData.charts[chartEditIdx] = newData;
     if (cachedFullData?.charts) cachedFullData.charts[chartEditIdx] = newData;
+    sessionStorage.removeItem('dash_' + team);
     renderUserChart(chartEditIdx, cachedFullData||fullData);
 
     msg.textContent='✓ Збережено!'; msg.style.color='var(--c-green)';
@@ -1682,19 +1696,17 @@ async function changeStatus(rowIndex, section, selectEl) {
   selectEl.classList.add('saving');
   selectEl.disabled = true;
   try {
-    const data = { rowIndex, status: newStatus };
-    const url = `${API_URL}?action=update&team=${encodeURIComponent(getSelectedTeam())}&section=${section}&data=${encodeURIComponent(JSON.stringify(data))}`;
-    const res = await fetch(url);
-    const result = await res.json();
-    if (result.success) {
-      showToast('Статус оновлено', 'success');
-      const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
-      if (maps[section] && maps[section][rowIndex]) maps[section][rowIndex].status = newStatus;
-    } else {
-      showToast('Помилка: ' + (result.error || 'невідома'), 'error');
-    }
+    const maps = { problems: allProblems, escalations: allEscalations, corrective: allCorrective, comments: allComments };
+    const tableMap = { problems: 'problems', escalations: 'escalations', corrective: 'corrective', comments: 'comments' };
+    const row = maps[section]?.[rowIndex];
+    if (!row?.id) throw new Error('ID не знайдено');
+
+    await supaPatch(tableMap[section], `id=eq.${row.id}`, { status: newStatus });
+    if (maps[section]?.[rowIndex]) maps[section][rowIndex].status = newStatus;
+    sessionStorage.removeItem('dash_' + getSelectedTeam());
+    showToast('Статус оновлено', 'success');
   } catch(e) {
-    showToast('Помилка збереження', 'error');
+    showToast('Помилка: ' + e.message, 'error');
   } finally {
     selectEl.classList.remove('saving');
     selectEl.disabled = false;
@@ -1830,17 +1842,21 @@ let currentProbFilter = 'all';
 function renderProblems(problems, filter) {
   currentProbFilter = filter || 'all';
   const filtered = currentProbFilter==='all' ? problems : problems.filter(p=>p.status===currentProbFilter);
-  document.getElementById('probBody').innerHTML = filtered.map((p,i)=>`<tr>
+  document.getElementById('probBody').innerHTML = filtered.map((p,i)=>{
+    // Знаходимо реальний індекс у allProblems (не у відфільтрованому!)
+    const realIdx = allProblems.findIndex(x => x.id === p.id);
+    return `<tr>
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${p.date}</td>
-    ${editCell(i,'problems','description', p.description||p.desc||'', 'Написати опис')}
-    ${editCell(i,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
-    ${editCell(i,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
-    <td>${statusSelect(i,'problems',p.status)}</td>
+    ${editCell(realIdx,'problems','description', p.description||p.desc||'', 'Написати опис')}
+    ${editCell(realIdx,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
+    ${editCell(realIdx,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
+    <td>${statusSelect(realIdx,'problems',p.status)}</td>
     <td style="text-align:center;white-space:nowrap">
       <button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button>
       <button class="row-del-btn" onclick="deleteProblem(${p.id})" title="Видалити проблему">🗑</button>
     </td>
-  </tr>`).join('') || emptyRow(6,'Немає записів');
+  </tr>`;
+  }).join('') || emptyRow(6,'Немає записів');
 }
 
 function filterProbs(filter, btn) {
