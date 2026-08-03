@@ -732,7 +732,7 @@ async function loadData(forceReload = false) {
       monthly:     [],
       daily:       [],
       weekly:      [],
-      problems:    (problemRows||[]).map(r => ({ date:r.date, description:r.description, action:r.action, responsible:r.responsible, status:r.status, id:r.id })),
+      problems:    (problemRows||[]).map(r => ({ date:r.date, description:r.description, action:r.action, responsible:r.responsible, comment:r.comment, status:r.status, id:r.id })),
       corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id, source_problem_id:r.source_problem_id })),
       escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
       partners:    [],
@@ -1764,7 +1764,7 @@ function activateEdit(section, rowIndex, field, currentVal, label) {
   const cellId = `cell_${section}_${rowIndex}_${field}`;
   const cell = document.getElementById(cellId);
   if (!cell) return;
-  const isMultiline = ['steps','action','desc','text','description'].includes(field);
+  const isMultiline = ['steps','action','desc','text','description','comment'].includes(field);
   // Зберігаємо старе значення у data-old щоб cancel міг його відновити
   cell.setAttribute('data-old', encodeURIComponent(currentVal || ''));
   cell.innerHTML = isMultiline
@@ -1850,13 +1850,14 @@ function renderProblems(problems, filter) {
     ${editCell(realIdx,'problems','description', p.description||p.desc||'', 'Написати опис')}
     ${editCell(realIdx,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
     ${editCell(realIdx,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
+    ${editCell(realIdx,'problems','comment', p.comment||'', 'Додати коментар')}
     <td>${statusSelect(realIdx,'problems',p.status)}</td>
     <td style="text-align:center;white-space:nowrap">
       <button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button>
       <button class="row-del-btn" onclick="deleteProblem(${p.id})" title="Видалити проблему">🗑</button>
     </td>
   </tr>`;
-  }).join('') || emptyRow(6,'Немає записів');
+  }).join('') || emptyRow(7,'Немає записів');
 }
 
 function filterProbs(filter, btn) {
