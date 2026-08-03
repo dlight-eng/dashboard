@@ -41,13 +41,14 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .matrix-table td.row-header{font-family:var(--mono);font-size:10px;padding:4px 10px;background:#1a1f36;color:#fff;white-space:nowrap;text-align:left}
 .matrix-cell{width:44px;height:32px;text-align:center;cursor:pointer;transition:.15s;font-family:var(--mono);font-size:10px;font-weight:500}
 .matrix-cell:hover{filter:brightness(.92)}
-.cell-done{background:var(--c-green-cell)}
-.cell-over{background:var(--c-red-cell)}
-.cell-mix{background:#fff}
+.cell-done{background:#d4f1d7}
+.cell-over{background:#ff4d4d;color:#fff}
+.cell-mix{background:#ff4d4d;color:#fff}
 .cell-self{background:#e8eaf0;color:#bbb;cursor:default}
 .cell-ratio{font-family:var(--mono);font-size:11px;font-weight:500;line-height:1.2}
 .ratio-done{color:#1a7a46}
 .ratio-over{color:#8b2018}
+.cell-over .ratio-done,.cell-over .ratio-over,.cell-mix .ratio-done,.cell-mix .ratio-over{color:#fff}
 /* MODAL */
 .modal-backdrop{position:fixed;inset:0;background:rgba(15,17,30,.45);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-backdrop.open{opacity:1;pointer-events:all}
