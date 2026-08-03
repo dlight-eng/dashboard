@@ -1850,7 +1850,7 @@ function renderProblems(problems, filter) {
     ${editCell(realIdx,'problems','description', p.description||p.desc||'', 'Написати опис')}
     ${editCell(realIdx,'problems','steps', p.action||p.steps||'', 'Написати кроки')}
     ${editCell(realIdx,'problems','resp',  p.responsible||p.resp||'',  'Відп.')}
-    ${editCell(realIdx,'problems','comment', p.comment||'', 'Додати коментар')}
+    ${editCell(realIdx,'problems','comment', p.comment||'', 'Додати результат')}
     <td>${statusSelect(realIdx,'problems',p.status)}</td>
     <td style="text-align:center;white-space:nowrap">
       <button class="mkcd-btn" onclick="createCDFromProblem(${p.id})" title="Створити коригуючу дію з цієї проблеми">➡️ КД</button>
