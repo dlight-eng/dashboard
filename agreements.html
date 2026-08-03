@@ -181,9 +181,8 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
       <option>Тойота</option><option>Фіксики</option>
     </select>
     <div class="legend">
-      <div class="leg-item"><div class="leg-dot" style="background:var(--c-green-cell)"></div>Всі підписані</div>
-      <div class="leg-item"><div class="leg-dot" style="background:#fff;border:1px solid #e2e6f0"></div>Частково</div>
-      <div class="leg-item"><div class="leg-dot" style="background:var(--c-red-cell)"></div>Жодної</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#d4f1d7"></div>Всі підписані</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ff4d4d"></div>Не підписані / прострочені</div>
       <div class="leg-item"><span style="font-family:var(--mono);font-size:11px"><span class="ratio-done">2</span>/<span class="ratio-over">5</span></span> підп./не підп.</div>
     </div>
   </div>
@@ -310,7 +309,7 @@ function renderMatrix() {
       const cellCR = matrixData[c]?.[r];
       const hl = (rHL||cHL)?'style="filter:brightness(.88)"':'';
       if (!cellRC && !cellCR) {
-        html+=`<td class="matrix-cell" ${hl} style="background:#f8f9fc;border:2px dashed #c8ccd8;cursor:pointer;color:#b0b4c4;font-size:16px" title="Створити угоду ${rowTeam} ↔ ${colTeam}" onclick="openCard('${rowTeam}','${colTeam}')">+</td>`;
+        html+=`<td class="matrix-cell cell-over" ${hl} style="cursor:pointer;font-size:16px" title="Немає угоди ${rowTeam} ↔ ${colTeam} — натисніть щоб створити" onclick="openCard('${rowTeam}','${colTeam}')">+</td>`;
         return;
       }
       const done = (cellRC?.done||0) + (cellCR?.done||0);
