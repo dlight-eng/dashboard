@@ -736,7 +736,7 @@ async function loadData(forceReload = false) {
       corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id, source_problem_id:r.source_problem_id })),
       escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
       partners:    [],
-      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, author:r.author, status:r.status, id:r.id })),
+      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, text:r.description, source:r.author, author:r.author, status:r.status, id:r.id })),
       charts,
       agreements:  { active: activeCnt, inactive: inactiveCnt, problem: problemAg, configured: true },
       chartsConfig: chartsConfigRows?.[0]?.config || null,
@@ -1800,7 +1800,7 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
     problems:    { steps: 'action',     resp: 'responsible' },
     escalations: { action: 'action',    resp: 'responsible' },
     corrective:  { action: 'action',    resp: 'responsible' },
-    comments:    {},
+    comments:    { text: 'description' },
   };
   const dbField = FIELD_MAP[section]?.[field] || field;
 
@@ -2029,15 +2029,15 @@ function renderComments(comments) {
   document.getElementById('commentsList').innerHTML = comments.map((c,i)=>`
     <div class="comment-card">
       <div class="comment-meta">
-        <span class="comment-source">${c.source}</span>
+        <span class="comment-source">${c.source||c.author||'—'}</span>
         <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span class="comment-date">${c.date}</span>
           ${statusSelect(i,'comments',c.status)}
         </span>
       </div>
-      <div class="comment-text">${c.text||'—'}</div>
-      <div style="margin-top:6px" id="cell_comments_${i}_text">
-        <button class="write-btn" onclick="activateEdit('comments',${i},'text','${escQ(c.text||'')}','Редагувати текст')">✎ Редагувати</button>
+      <div class="comment-text">${c.text||c.description||'—'}</div>
+      <div style="margin-top:6px" id="cell_comments_${i}_text" data-val="${encodeURIComponent(c.text||c.description||'')}" data-section="comments" data-row="${i}" data-field="text" data-label="Редагувати текст">
+        <button class="write-btn" onclick="activateEditFromCell(this.parentNode)">✎ Редагувати</button>
       </div>
     </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає записів</div>';
 }
