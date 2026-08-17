@@ -84,6 +84,8 @@ function onTeamChange() {
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
     btn.textContent = 'Графік '+(i+1);
   });
+  // Скасовуємо попередній refreshTimer щоб не перезаписав дані нової команди старими
+  clearTimeout(refreshTimer);
   loadData(false); // нова команда — спробуємо кеш
   // Оновлюємо секцію пропозицій для нової команди (якщо вже завантажені)
   if (typeof renderTeamProposals === 'function' && allProposals && allProposals.length !== undefined) {
@@ -649,8 +651,10 @@ async function loadSavedTeam() {
 // ════════════════════════════════════════════════
 async function loadData(forceReload = false) {
   showLoading(true); hideError();
+  // Фіксуємо команду на момент виклику — якщо користувач перемкне поки йде запит, не рендеримо
+  const requestedTeam = getSelectedTeam();
   try {
-    const team = getSelectedTeam();
+    const team = requestedTeam;
     const CACHE_KEY = 'dash_' + team;
     const CACHE_TTL = 10 * 60 * 1000;
 
@@ -662,12 +666,14 @@ async function loadData(forceReload = false) {
           const { data, ts } = JSON.parse(cached);
           const age = Date.now() - ts;
           if (age < CACHE_TTL) {
+            // Перевіряємо що команда не змінилась поки читали кеш
+            if (getSelectedTeam() !== requestedTeam) { showLoading(false); return; }
             renderAll(data);
             loadTeamMembers();
             setUpdateTime(new Date(ts));
             setDotOk();
             showLoading(false);
-            if (age > 3 * 60 * 1000) setTimeout(() => loadData(true), 100);
+            if (age > 3 * 60 * 1000) setTimeout(() => { if (getSelectedTeam() === requestedTeam) loadData(true); }, 100);
             else { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => loadData(true), REFRESH_INTERVAL); }
             return;
           }
@@ -745,6 +751,13 @@ async function loadData(forceReload = false) {
 
     // Кешуємо
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
+
+    // Перевіряємо що команда не змінилась поки йшли запити до Supabase
+    if (getSelectedTeam() !== requestedTeam) {
+      console.warn('loadData: команду змінено під час запиту', requestedTeam, '→', getSelectedTeam());
+      showLoading(false);
+      return;
+    }
 
     renderAll(data);
     loadTeamMembers();
