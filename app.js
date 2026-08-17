@@ -742,7 +742,7 @@ async function loadData(forceReload = false) {
       corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id, source_problem_id:r.source_problem_id })),
       escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
       partners:    [],
-      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, text:r.description, source:r.author, author:r.author, status:r.status, id:r.id })),
+      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, text:r.description, source:r.author, author:r.author, comment:r.comment, status:r.status, id:r.id })),
       charts,
       agreements:  { active: activeCnt, inactive: inactiveCnt, problem: problemAg, configured: true },
       chartsConfig: chartsConfigRows?.[0]?.config || null,
@@ -2048,8 +2048,16 @@ function renderComments(comments) {
         </span>
       </div>
       <div class="comment-text">${c.text||c.description||'—'}</div>
-      <div style="margin-top:6px" id="cell_comments_${i}_text" data-val="${encodeURIComponent(c.text||c.description||'')}" data-section="comments" data-row="${i}" data-field="text" data-label="Редагувати текст">
-        <button class="write-btn" onclick="activateEditFromCell(this.parentNode)">✎ Редагувати</button>
+      <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+        <div id="cell_comments_${i}_text" data-val="${encodeURIComponent(c.text||c.description||'')}" data-section="comments" data-row="${i}" data-field="text" data-label="Редагувати текст">
+          <button class="write-btn" onclick="activateEditFromCell(this.parentNode)">✎ Редагувати</button>
+        </div>
+        <div id="cell_comments_${i}_comment" data-val="${encodeURIComponent(c.comment||'')}" data-section="comments" data-row="${i}" data-field="comment" data-label="Додати коментар">
+          ${c.comment
+            ? `<span class="cell-val" onclick="activateEditFromCell(this.parentNode)" style="background:#fff4c2;padding:4px 8px;border-radius:4px;border-left:3px solid #d4a017;white-space:pre-wrap;display:block"><b>💬</b> ${escHtml(c.comment)}</span>`
+            : `<button class="write-btn" onclick="activateEditFromCell(this.parentNode)">💬 Додати коментар</button>`
+          }
+        </div>
       </div>
     </div>`).join('') || '<div style="color:var(--c-muted);font-size:12px;padding:8px">Немає записів</div>';
 }
