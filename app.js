@@ -2166,7 +2166,7 @@ async function submitForm() {
       problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
       corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
       escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
-      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: d.author, status: d.status || 'open' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, status: d.status || 'open' }) },
     };
     const mapping2 = tableMap2[section];
     if (!mapping2) throw new Error('Невідома секція: ' + section);
@@ -2404,7 +2404,7 @@ async function submitQuickAdd() {
       problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
       corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
       escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, status: d.status || 'wip' }) },
-      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: d.author, status: d.status || 'open' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, status: d.status || 'open' }) },
     };
 
     const mapping = tableMap[section];
