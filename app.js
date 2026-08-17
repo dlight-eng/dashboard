@@ -858,18 +858,17 @@ function applyMonthFilter(data) {
     );
   }
 
-  const daily    = filterByDate(data.daily);
+  const daily    = data.daily || [];
   const weekly   = data.weekly || [];
-  const problems = filterByDate(data.problems);
-  const escals   = filterByDate(data.escalations);
-  const corr     = filterByDate(data.corrective);
-  const comments = filterByDate(data.comments);
-  const monthly  = period
-    ? (data.monthly || []).filter(m => m.month === period || m.month === (period.split(' ')[0]))
-    : (data.monthly || []);
+  const problems = data.problems || [];
+  const escals   = data.escalations || [];
+  const corr     = data.corrective || [];
+  const comments = data.comments || [];
+  const monthly  = data.monthly || [];
+  // Тільки графіки фільтруються по місяцю
   const charts   = filterCharts(data.charts);
 
-  // cachedFullData = відфільтровані дані для графіків
+  // cachedFullData = дані з відфільтрованими графіками
   cachedFullData = { ...data, daily, weekly, problems,
     escalations: escals, corrective: corr, comments, monthly, charts };
 
