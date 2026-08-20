@@ -3,7 +3,7 @@ const SUPA_URL = 'https://ejljwgxdgoaejwaffxdv.supabase.co';
 const SUPA_KEY = 'sb_publishable_0PZhEVmTnywUa11GNgW9NQ_QkEaCYcE';
 // Worker використовується тільки для B24 фото і синхронізації
 const API_URL  = 'https://dlight-dashboard.romashykhin.workers.dev';
-const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Медоїди','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тойота','Фіксики'];
+const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Медоїди','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тестова','Тойота','Фіксики'];
 
 // Supabase REST API хелпер
 async function supa(table, params = '', method = 'GET', body = null) {
