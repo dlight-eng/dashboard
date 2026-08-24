@@ -77,17 +77,23 @@ function getSelectedTeam() {
 }
 
 function onTeamChange() {
-  // Зберігаємо тільки локально — не робимо запит до сервера
+  // Зберігаємо тільки локально
   try { sessionStorage.setItem('selected_team', getSelectedTeam()); } catch(e) {}
-  // Скидаємо конфіг графіків до дефолту (завантажиться при loadData)
+  // Скидаємо конфіг графіків до дефолту
   chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
     btn.textContent = 'Графік '+(i+1);
   });
-  // Скасовуємо попередній refreshTimer щоб не перезаписав дані нової команди старими
+  // Скасовуємо попередній refreshTimer
   clearTimeout(refreshTimer);
-  loadData(false); // нова команда — спробуємо кеш
-  // Оновлюємо секцію пропозицій для нової команди (якщо вже завантажені)
+  // Скидаємо фільтри року/місяця — нова команда може мати інші періоди
+  const yearSel = document.getElementById('yearSelect');
+  const monthSel = document.getElementById('monthSelect');
+  if (yearSel) { yearSel.innerHTML = '<option value="">Всі роки</option>'; yearSel.value = ''; }
+  if (monthSel) { monthSel.innerHTML = '<option value="">Всі місяці</option>'; monthSel.value = ''; }
+  // Завантажуємо дані ПРИМУСОВО без кешу — нова команда, нові дані
+  loadData(true);
+  // Оновлюємо секцію пропозицій для нової команди
   if (typeof renderTeamProposals === 'function' && allProposals && allProposals.length !== undefined) {
     renderTeamProposals();
   }
