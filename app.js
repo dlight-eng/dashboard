@@ -1777,12 +1777,18 @@ function openChartDataAdd(chartIdx) {
       break;
   }
 
+  // Для щоденного графіка — нативний date picker
+  const isDaily = (period === 'daily');
+  const inputType = isDaily ? 'date' : 'text';
+  // Для date input потрібен формат yyyy-mm-dd
+  const inputValue = isDaily ? `${yyyy}-${mm}-${dd}` : defaultLabel;
+
   document.getElementById('quickAddBody').innerHTML = `
     <div class="form-section">
       <div class="form-section-label">Аркуш: Графік${chartIdx+1} <span style="color:var(--c-muted);font-weight:400">(${hint})</span></div>
       <div class="form-grid">
         <div class="form-field full"><label class="field-label">Мітка (дата або назва)</label>
-          <input class="field-input" type="text" id="cd_label" value="${defaultLabel}" placeholder="${placeholder}"></div>
+          <input class="field-input" type="${inputType}" id="cd_label" value="${inputValue}" placeholder="${placeholder}"></div>
         <div class="form-field full"><label class="field-label">Значення</label>
           <input class="field-input" type="number" id="cd_value" placeholder="87"></div>
       </div>
@@ -1803,8 +1809,14 @@ window.submitQuickAdd = async function() {
   const idx = window.__chartIdx;
   const btn = document.getElementById('quickAddBtn');
   const msg = document.getElementById('quickAddMsg');
-  const label = document.getElementById('cd_label')?.value.trim();
+  let label = document.getElementById('cd_label')?.value.trim();
   const value = document.getElementById('cd_value')?.value;
+
+  // Конвертуємо date picker формат yyyy-mm-dd → dd.mm.yyyy
+  if (label && /^\d{4}-\d{2}-\d{2}$/.test(label)) {
+    const [y, m, d] = label.split('-');
+    label = `${d}.${m}.${y}`;
+  }
 
   if (!label) { msg.textContent = '✕ Введіть мітку'; msg.className='form-msg error'; return; }
   if (value === '') { msg.textContent = '✕ Введіть значення'; msg.className='form-msg error'; return; }
