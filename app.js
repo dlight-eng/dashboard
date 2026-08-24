@@ -2732,7 +2732,7 @@ async function openProposalsModal() {
   await populatePropFormAuthors(teamSel.value);
 
   // Відкриваємо модалку
-  document.getElementById('proposalsModal').classList.add('open');
+  const pm = document.getElementById('proposalsModal'); if (pm) pm.classList.add('open'); else location.href='proposals.html';
   document.body.style.overflow = 'hidden';
 
   // Завантажуємо пропозиції
@@ -2740,7 +2740,7 @@ async function openProposalsModal() {
 }
 
 function closeProposalsModal() {
-  document.getElementById('proposalsModal').classList.remove('open');
+  const pm2 = document.getElementById('proposalsModal'); if (pm2) pm2.classList.remove('open');
   document.body.style.overflow = '';
 }
 
@@ -2816,24 +2816,26 @@ async function loadProposals() {
     const rows = await supaGet('proposals', 'select=*&order=created_at.desc&limit=500');
     allProposals = rows || [];
     renderProposalsTable();
-    // Також оновлюємо секцію на дашборді поточної команди
     renderTeamProposals();
   } catch(e) {
-    document.getElementById('proposalsTableBody').innerHTML =
-      `<tr><td colspan="5" style="text-align:center;color:var(--c-red);padding:14px">Помилка: ${e.message}</td></tr>`;
+    const el = document.getElementById('proposalsTableBody');
+    if (el) el.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--c-red);padding:14px">Помилка: ${e.message}</td></tr>`;
   }
 }
 
 function renderProposalsTable() {
   const body = document.getElementById('proposalsTableBody');
-  const filterStatus = document.getElementById('propFilterStatus').value;
-  const filterTeam = document.getElementById('propFilterTeam').value;
+  if (!body) return; // елемент є тільки на proposals.html
+  const filterStatusEl = document.getElementById('propFilterStatus');
+  const filterTeamEl = document.getElementById('propFilterTeam');
+  const filterStatus = filterStatusEl ? filterStatusEl.value : '';
+  const filterTeam = filterTeamEl ? filterTeamEl.value : '';
 
   let rows = allProposals;
   if (filterStatus) rows = rows.filter(r => r.status === filterStatus);
   if (filterTeam)   rows = rows.filter(r => r.from_team === filterTeam);
 
-  document.getElementById('propTotalCnt').textContent = `(${rows.length})`;
+  const propCntEl = document.getElementById('propTotalCnt'); if (propCntEl) propCntEl.textContent = `(${rows.length})`;
 
   if (!rows.length) {
     body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--c-muted);padding:20px">Немає записів</td></tr>';
