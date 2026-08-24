@@ -73,7 +73,7 @@ let charts = {};
 
 // ── КОМАНДИ ───────────────────────────────────
 function getSelectedTeam() {
-  return document.getElementById('teamSelect')?.value || 'Тойота';
+  return document.getElementById('teamSelect')?.value || TEAMS_LIST[0];
 }
 
 function onTeamChange() {
@@ -218,16 +218,9 @@ async function loadLeaderboard() {
     const end = text.lastIndexOf('}');
     if (start === -1 || end === -1) throw new Error('Невірний формат відповіді Google Sheets');
     jsonStr = text.substring(start, end + 1);
-    console.log('LB raw (перші 200):', text.substring(0, 200));
     const json = JSON.parse(jsonStr);
     const rows = json.table.rows;
-    console.log('LB rows count:', rows.length);
     if (rows.length > 0) {
-      console.log('LB row[0] full:', JSON.stringify(rows[0]));
-      console.log('LB row[1] full:', JSON.stringify(rows[1]));
-      console.log('LB row[2] full:', JSON.stringify(rows[2]));
-      console.log('LB row[3] full:', JSON.stringify(rows[3]));
-      console.log('LB cols:', JSON.stringify(json.table.cols));
     }
 
     const teams = [];
@@ -269,7 +262,6 @@ async function loadLeaderboard() {
     // Зберігаємо СИРІ дані (всі рядки за всі місяці) для фільтрації
     lbRawData = teams;
     lbData = teams; // для сумісності зі старим кодом
-    console.log('LB loaded rows:', teams.length);
     renderLeaderboard(teams);
   } catch(e) {
     document.getElementById('lbContent').innerHTML = `
@@ -1053,14 +1045,8 @@ function collectAllPeriods(data) {
 }
 
 // Знаходить найновіший період у даних і повертає його як "Червень 2026"
-function findLastMonthWithData(data) {
-  const periods = collectAllPeriods(data);
-  if (!periods.length) return null;
-  const p = periods[0];
-  const name = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === p.month);
-  if (!name) return null;
-  return p.year ? `${name} ${p.year}` : name;
-}
+// findLastMonthWithData видалено — замінена на collectAllPeriods
+
 
 // Наповнює дропдаун `monthSelect` реальними періодами з даних
 function populateMonthDropdown(data) {
@@ -1641,23 +1627,10 @@ async function saveChartSettings() {
 
 // ── ЗБЕРЕЖЕННЯ ТРИГЕРІВ В SHEETS ─────────────
 async function saveAllTriggers() {
+  // Тригери зберігаються як частина charts_config (вже в saveChartConfigsToStorage)
+  // Окремий виклик до Worker більше не потрібен
   try {
-    const triggers = chartConfigs
-      .map((cfg, i) => (cfg.triggerRed || cfg.triggerYellow) ? {
-        chartIdx:      i,
-        triggerRed:    cfg.triggerRed    || 0,
-        triggerYellow: cfg.triggerYellow || 0,
-        planValue:     cfg.planValue     || 0,
-        planMin:       cfg.planMin       ?? null,
-        planMax:       cfg.planMax       ?? null,
-        planDir:       cfg.planDir       || 'above',
-        desc:          cfg.triggerDesc   || `Відхилення показника "${cfg.title||'Графік '+(i+1)}"`,
-        resp:          cfg.triggerResp   || '',
-      } : null)
-      .filter(Boolean);
-
-    const url = `${API_URL}?action=saveTriggers&team=${encodeURIComponent(getSelectedTeam())}&data=${encodeURIComponent(JSON.stringify(triggers))}`;
-    await fetch(url);
+    await saveChartConfigsToStorage();
   } catch(e) {
     console.warn('Тригери не збережені:', e.message);
   }
@@ -1926,14 +1899,7 @@ function formatSteps(val) {
   return escHtml(s);
 }
 
-function escQ(str) {
-  return String(str)
-    .replace(/\\/g,'\\\\')      // спочатку — бекслеші
-    .replace(/'/g,'&#39;')
-    .replace(/"/g,'&quot;')
-    .replace(/\r/g,'')          // прибираємо CR
-    .replace(/\n/g,'\\n');      // переноси → escape-послідовність
-}
+// escQ видалено — більше не використовується
 
 function activateEdit(section, rowIndex, field, currentVal, label) {
   const cellId = `cell_${section}_${rowIndex}_${field}`;
