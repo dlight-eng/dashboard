@@ -215,9 +215,11 @@
         <option>Синергія</option><option>Склад</option><option>Техкомпас</option>
         <option>Тестова</option><option selected>Тойота</option><option>Фіксики</option>
       </select>
-      <select class="month-select" id="monthSelect" onchange="onMonthChange()">
-        <option value="">Всі періоди</option>
-        <!-- Динамічно заповнюється з populateMonthDropdown() — формат "Червень 2025" -->
+      <select class="month-select" id="yearSelect" onchange="onPeriodChange()" title="Фільтр по року">
+        <option value="">Всі роки</option>
+      </select>
+      <select class="month-select" id="monthSelect" onchange="onPeriodChange()" title="Фільтр по місяцю">
+        <option value="">Всі місяці</option>
       </select>
     </div>
     <div class="header-right" style="display:flex;align-items:center;gap:8px">
