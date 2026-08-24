@@ -806,24 +806,26 @@ const MONTH_MAP = {
 let fullData = null;       // повні дані з API (ніколи не фільтруються)
 let cachedFullData = null; // відфільтровані дані для графіків
 
-function onMonthChange() {
+function onPeriodChange() {
   if (fullData) applyMonthFilter(fullData);
 }
+// Зворотна сумісність
+function onMonthChange() { onPeriodChange(); }
 
+function getSelectedYear() {
+  const el = document.getElementById('yearSelect');
+  return el ? el.value : '';
+}
 function getSelectedMonth() {
-  return document.getElementById('monthSelect').value;
+  const el = document.getElementById('monthSelect');
+  return el ? el.value : '';
 }
 
 function applyMonthFilter(data) {
-  const period = getSelectedMonth();
-  // period може бути: "" (всі), "Червень" (старий формат - тільки місяць), або "Червень 2026"
-  let mNum = null, yNum = null;
-  if (period) {
-    const parts = period.split(' ');
-    const monthName = parts[0];
-    mNum = MONTH_MAP[monthName] || null;
-    if (parts[1] && /^\d{4}$/.test(parts[1])) yNum = parseInt(parts[1], 10);
-  }
+  const selYear  = getSelectedYear();   // "" або "2026"
+  const selMonth = getSelectedMonth();  // "" або "Червень"
+  const yNum = selYear ? parseInt(selYear, 10) : null;
+  const mNum = selMonth ? (MONTH_MAP[selMonth] || null) : null;
 
   function matchesPeriod(dateStr) {
     if (!dateStr || !mNum) return true;
@@ -838,24 +840,93 @@ function applyMonthFilter(data) {
     // Формат "yyyy-mm-dd"
     const p2 = s.match(/^(\d{4})-(\d{2})-\d{2}/);
     if (p2) {
-      if (parseInt(p2[2], 10) !== mNum) return false;
-      if (yNum && parseInt(p2[1], 10) !== yNum) return false;
+      if (mNum !== null && parseInt(p2[2], 10) !== mNum) return false;
+      if (yNum !== null && parseInt(p2[1], 10) !== yNum) return false;
+      return true;
+    }
+    // Формат "Місяць Рік" (напр. "Червень 2026")
+    const monthNames = Object.keys(MONTH_MAP);
+    for (const mn of monthNames) {
+      if (s.toLowerCase().includes(mn.toLowerCase())) {
+        const labelMonth = MONTH_MAP[mn];
+        const yearMatch = s.match(/\d{4}/);
+        const labelYear = yearMatch ? parseInt(yearMatch[0], 10) : null;
+        if (mNum !== null && labelMonth !== mNum) return false;
+        if (yNum !== null && labelYear !== null && labelYear !== yNum) return false;
+        return true;
+      }
+    }
+    // Формат "yyyy" (річний)
+    if (/^\d{4}$/.test(s)) {
+      if (yNum !== null && parseInt(s, 10) !== yNum) return false;
       return true;
     }
     return true;
   }
 
-  function filterByDate(arr) {
-    if (!arr || !period) return arr || [];
-    return arr.filter(r => matchesPeriod(r.date));
+  // Фільтруємо кожен графік згідно його типу періодичності
+  function filterCharts(charts) {
+    if (!charts) return charts || [];
+    // Якщо жоден фільтр не обрано — все як є
+    if (!yNum && !mNum) return charts;
+
+    return charts.map((chartArr, idx) => {
+      const cfg = chartConfigs[idx] || {};
+      const period = cfg.period || 'monthly'; // daily | weekly | monthly | yearly
+
+      if (period === 'yearly') {
+        // Річні — фільтруються тільки по року, місяць ігнорується
+        if (!yNum) return chartArr || [];
+        return (chartArr || []).filter(r => {
+          const s = String(r.label || '');
+          const y = s.match(/\d{4}/);
+          return y ? parseInt(y[0], 10) === yNum : true;
+        });
+      }
+      if (period === 'monthly') {
+        // Місячні — фільтруються тільки по року, місяць ігнорується
+        if (!yNum) return chartArr || [];
+        return (chartArr || []).filter(r => matchesPeriod(r.label, true));
+      }
+      // daily, weekly — фільтруються і по року, і по місяцю
+      return (chartArr || []).filter(r => matchesPeriod(r.label, false));
+    });
   }
 
-  // Фільтруємо дані графіків по місяцю+року
-  function filterCharts(charts) {
-    if (!charts || !period) return charts || [];
-    return charts.map(chartArr =>
-      (chartArr || []).filter(r => matchesPeriod(r.label))
-    );
+  // matchesPeriod з можливістю ігнорувати місяць (для місячних графіків)
+  function matchesPeriod(dateStr, ignoreMonth) {
+    if (!dateStr) return true;
+    const s = String(dateStr);
+    // Формат "dd.mm.yyyy"
+    const p1 = s.split('.');
+    if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
+      if (!ignoreMonth && mNum !== null && parseInt(p1[1], 10) !== mNum) return false;
+      if (yNum !== null && p1[2] && parseInt(p1[2], 10) !== yNum) return false;
+      return true;
+    }
+    // Формат "yyyy-mm-dd"
+    const p2 = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+    if (p2) {
+      if (!ignoreMonth && mNum !== null && parseInt(p2[2], 10) !== mNum) return false;
+      if (yNum !== null && parseInt(p2[1], 10) !== yNum) return false;
+      return true;
+    }
+    // Формат "Місяць Рік"
+    const monthNames = Object.keys(MONTH_MAP);
+    for (const mn of monthNames) {
+      if (s.toLowerCase().includes(mn.toLowerCase())) {
+        if (!ignoreMonth && mNum !== null && MONTH_MAP[mn] !== mNum) return false;
+        const ym = s.match(/\d{4}/);
+        if (yNum !== null && ym && parseInt(ym[0], 10) !== yNum) return false;
+        return true;
+      }
+    }
+    // "yyyy"
+    if (/^\d{4}$/.test(s)) {
+      if (yNum !== null && parseInt(s, 10) !== yNum) return false;
+      return true;
+    }
+    return true;
   }
 
   const daily    = data.daily || [];
@@ -865,7 +936,7 @@ function applyMonthFilter(data) {
   const corr     = data.corrective || [];
   const comments = data.comments || [];
   const monthly  = data.monthly || [];
-  // Тільки графіки фільтруються по місяцю
+  // Тільки графіки фільтруються по обраному періоду
   const charts   = filterCharts(data.charts);
 
   // cachedFullData = дані з відфільтрованими графіками
@@ -897,18 +968,16 @@ function renderMeta(meta) {
   renderValuesList('teamValues', meta.teamValues);
   // Спочатку наповнюємо дропдаун реальними періодами з даних
   populateMonthDropdown(fullData);
-  // Потім встановлюємо значення (останній місяць де є дані)
-  const sel = document.getElementById('monthSelect');
-  if (sel && !sel.value) {
-    const lastMonth = findLastMonthWithData(fullData);
-    if (lastMonth) {
-      sel.value = lastMonth;
-    } else if (meta.month) {
-      // Fallback: якщо даних немає — використовуємо значення з team_config
-      const name = Object.keys(MONTH_MAP).find(m =>
-        meta.month.toUpperCase().includes(m.toUpperCase())
-      );
-      if (name) sel.value = name;
+  // Встановлюємо рік і місяць за замовчуванням (останній період де є дані)
+  const yearSel  = document.getElementById('yearSelect');
+  const monthSel = document.getElementById('monthSelect');
+  if (yearSel && !yearSel.value) {
+    const periods = collectAllPeriods(fullData);
+    if (periods.length) {
+      const lastPeriod = periods[0]; // найновіший
+      if (lastPeriod.year) yearSel.value = String(lastPeriod.year);
+      const monthName = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === lastPeriod.month);
+      if (monthName && monthSel) monthSel.value = monthName;
     }
   }
 }
@@ -965,24 +1034,45 @@ function findLastMonthWithData(data) {
 
 // Наповнює дропдаун `monthSelect` реальними періодами з даних
 function populateMonthDropdown(data) {
-  const sel = document.getElementById('monthSelect');
-  if (!sel) return;
+  const yearSel  = document.getElementById('yearSelect');
+  const monthSel = document.getElementById('monthSelect');
+  if (!yearSel || !monthSel) return;
+
   const periods = collectAllPeriods(data);
-  const currentValue = sel.value;
-  // Лишаємо першу опцію "Всі періоди"
-  sel.innerHTML = '<option value="">Всі періоди</option>';
-  periods.forEach(p => {
-    const name = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === p.month);
-    if (!name) return;
-    const label = p.year ? `${name} ${p.year}` : name;
+
+  // Збираємо унікальні роки (спадаючий порядок)
+  const years = [...new Set(periods.map(p => p.year).filter(Boolean))].sort((a,b) => b - a);
+
+  // Збираємо унікальні місяці (за порядком у MONTH_MAP)
+  const months = [...new Set(periods.map(p => p.month).filter(Boolean))].sort((a,b) => a - b);
+
+  const currentYear  = yearSel.value;
+  const currentMonth = monthSel.value;
+
+  // Рік
+  yearSel.innerHTML = '<option value="">Всі роки</option>';
+  years.forEach(y => {
     const opt = document.createElement('option');
-    opt.value = label;
-    opt.textContent = label;
-    sel.appendChild(opt);
+    opt.value = String(y);
+    opt.textContent = String(y);
+    yearSel.appendChild(opt);
   });
-  // Відновлюємо вибране значення якщо воно ще існує в списку
-  if (currentValue && Array.from(sel.options).some(o => o.value === currentValue)) {
-    sel.value = currentValue;
+  if (currentYear && years.includes(parseInt(currentYear, 10))) {
+    yearSel.value = currentYear;
+  }
+
+  // Місяць
+  monthSel.innerHTML = '<option value="">Всі місяці</option>';
+  months.forEach(m => {
+    const name = Object.keys(MONTH_MAP).find(n => MONTH_MAP[n] === m);
+    if (!name) return;
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    monthSel.appendChild(opt);
+  });
+  if (currentMonth && Array.from(monthSel.options).some(o => o.value === currentMonth)) {
+    monthSel.value = currentMonth;
   }
 }
 function renderValuesList(id, valStr) {
@@ -1405,6 +1495,13 @@ function renderChartSettingsPanel(idx) {
             <option value="bar" ${cfg.type==='bar'?'selected':''}>Стовпчастий</option>
             <option value="line" ${cfg.type==='line'?'selected':''}>Лінійний</option>
           </select></div>
+        <div class="form-field"><label class="field-label">📅 Періодичність</label>
+          <select class="field-input" id="cs_period">
+            <option value="daily" ${cfg.period==='daily'?'selected':''}>Щоденний</option>
+            <option value="weekly" ${cfg.period==='weekly'?'selected':''}>Щотижневий</option>
+            <option value="monthly" ${(cfg.period||'monthly')==='monthly'?'selected':''}>Місячний</option>
+            <option value="yearly" ${cfg.period==='yearly'?'selected':''}>Річний</option>
+          </select></div>
       </div>
     </div>
     <div class="form-section">
@@ -1483,6 +1580,7 @@ async function saveChartSettings() {
     title:      document.getElementById('cs_title').value.trim(),
     tooltip:    document.getElementById('cs_tooltip').value.trim(),
     type:       document.getElementById('cs_type').value,
+    period:     document.getElementById('cs_period').value,
     color:      chartConfigs[idx]?.color || '#d4a017',
     lineColor:  '#1a9e5c',
     unit:       document.getElementById('cs_unit').value.trim(),
@@ -1639,14 +1737,49 @@ async function saveChartEdit() {
 
 function openChartDataAdd(chartIdx) {
   const cfg = chartConfigs[chartIdx];
+  const period = cfg?.period || 'monthly';
   currentQuickSection = '__chart__' + chartIdx;
   setText('quickAddTitle', '+ Дані: ' + (cfg?.title || ('Графік '+(chartIdx+1))));
+
+  // Автозаповнення мітки залежно від періодичності
+  let defaultLabel = '', placeholder = '', hint = '';
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2,'0');
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const yyyy = now.getFullYear();
+  const monthNames = Object.keys(MONTH_MAP);
+  const currentMonthName = monthNames.find(n => MONTH_MAP[n] === now.getMonth()+1) || '';
+
+  switch(period) {
+    case 'daily':
+      defaultLabel = `${dd}.${mm}.${yyyy}`;
+      placeholder = 'dd.mm.yyyy (напр. 15.07.2026)';
+      hint = '📅 Щоденний графік — вводіть дату кожного дня';
+      break;
+    case 'weekly':
+      const weekNum = Math.ceil(now.getDate() / 7);
+      defaultLabel = `Тиж.${weekNum} ${currentMonthName}`;
+      placeholder = 'Тиж.1 Липень або 01-07.07';
+      hint = '📅 Щотижневий графік — один запис на тиждень';
+      break;
+    case 'monthly':
+      defaultLabel = `${currentMonthName} ${yyyy}`;
+      placeholder = 'Червень 2026';
+      hint = '📅 Місячний графік — один запис на місяць';
+      break;
+    case 'yearly':
+      defaultLabel = String(yyyy);
+      placeholder = '2026';
+      hint = '📅 Річний графік — один запис на рік';
+      break;
+  }
+
   document.getElementById('quickAddBody').innerHTML = `
     <div class="form-section">
-      <div class="form-section-label">Аркуш: Графік${chartIdx+1}</div>
+      <div class="form-section-label">Аркуш: Графік${chartIdx+1} <span style="color:var(--c-muted);font-weight:400">(${hint})</span></div>
       <div class="form-grid">
         <div class="form-field full"><label class="field-label">Мітка (дата або назва)</label>
-          <input class="field-input" type="text" id="cd_label" value="${today()}" placeholder="напр. 14.05.2026 або Тиждень 1"></div>
+          <input class="field-input" type="text" id="cd_label" value="${defaultLabel}" placeholder="${placeholder}"></div>
         <div class="form-field full"><label class="field-label">Значення</label>
           <input class="field-input" type="number" id="cd_value" placeholder="87"></div>
       </div>
