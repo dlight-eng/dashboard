@@ -887,7 +887,22 @@ function applyMonthFilter(data) {
 
     return charts.map((chartArr, idx) => {
       const cfg = chartConfigs[idx] || {};
-      const period = cfg.period || 'monthly'; // daily | weekly | monthly | yearly
+      // Автодетект періодичності якщо не задано явно
+      let period = cfg.period || null;
+      if (!period && chartArr && chartArr.length > 0) {
+        // Визначаємо по формату першої мітки
+        const sample = String((chartArr[0] || {}).label || '');
+        if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(sample) || /^\d{4}-\d{2}-\d{2}/.test(sample)) {
+          period = 'daily';
+        } else if (/тиж|week|нед/i.test(sample)) {
+          period = 'weekly';
+        } else if (/^\d{4}$/.test(sample)) {
+          period = 'yearly';
+        } else {
+          period = 'monthly';
+        }
+      }
+      if (!period) period = 'monthly';
 
       if (period === 'yearly') {
         // Річні — фільтруються тільки по року, місяць ігнорується
