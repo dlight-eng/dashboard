@@ -115,7 +115,7 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .inline-save{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:none;background:var(--c-green);color:#fff;cursor:pointer}
 .inline-cancel{font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:3px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-muted);cursor:pointer}
 .month-select:hover,.month-select:focus{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.55)} .month-select option{background:#2d3454;color:#fff}
-.hdr-btn{font-family:var(--mono);font-size:11px;padding:6px 16px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.13);color:#fff;cursor:pointer;transition:.2s;white-space:nowrap}
+.hdr-btn{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.13);color:#fff;cursor:pointer;transition:.2s;white-space:nowrap}
 .month-select{font-family:var(--mono);font-size:11px;color:#fff;border:1px solid rgba(255,255,255,.35);padding:6px 12px;border-radius:6px;background:rgba(255,255,255,.13);cursor:pointer;outline:none;transition:.2s}
 .hdr-btn:hover{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.6);color:#fff}
 .hdr-btn.primary{background:#1a1f36;color:#f5c518;border-color:#1a1f36}
