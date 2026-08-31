@@ -1279,20 +1279,25 @@ async function saveChartConfigsToStorage() {
 // Конвертує будь-який формат дати → дд.мм.рррр, або залишає рядок як є
 function fmtLabel(raw) {
   if (raw == null) return '';
-  // Якщо вже рядок без дати — повертаємо як є (наприклад "Тиждень 4")
   if (typeof raw === 'string') {
-    // Спробуємо розпізнати дату
-    const d = new Date(raw);
-    if (!isNaN(d.getTime()) && raw.length > 6) {
-      // Виглядає як дата — форматуємо
-      const dd = String(d.getDate()).padStart(2,'0');
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const yyyy = d.getFullYear();
-      return `${dd}.${mm}.${yyyy}`;
-    }
-    return raw; // звичайний рядок
+    const s = raw.trim();
+    // Вже у форматі dd.mm.yyyy — повертаємо як є (НЕ парсимо через new Date!)
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(s)) return s;
+    // Формат yyyy-mm-dd → конвертуємо в dd.mm.yyyy
+    const isoMatch = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`;
+    // Все інше (текст, "Тиждень 4", "Червень 2026") — як є
+    return s;
   }
   // Date об'єкт
+  if (raw instanceof Date && !isNaN(raw.getTime())) {
+    const dd = String(raw.getDate()).padStart(2,'0');
+    const mm = String(raw.getMonth()+1).padStart(2,'0');
+    const yyyy = raw.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  return String(raw);
+}
   if (raw instanceof Date && !isNaN(raw.getTime())) {
     const dd = String(raw.getDate()).padStart(2,'0');
     const mm = String(raw.getMonth()+1).padStart(2,'0');
