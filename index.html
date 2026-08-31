@@ -227,12 +227,12 @@
         <div class="update-dot" id="statusDot"></div>
         <span class="update-time" id="updateTime">—</span>
       </div>
-      <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
+      <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)" title="Оновити дані">↻</button>
       <button class="hdr-btn" onclick="toggleNotifications()" title="Сповіщення" id="notifBtn" style="position:relative">🔔<span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
-      <button class="hdr-btn" onclick="openSearchModal()" title="Пошук по дашборду (Ctrl+K)">🔍</button>
+      <button class="hdr-btn" onclick="openSearchModal()" title="Ctrl+K">🔍 Пошук</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
-      <button class="hdr-btn" onclick="location.href='proposals.html'" title="Подати або переглянути пропозиції">💡 Пропозиції</button>
-      <button class="hdr-btn" onclick="openWalletModal()" title="Гаманці учасників — накопичувальні бали та гроші">💰 Гаманець</button>
+      <button class="hdr-btn" onclick="location.href='proposals.html'">💡 Пропозиції</button>
+      <button class="hdr-btn" onclick="openWalletModal()">💰 Гаманець</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
     </div>
   </div>
