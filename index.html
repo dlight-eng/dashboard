@@ -59,7 +59,9 @@
               </div>
               <div class="form-field">
                 <label class="field-label">Відповідальний</label>
-                <input class="field-input" type="text" id="p_resp" placeholder="Прізвище">
+                <select class="field-input" id="p_resp">
+                  <option value="">-- виберіть --</option>
+                </select>
               </div>
               <div class="form-field full">
                 <label class="field-label">Опис проблеми</label>
@@ -151,12 +153,16 @@
               <input class="field-input" type="date" id="c_date">
             </div>
             <div class="form-field">
-              <label class="field-label">Від кого / Дільниця</label>
-              <input class="field-input" type="text" id="c_source" placeholder="Козловий — Навантажувачі">
+              <label class="field-label">Від кого (команда/дільниця)</label>
+              <select class="field-input" id="c_source" onchange="populateAuthorDropdown('c_source','c_author')">
+                <option value="">-- виберіть команду --</option>
+              </select>
             </div>
             <div class="form-field">
-              <label class="field-label">Автор</label>
-              <input class="field-input" type="text" id="c_author" placeholder="Прізвище">
+              <label class="field-label">Автор (учасник)</label>
+              <select class="field-input" id="c_author">
+                <option value="">-- спочатку оберіть команду --</option>
+              </select>
             </div>
             <div class="form-field">
               <label class="field-label">Статус</label>
