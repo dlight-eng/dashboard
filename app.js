@@ -751,7 +751,7 @@ async function loadData(forceReload = false) {
       corrective:  (correctiveRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, deadline:r.deadline, status:r.status, id:r.id, source_problem_id:r.source_problem_id })),
       escalations: (escalationRows||[]).map(r => ({ date:r.date, description:r.description, responsible:r.responsible, status:r.status, id:r.id })),
       partners:    [],
-      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, text:r.description, source:r.author, author:r.author, comment:r.comment, status:r.status, id:r.id })),
+      comments:    (commentRows||[]).map(r => ({ date:r.date, description:r.description, text:r.description, source:r.author, author:r.author, comment:r.comment, from_team:r.from_team, status:r.status, id:r.id })),
       charts,
       agreements:  { active: activeCnt, inactive: inactiveCnt, problem: problemAg, configured: true },
       chartsConfig: chartsConfigRows?.[0]?.config || null,
@@ -2334,7 +2334,7 @@ async function submitForm() {
       problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
       corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
       escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
-      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, status: d.status || 'open' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, from_team: d.source || null, status: d.status || 'open' }) },
     };
     const mapping2 = tableMap2[section];
     if (!mapping2) throw new Error('Невідома секція: ' + section);
@@ -2625,7 +2625,7 @@ async function submitQuickAdd() {
       problems:    { table: 'problems',    row: d => ({ team, date: d.date, description: d.desc, action: d.action, responsible: d.responsible, status: d.status || 'wip' }) },
       corrective:  { table: 'corrective',  row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, deadline: d.deadline, status: d.status || 'wip' }) },
       escalations: { table: 'escalations', row: d => ({ team, date: d.date, description: d.desc, responsible: d.responsible, status: d.status || 'wip' }) },
-      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, status: d.status || 'open' }) },
+      comments:    { table: 'comments',    row: d => ({ team, date: d.date, description: d.text || d.desc, author: [d.source, d.author].filter(Boolean).join(' — ') || null, from_team: d.source || null, status: d.status || 'open' }) },
     };
 
     const mapping = tableMap[section];
@@ -2633,6 +2633,16 @@ async function submitQuickAdd() {
 
     await supaPost(mapping.table, mapping.row(data));
     sessionStorage.removeItem('dash_' + team);
+
+    // 🔔 Сповіщення при створенні зауваження → команді на чий дашборд подали
+    if (section === 'comments' && data.source && data.source !== team) {
+      // Команда-автор (data.source) подала зауваження на дашборд команди (team)
+      // Сповіщаємо команду на чий дашборд подали
+      createNotification(team, 'comment',
+        `Нове зауваження від ${data.source}`,
+        `${data.author || ''}: ${(data.text || data.desc || '').slice(0, 200)}`
+      );
+    }
 
     msg.textContent = '✓ Збережено!';
     msg.className = 'form-msg success';
