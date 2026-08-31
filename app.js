@@ -1298,14 +1298,6 @@ function fmtLabel(raw) {
   }
   return String(raw);
 }
-  if (raw instanceof Date && !isNaN(raw.getTime())) {
-    const dd = String(raw.getDate()).padStart(2,'0');
-    const mm = String(raw.getMonth()+1).padStart(2,'0');
-    const yyyy = raw.getFullYear();
-    return `${dd}.${mm}.${yyyy}`;
-  }
-  return String(raw);
-}
 
 function renderUserChart(idx, fullData) {
   const cfg = chartConfigs[idx];
