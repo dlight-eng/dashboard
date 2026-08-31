@@ -228,7 +228,8 @@
         <span class="update-time" id="updateTime">—</span>
       </div>
       <button class="hdr-btn" onclick="sessionStorage.removeItem('dash_'+getSelectedTeam());loadData(true)">↻</button>
-      <button class="hdr-btn" onclick="openSearchModal()" title="Пошук по дашборду (Ctrl+K)">🔍 Пошук</button>
+      <button class="hdr-btn" onclick="toggleNotifications()" title="Сповіщення" id="notifBtn" style="position:relative">🔔<span id="notifBadge" class="notif-badge" style="display:none">0</span></button>
+      <button class="hdr-btn" onclick="openSearchModal()" title="Пошук по дашборду (Ctrl+K)">🔍</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
       <button class="hdr-btn" onclick="location.href='proposals.html'" title="Подати або переглянути пропозиції">💡 Пропозиції</button>
       <button class="hdr-btn" onclick="openWalletModal()" title="Гаманці учасників — накопичувальні бали та гроші">💰 Гаманець</button>
@@ -717,6 +718,22 @@
 </div>
 
 <!-- ════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════ -->
+<!-- 🔔 ПАНЕЛЬ СПОВІЩЕНЬ                              -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="notifPanel" class="notif-panel" style="display:none">
+  <div class="notif-header">
+    <span style="font-weight:700;font-size:14px">🔔 Сповіщення</span>
+    <div style="display:flex;gap:8px">
+      <button class="notif-mark-all" onclick="markAllNotifRead()" title="Позначити все як прочитане">✓ Прочитати все</button>
+      <button class="modal-close" onclick="closeNotifications()" style="font-size:14px">✕</button>
+    </div>
+  </div>
+  <div id="notifList" class="notif-list">
+    <div class="notif-empty">Немає сповіщень</div>
+  </div>
+</div>
+
 <!-- 🔍 МОДАЛКА: ПОШУК (Ctrl+K)                       -->
 <!-- ════════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="searchModal" onclick="if(event.target===this)closeSearchModal()">
