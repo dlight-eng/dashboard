@@ -350,6 +350,20 @@ async function submitProposal() {
     });
     msg.textContent = '✓ Пропозицію подано. Дякуємо за твою ініціативу! 💛'; msg.style.color = 'var(--c-green)';
     document.getElementById('propFormText').value = '';
+
+    // 🔔 Сповіщення: нова пропозиція → всі команди (крім своєї)
+    const otherTeams = TEAMS_LIST.filter(t => t !== team);
+    for (const t of otherTeams) {
+      try {
+        await supaPost('notifications', {
+          for_team: t, type: 'proposal',
+          title: 'Нова пропозиція від ' + team,
+          message: (authorName || 'Учасник') + ': ' + text.slice(0, 200),
+          is_read: false
+        });
+      } catch(e) {}
+    }
+
     await loadProposals();
     setTimeout(()=>{ msg.textContent=''; }, 5000);
   } catch(e) {
@@ -463,6 +477,27 @@ async function saveProposalStatus() {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
     msg.textContent = '✓ Збережено'; msg.style.color = 'var(--c-green)';
+
+    // 🔔 Сповіщення: зміна статусу або коментар → команді що подала
+    const prop = allProposals.find(r => r.id === currentPropId);
+    if (prop && prop.from_team) {
+      const statusLabels = { submitted:'Подана', in_review:'На розгляді', in_progress:'В роботі', implemented:'Впроваджена', rejected:'Відхилена' };
+      if (newStatus !== prop.status) {
+        try { await supaPost('notifications', {
+          for_team: prop.from_team, type: 'proposal_status',
+          title: 'Статус пропозиції: ' + (statusLabels[newStatus]||newStatus),
+          message: (prop.text||'').slice(0, 200), is_read: false
+        }); } catch(e) {}
+      }
+      if (adminComment && adminComment !== prop.admin_comment) {
+        try { await supaPost('notifications', {
+          for_team: prop.from_team, type: 'proposal_comment',
+          title: 'Коментар до вашої пропозиції',
+          message: adminComment.slice(0, 200), is_read: false
+        }); } catch(e) {}
+      }
+    }
+
     await loadProposals();
     setTimeout(()=>closeProposalDetail(), 900);
   } catch(e) {
