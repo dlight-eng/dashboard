@@ -106,6 +106,8 @@ function onTeamChange() {
   if (typeof renderTeamProposals === 'function' && allProposals && allProposals.length !== undefined) {
     renderTeamProposals();
   }
+  // 🔔 Оновлюємо сповіщення для нової команди
+  loadNotifications();
 }
 
 
@@ -1969,6 +1971,19 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
 
     sessionStorage.removeItem('dash_' + getSelectedTeam());
     showToast('Збережено', 'success');
+
+    // 🔔 Сповіщення: коментар до зауваження → автору зауваження
+    if (section === 'comments' && field === 'comment' && newVal) {
+      const fromTeam = row.from_team;
+      if (fromTeam && fromTeam !== getSelectedTeam()) {
+        createNotification(fromTeam, 'comment_reply',
+          `Відповідь на ваше зауваження`,
+          `${getSelectedTeam()}: ${newVal.slice(0, 200)}`,
+          'comment', row.id
+        );
+      }
+    }
+
     rerenderSection(section);
   } catch(e) {
     showToast('Помилка: ' + e.message, 'error');
@@ -2072,6 +2087,13 @@ async function createCDFromProblem(problemId) {  const problem = allProblems.fin
     }
     sessionStorage.removeItem('dash_' + team);
     showToast('✓ КД створено з проблеми №' + problemId, 'success');
+
+    // 🔔 Сповіщення: КД створено
+    createNotification(team, 'cd_created',
+      `Нову КД створено з проблеми`,
+      `${problem.description || problem.desc || ''}`.slice(0, 200),
+      'corrective', rows?.[0]?.id
+    );
   } catch(e) {
     showToast('Помилка: ' + e.message, 'error');
   }
@@ -2801,6 +2823,14 @@ async function submitProposal() {
     });
     msg.textContent = '✓ Пропозицію подано'; msg.style.color = 'var(--c-green)';
     document.getElementById('propFormText').value = '';
+
+    // 🔔 Сповіщення: нова пропозиція → всі команди (крім своєї)
+    const otherTeams = TEAMS_LIST.filter(t => t !== team);
+    createNotificationBulk(otherTeams, 'proposal',
+      `Нова пропозиція від ${team}`,
+      `${authorName || 'Учасник'}: ${text.slice(0, 200)}`
+    );
+
     await loadProposals();
     setTimeout(()=>{ msg.textContent=''; }, 2500);
   } catch(e) {
@@ -2949,6 +2979,27 @@ async function saveProposalStatus() {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + await res.text());
     msg.textContent = '✓ Збережено'; msg.style.color = 'var(--c-green)';
+
+    // 🔔 Сповіщення: зміна статусу або коментар → команді що подала
+    const prop = allProposals.find(r => r.id === currentPropId);
+    if (prop && prop.from_team) {
+      const statusLabel = PROP_STATUS_LABEL[newStatus] || newStatus;
+      if (newStatus !== prop.status) {
+        createNotification(prop.from_team, 'proposal_status',
+          `Статус пропозиції змінено: ${statusLabel}`,
+          `"${(prop.text||'').slice(0, 150)}"`,
+          'proposal', currentPropId
+        );
+      }
+      if (adminComment && adminComment !== prop.admin_comment) {
+        createNotification(prop.from_team, 'proposal_comment',
+          `Коментар керівництва до вашої пропозиції`,
+          adminComment.slice(0, 200),
+          'proposal', currentPropId
+        );
+      }
+    }
+
     await loadProposals();
     setTimeout(()=>closeProposalDetail(), 900);
   } catch(e) {
@@ -3179,6 +3230,163 @@ async function renderWalletDetails(team) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// 🔔 СПОВІЩЕННЯ
+// ════════════════════════════════════════════════════════════
+let notifData = [];
+let notifVisible = false;
+let notifPollTimer = null;
+
+const NOTIF_ICONS = {
+  comment:          '💬',
+  comment_reply:    '💬',
+  proposal:         '💡',
+  proposal_status:  '🔄',
+  proposal_comment: '💬',
+  escalation:       '🚨',
+  cd_created:       '🔵',
+  agreement_expire: '⏰',
+  default:          '🔔',
+};
+
+// Створення сповіщення
+async function createNotification(forTeam, type, title, message, linkType, linkId) {
+  if (!forTeam) return;
+  try {
+    await supaPost('notifications', {
+      for_team: forTeam,
+      type: type,
+      title: title,
+      message: (message || '').slice(0, 500),
+      link_type: linkType || null,
+      link_id: linkId || null,
+      is_read: false,
+    });
+  } catch(e) {
+    console.warn('Notification create failed:', e.message);
+  }
+}
+
+// Масове створення (для кількох команд одразу)
+async function createNotificationBulk(teams, type, title, message, linkType, linkId) {
+  for (const team of teams) {
+    await createNotification(team, type, title, message, linkType, linkId);
+  }
+}
+
+// Завантаження сповіщень поточної команди
+async function loadNotifications() {
+  const team = getSelectedTeam();
+  try {
+    const rows = await supaGet('notifications', `for_team=eq.${encodeURIComponent(team)}&order=created_at.desc&limit=50`);
+    notifData = rows || [];
+    updateNotifBadge();
+    if (notifVisible) renderNotifList();
+  } catch(e) {
+    console.warn('Notifications load failed:', e.message);
+  }
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  const unread = notifData.filter(n => !n.is_read).length;
+  badge.textContent = unread > 99 ? '99+' : String(unread);
+  badge.style.display = unread > 0 ? 'flex' : 'none';
+}
+
+function toggleNotifications() {
+  notifVisible = !notifVisible;
+  const panel = document.getElementById('notifPanel');
+  if (!panel) return;
+  panel.style.display = notifVisible ? 'flex' : 'none';
+  if (notifVisible) {
+    loadNotifications();
+    renderNotifList();
+  }
+}
+
+function closeNotifications() {
+  notifVisible = false;
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+// Закриваємо панель при кліку поза нею
+document.addEventListener('click', e => {
+  if (!notifVisible) return;
+  const panel = document.getElementById('notifPanel');
+  const btn = document.getElementById('notifBtn');
+  if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+    closeNotifications();
+  }
+});
+
+function renderNotifList() {
+  const container = document.getElementById('notifList');
+  if (!container) return;
+
+  if (!notifData.length) {
+    container.innerHTML = '<div class="notif-empty">Немає сповіщень</div>';
+    return;
+  }
+
+  container.innerHTML = notifData.map(n => {
+    const icon = NOTIF_ICONS[n.type] || NOTIF_ICONS.default;
+    const cls = n.is_read ? 'notif-item read' : 'notif-item unread';
+    const ago = timeAgo(n.created_at);
+    return `<div class="${cls}" onclick="onNotifClick(${n.id})" data-id="${n.id}">
+      <div class="notif-icon">${icon}</div>
+      <div class="notif-body">
+        <div class="notif-title">${escHtml(n.title)}</div>
+        ${n.message ? `<div class="notif-msg">${escHtml(n.message)}</div>` : ''}
+        <div class="notif-time">${ago}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'щойно';
+  if (diff < 3600) return `${Math.floor(diff/60)} хв тому`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} год тому`;
+  if (diff < 604800) return `${Math.floor(diff/86400)} дн тому`;
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+async function onNotifClick(id) {
+  // Позначаємо як прочитане
+  try {
+    await supaPatch('notifications', `id=eq.${id}`, { is_read: true });
+    const n = notifData.find(x => x.id === id);
+    if (n) n.is_read = true;
+    updateNotifBadge();
+    renderNotifList();
+  } catch(e) {}
+}
+
+async function markAllNotifRead() {
+  const team = getSelectedTeam();
+  try {
+    await supaPatch('notifications', `for_team=eq.${encodeURIComponent(team)}&is_read=eq.false`, { is_read: true });
+    notifData.forEach(n => n.is_read = true);
+    updateNotifBadge();
+    renderNotifList();
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+  }
+}
+
+// Polling кожні 60 секунд
+function startNotifPolling() {
+  clearInterval(notifPollTimer);
+  notifPollTimer = setInterval(() => loadNotifications(), 60000);
+}
+
 // 🔍 ПОШУК (Ctrl+K)
 // ════════════════════════════════════════════════════════════
 let searchDebounceTimer = null;
@@ -3491,10 +3699,11 @@ function updateSearchActive() {
 }
 
 loadSavedTeam().then(() => loadData()).then(() => {
-  // Після завантаження поточної команди — фоново завантажуємо всі інші
   prefetchAllTeams();
-  // Завантажуємо пропозиції для секції на дашборді
   loadProposals();
+  // 🔔 Завантажуємо сповіщення і запускаємо polling
+  loadNotifications();
+  startNotifPolling();
 });
 
 // Попереднє завантаження даних для всіх команд у фоні
