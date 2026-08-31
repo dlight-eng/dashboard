@@ -2397,7 +2397,7 @@ const QUICK_FORMS = {
         <div class="form-field"><label class="field-label">Дата</label>
           <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
         <div class="form-field"><label class="field-label">Відповідальний</label>
-          <input class="field-input" type="text" id="qa_resp" placeholder="Прізвище"></div>
+          <select class="field-input" id="qa_resp"><option value="">-- виберіть --</option></select></div>
         <div class="form-field full"><label class="field-label">Опис проблеми</label>
           <textarea class="field-input" id="qa_desc" placeholder="Детальний опис..."></textarea></div>
         <div class="form-field full"><label class="field-label">Кроки вирішення</label>
@@ -2410,9 +2410,10 @@ const QUICK_FORMS = {
       </div>`,
     collect: () => ({
       date: v('qa_date'), desc: v('qa_desc'), steps: v('qa_steps'),
-      resp: v('qa_resp'), status: v('qa_status'),
+      resp: getDropdownText('qa_resp'), status: v('qa_status'),
     }),
     validate: d => !d.desc ? 'Введіть опис проблеми' : null,
+    afterRender: () => populateTeamMembersDropdown('qa_resp'),
   },
   escalation: {
     title: 'Додати ескалацію',
@@ -2437,31 +2438,6 @@ const QUICK_FORMS = {
     }),
     validate: d => !d.desc ? 'Введіть опис ескалації' : null,
   },
-  partner: {
-    title: 'Додати партнерську угоду',
-    section: 'partners',
-    fields: () => `
-      <div class="form-grid">
-        <div class="form-field full"><label class="field-label">Назва партнера / відділу</label>
-          <input class="field-input" type="text" id="qa_name" placeholder="Назва партнера"></div>
-        <div class="form-field full"><label class="field-label">Статуси по днях (Пн–Сб)</label>
-          <div style="display:flex;gap:10px;margin-top:4px">
-            ${['Пн','Вт','Ср','Чт','Пт','Сб'].map((d,i)=>`
-            <label style="display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--c-muted)">
-              ${d}<input type="checkbox" id="qa_d${i}" ${i<5?'checked':''} style="width:16px;height:16px">
-            </label>`).join('')}
-          </div>
-        </div>
-        <div class="form-field full"><label class="field-label">Коментар</label>
-          <input class="field-input" type="text" id="qa_comment" placeholder="Додатково..."></div>
-      </div>`,
-    collect: () => ({
-      name: v('qa_name'),
-      days: [0,1,2,3,4,5].map(i => document.getElementById('qa_d'+i)?.checked ? 1 : 0),
-      comment: v('qa_comment'),
-    }),
-    validate: d => !d.name ? 'Введіть назву партнера' : null,
-  },
   comment: {
     title: 'Додати зауваження',
     section: 'comments',
@@ -2469,10 +2445,14 @@ const QUICK_FORMS = {
       <div class="form-grid">
         <div class="form-field"><label class="field-label">Дата</label>
           <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
-        <div class="form-field"><label class="field-label">Від кого / Дільниця</label>
-          <input class="field-input" type="text" id="qa_source" placeholder="Козловий — Навантажувачі"></div>
-        <div class="form-field"><label class="field-label">Автор</label>
-          <input class="field-input" type="text" id="qa_author" placeholder="Прізвище"></div>
+        <div class="form-field"><label class="field-label">Від кого (команда)</label>
+          <select class="field-input" id="qa_source" onchange="populateLinkedMembersDropdown('qa_source','qa_author')">
+            <option value="">-- виберіть команду --</option>
+          </select></div>
+        <div class="form-field"><label class="field-label">Автор (учасник)</label>
+          <select class="field-input" id="qa_author">
+            <option value="">-- спочатку оберіть команду --</option>
+          </select></div>
         <div class="form-field"><label class="field-label">Статус</label>
           <select class="field-input" id="qa_status">
             <option value="wait">Очікує</option><option value="wip">В роботі</option>
@@ -2482,10 +2462,11 @@ const QUICK_FORMS = {
           <textarea class="field-input" id="qa_text" style="min-height:80px" placeholder="Детальний опис..."></textarea></div>
       </div>`,
     collect: () => ({
-      date: v('qa_date'), source: v('qa_source'),
-      author: v('qa_author'), status: v('qa_status'), text: v('qa_text'),
+      date: v('qa_date'), source: getDropdownText('qa_source'),
+      author: getDropdownText('qa_author'), status: v('qa_status'), text: v('qa_text'),
     }),
     validate: d => !d.text ? 'Введіть текст зауваження' : null,
+    afterRender: () => populateTeamsDropdown('qa_source'),
   },
   corrective: {
     title: 'Додати коригуючу дію',
@@ -2495,7 +2476,7 @@ const QUICK_FORMS = {
         <div class="form-field"><label class="field-label">Дата</label>
           <input class="field-input" type="date" id="qa_date" value="${today()}"></div>
         <div class="form-field"><label class="field-label">Відповідальний</label>
-          <input class="field-input" type="text" id="qa_resp" placeholder="Прізвище"></div>
+          <select class="field-input" id="qa_resp"><option value="">-- виберіть --</option></select></div>
         <div class="form-field full"><label class="field-label">Опис проблеми</label>
           <textarea class="field-input" id="qa_desc" placeholder="Опис..."></textarea></div>
         <div class="form-field full"><label class="field-label">Коригуюча дія</label>
@@ -2508,15 +2489,85 @@ const QUICK_FORMS = {
       </div>`,
     collect: () => ({
       date: v('qa_date'), desc: v('qa_desc'),
-      action: v('qa_action'), resp: v('qa_resp'), status: v('qa_status'),
+      action: v('qa_action'), resp: getDropdownText('qa_resp'), status: v('qa_status'),
     }),
     validate: d => !d.desc ? 'Введіть опис' : null,
+    afterRender: () => populateTeamMembersDropdown('qa_resp'),
   },
 };
 
 function v(id) {
   const el = document.getElementById(id);
   return el ? el.value.trim() : '';
+}
+
+// Отримати текст вибраної опції (ім'я, а не ID)
+function getDropdownText(id) {
+  const el = document.getElementById(id);
+  if (!el || !el.value) return '';
+  return el.options[el.selectedIndex]?.text || el.value;
+}
+
+// Заповнити дропдаун учасниками ПОТОЧНОЇ команди
+async function populateTeamMembersDropdown(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- завантаження --</option>';
+  try {
+    const team = getSelectedTeam();
+    const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position`);
+    sel.innerHTML = '<option value="">-- виберіть --</option>';
+    (rows || []).forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name;
+      o.textContent = r.position ? `${r.name} — ${r.position}` : r.name;
+      sel.appendChild(o);
+    });
+  } catch(e) {
+    sel.innerHTML = `<option value="">помилка</option>`;
+  }
+}
+
+// Заповнити дропдаун списком команд
+function populateTeamsDropdown(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- виберіть команду --</option>';
+  TEAMS_LIST.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+}
+
+// При виборі команди — заповнити дропдаун учасників цієї команди
+async function populateLinkedMembersDropdown(teamSelectId, memberSelectId) {
+  const teamSel = document.getElementById(teamSelectId);
+  const memberSel = document.getElementById(memberSelectId);
+  if (!teamSel || !memberSel) return;
+  const team = teamSel.value;
+  if (!team) {
+    memberSel.innerHTML = '<option value="">-- спочатку оберіть команду --</option>';
+    return;
+  }
+  memberSel.innerHTML = '<option value="">-- завантаження --</option>';
+  try {
+    const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position`);
+    memberSel.innerHTML = '<option value="">-- виберіть --</option>';
+    (rows || []).forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name;
+      o.textContent = r.position ? `${r.name} — ${r.position}` : r.name;
+      memberSel.appendChild(o);
+    });
+  } catch(e) {
+    memberSel.innerHTML = `<option value="">помилка</option>`;
+  }
+}
+
+// Для index.html — заповнити c_source + c_author при відкритті модалки
+function populateAuthorDropdown(teamSelectId, memberSelectId) {
+  populateLinkedMembersDropdown(teamSelectId, memberSelectId);
 }
 function today() {
   return new Date().toISOString().slice(0,10);
@@ -2531,11 +2582,13 @@ function openQuickAdd(type) {
   document.getElementById('quickAddMsg').textContent = '';
   document.getElementById('quickAddBackdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
+  // Заповнюємо дропдауни (якщо є)
+  if (cfg.afterRender) cfg.afterRender();
   // Фокус на перше текстове поле
   setTimeout(() => {
-    const first = document.querySelector('#quickAddBody input[type=text], #quickAddBody textarea');
+    const first = document.querySelector('#quickAddBody textarea, #quickAddBody input[type=text]');
     if (first) first.focus();
-  }, 100);
+  }, 150);
 }
 
 function closeQuickAdd() {
