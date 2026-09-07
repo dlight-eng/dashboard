@@ -423,10 +423,12 @@ function renderLeaderboard(rawTeams) {
 // УЧАСНИКИ КОМАНДИ
 // ════════════════════════════════════════════════
 let teamMembers  = [];  // поточні учасники команди
+let teamMembersRequestId = 0;
 let allB24Users  = [];  // всі співробітники з B24
 let b24Loaded    = false;
 
 async function loadTeamMembers() {
+  const requestId = ++teamMembersRequestId;
   try {
     const team = getSelectedTeam();
     const CACHE_KEY = 'members_' + team;
@@ -438,6 +440,7 @@ async function loadTeamMembers() {
       if (cached) {
         const { data, ts } = JSON.parse(cached);
         if (Date.now() - ts < CACHE_TTL) {
+          if (requestId !== teamMembersRequestId || getSelectedTeam() !== team) return;
           teamMembers = data.members || [];
           renderTeamMembers();
           const cnt = teamMembers.length;
@@ -449,9 +452,11 @@ async function loadTeamMembers() {
     } catch(e) {}
 
     const rows = await supaGet('team_members', `team=eq.${encodeURIComponent(team)}&select=b24_id,name,position,photo`);
+    if (requestId !== teamMembersRequestId || getSelectedTeam() !== team) return;
     const data = { members: (rows||[]).map(r => ({ id: r.b24_id, name: r.name, position: r.position, photo: r.photo })) };
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch(e) {}
 
+    if (requestId !== teamMembersRequestId || getSelectedTeam() !== team) return;
     teamMembers = data.members || [];
     renderTeamMembers();
     const cnt = teamMembers.length;
@@ -505,18 +510,30 @@ function removeMember(i) {
 }
 
 async function saveTeamMembersToSheets() {
+  const team = getSelectedTeam();
+  const cacheKey = 'members_' + team;
   try {
-    sessionStorage.removeItem('members_' + getSelectedTeam());
-    const team = getSelectedTeam();
-    // DELETE може повернути 0 рядків якщо команда нова — це нормально
-    try {
-      await supaDelete('team_members', `team=eq.${encodeURIComponent(team)}`);
-    } catch(e) {
-      if (!e.message.includes('не знайдено')) throw e;
-    }
+    sessionStorage.removeItem(cacheKey);
+    const encTeam = encodeURIComponent(team);
+    const existing = await supaGet('team_members', `team=eq.${encTeam}&select=b24_id`);
+    const wantedIds = new Set(teamMembers.map(m => String(m.id)));
+    const removedIds = (existing || [])
+      .map(r => String(r.b24_id))
+      .filter(id => !wantedIds.has(id));
+
+    // Спочатку додаємо/оновлюємо актуальних учасників, і лише потім видаляємо прибраних.
+    // Це не дає отримати порожню команду через помилку INSERT.
     if (teamMembers.length) {
-      await supaPost('team_members', teamMembers.map(m => ({ team, b24_id: m.id, name: m.name, position: m.position, photo: m.photo })));
+      await supaUpsert(
+        'team_members',
+        teamMembers.map(m => ({ team, b24_id: m.id, name: m.name, position: m.position, photo: m.photo })),
+        'team,b24_id'
+      );
     }
+    for (const id of removedIds) {
+      await supaDelete('team_members', `team=eq.${encTeam}&b24_id=eq.${encodeURIComponent(id)}`);
+    }
+
     showToast('Учасників збережено', 'success');
   } catch(e) {
     showToast('Помилка збереження: ' + e.message, 'error');
@@ -683,7 +700,7 @@ async function loadData(forceReload = false) {
             // Перевіряємо що команда не змінилась поки читали кеш
             if (getSelectedTeam() !== requestedTeam) { showLoading(false); return; }
             renderAll(data);
-            loadTeamMembers();
+            await loadTeamMembers();
             setUpdateTime(new Date(ts));
             setDotOk();
             showLoading(false);
@@ -774,7 +791,7 @@ async function loadData(forceReload = false) {
     }
 
     renderAll(data);
-    loadTeamMembers();
+    await loadTeamMembers();
     setUpdateTime(new Date());
     setDotOk();
   } catch(err) {
@@ -1124,7 +1141,7 @@ function populateMonthDropdown(data) {
 function renderValuesList(id, valStr) {
   const el = document.getElementById(id);
   if (!el || !valStr) return;
-  el.innerHTML = String(valStr).split(',').map(v=>v.trim()).filter(Boolean).map(v=>`<li>${v}</li>`).join('');
+  el.innerHTML = String(valStr).split(',').map(v=>v.trim()).filter(Boolean).map(v=>`<li>${escHtml(v)}</li>`).join('');
 }
 
 // ════════════════════════════════════════════════
@@ -1641,7 +1658,7 @@ async function saveChartSettings() {
     triggerResp:   document.getElementById('cs_triggerResp')?.value.trim() || '',
     triggerDesc:   document.getElementById('cs_triggerDesc')?.value.trim() || '',
   };
-  saveChartConfigsToStorage();
+  await saveChartConfigsToStorage();
   const newTitle = chartConfigs[idx].title || ('Графік ' + (idx+1));
   document.querySelectorAll('#chartTabRow .mtab')[idx].textContent = newTitle;
   setText('chartTitle' + idx, newTitle);
@@ -1668,7 +1685,7 @@ async function saveAllTriggers() {
 async function resetChartSettings() {
   if (!confirm('Скинути всі графіки до стандартних?')) return;
   chartConfigs = JSON.parse(JSON.stringify(DEFAULT_CHARTS));
-  saveChartConfigsToStorage();
+  await saveChartConfigsToStorage();
   document.querySelectorAll('#chartTabRow .mtab').forEach((btn,i) => {
     btn.textContent = chartConfigs[i].title || ('Графік '+(i+1));
   });
@@ -1741,16 +1758,26 @@ async function saveChartEdit() {
   try {
     const team = getSelectedTeam();
 
-    // Очищаємо старі дані (може бути 0 рядків — це нормально)
-    try {
-      await supaDelete('chart_data', `team=eq.${encodeURIComponent(team)}&chart_idx=eq.${chartEditIdx}`);
-    } catch(e) {
-      // Якщо 0 рядків видалено — не помилка для графіків
-      if (!e.message.includes('не знайдено')) throw e;
-    }
+    const chartFilter = `team=eq.${encodeURIComponent(team)}&chart_idx=eq.${chartEditIdx}`;
+    // Зберігаємо старі дані, щоб при помилці запису можна було відновити їх.
+    const oldRows = await supaGet('chart_data', `${chartFilter}&select=*`);
+    const rows2 = chartEditData
+      .filter(r => r.label || (r.value !== null && r.value !== ''))
+      .map(r => ({ team, chart_idx: chartEditIdx, label: r.label, value: r.value, plan: r.plan || null }));
 
-    const rows2 = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!=='')).map(r=>({team,chart_idx:chartEditIdx,label:r.label,value:r.value,plan:r.plan||null}));
-    if(rows2.length) await supaPost('chart_data', rows2);
+    try {
+      await supaDelete('chart_data', chartFilter);
+      if (rows2.length) await supaPost('chart_data', rows2);
+    } catch (writeErr) {
+      // Відновлюємо попередній стан, якщо новий запис не пройшов.
+      try {
+        await supaDelete('chart_data', chartFilter).catch(() => {});
+        if (oldRows?.length) await supaPost('chart_data', oldRows);
+      } catch (restoreErr) {
+        console.error('Не вдалося відновити старі дані графіка:', restoreErr);
+      }
+      throw writeErr;
+    }
 
     // Оновлюємо локальні дані
     const newData = chartEditData.filter(r=>r.label||(r.value!==null&&r.value!==''));
@@ -2145,7 +2172,7 @@ async function createCDFromProblem(problemId) {  const problem = allProblems.fin
 }
 
 function renderEscalations(escalations) {
-  document.getElementById('escalBody').innerHTML = escalations.map((e,i)=>`<tr>
+  document.getElementById('escalBody').innerHTML = escalations.map((e,i)=>`<tr data-record-id="${escHtmlAttr(String(e.id))}">
     <td style="font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap">${e.date}</td>
     <td style="font-size:11px;max-width:160px">${e.description||e.desc||'—'}</td>
     ${editCell(i,'escalations','action', e.responsible||e.action||'', 'Написати дію')}
@@ -2399,7 +2426,10 @@ async function submitForm() {
   }
 }
 
-function getToken() { return ''; }
+function getToken() {
+  // Legacy compatibility. Authentication is intentionally not faked here.
+  return null;
+}
 
 // ════════════════════════════════════════════════
 // УТИЛІТИ
@@ -3758,17 +3788,11 @@ function selectSearchResult(idx) {
 function findRowByRecordId(tbodyId, recordId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return null;
-  const mapping = {
-    probBody: allProblems,
-    corrBody: allCorrective,
-    escalBody: allEscalations,
-    commentsBody: allComments,
-  };
-  const list = mapping[tbodyId] || [];
-  const filteredIdx = list.findIndex(r => r.id === recordId);
-  if (filteredIdx === -1) return tbody.firstElementChild;
-  // Для problems потрібно врахувати фільтр — беремо перший рядок якщо є
-  return tbody.children[filteredIdx] || tbody.firstElementChild;
+  const wanted = String(recordId);
+  // Шукаємо фактичний DOM-рядок, тому фільтри/сортування більше не ламають навігацію.
+  const direct = tbody.querySelector(`[data-record-id="${CSS.escape(wanted)}"]`);
+  if (direct) return direct;
+  return null;
 }
 
 // Гарячі клавіші
@@ -3820,6 +3844,7 @@ async function prefetchAllTeams() {
   const CACHE_TTL = 10 * 60 * 1000;
 
   for (const team of TEAMS_LIST) {
+    if (getSelectedTeam() !== currentTeam) break;
     if (team === currentTeam) continue; // вже завантажено
 
     const CACHE_KEY = 'dash_' + team;
