@@ -508,13 +508,18 @@ async function saveTeamMembersToSheets() {
   try {
     sessionStorage.removeItem('members_' + getSelectedTeam());
     const team = getSelectedTeam();
-    await supaDelete('team_members', `team=eq.${encodeURIComponent(team)}`);
+    // DELETE може повернути 0 рядків якщо команда нова — це нормально
+    try {
+      await supaDelete('team_members', `team=eq.${encodeURIComponent(team)}`);
+    } catch(e) {
+      if (!e.message.includes('не знайдено')) throw e;
+    }
     if (teamMembers.length) {
       await supaPost('team_members', teamMembers.map(m => ({ team, b24_id: m.id, name: m.name, position: m.position, photo: m.photo })));
     }
     showToast('Учасників збережено', 'success');
   } catch(e) {
-    showToast('Помилка збереження', 'error');
+    showToast('Помилка збереження: ' + e.message, 'error');
   }
 }
 
