@@ -399,7 +399,7 @@ function renderOblRows(side) {
   const items = getItems(side);
   const body = document.getElementById('oblBody'+side);
   if (!body) return;
-  if (!items.length) { body.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Немає зобов'язань</td></tr>`; return; }
+  if (!items.length) { body.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Немає записів</td></tr>`; return; }
   const editIdx = editingRow[side]??null;
   body.innerHTML = items.map((it,i)=>{
     const isEdit = editIdx===i;
