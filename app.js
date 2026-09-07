@@ -106,7 +106,11 @@ function onTeamChange() {
   if (typeof renderTeamProposals === 'function' && allProposals && allProposals.length !== undefined) {
     renderTeamProposals();
   }
-  // 🔔 Оновлюємо сповіщення для нової команди
+  // 🔔 Повністю скидаємо старі сповіщення і скасовуємо їхній результат
+  notifRequestId++;
+  notifData = [];
+  updateNotifBadge();
+  if (notifVisible) renderNotifList();
   loadNotifications();
 }
 
@@ -2048,7 +2052,7 @@ async function saveInlineEdit(section, rowIndex, field, cellId, label) {
     if (section === 'comments' && field === 'comment' && newVal) {
       const fromTeam = row.from_team;
       if (fromTeam && fromTeam !== getSelectedTeam()) {
-        createNotification(fromTeam, 'comment_reply',
+        await createNotification(fromTeam, 'comment_reply',
           `Відповідь на ваше зауваження`,
           `${getSelectedTeam()}: ${newVal.slice(0, 200)}`,
           'comment', row.id
@@ -2161,7 +2165,7 @@ async function createCDFromProblem(problemId) {  const problem = allProblems.fin
     showToast('✓ КД створено з проблеми №' + problemId, 'success');
 
     // 🔔 Сповіщення: КД створено
-    createNotification(team, 'cd_created',
+    await createNotification(team, 'cd_created',
       `Нову КД створено з проблеми`,
       `${problem.description || problem.desc || ''}`.slice(0, 200),
       'corrective', rows?.[0]?.id
@@ -2271,7 +2275,7 @@ function isPartnerActive(r, today) {
 
 function renderComments(comments) {
   document.getElementById('commentsList').innerHTML = comments.map((c,i)=>`
-    <div class="comment-card">
+    <div class="comment-card" data-record-id="${escHtmlAttr(String(c.id))}">
       <div class="comment-meta">
         <span class="comment-source">${c.source||c.author||'—'}</span>
         <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -2299,7 +2303,7 @@ function renderCorrective(corrective) {
     const sourceBadge = r.source_problem_id
       ? ` <span class="cd-source-badge" title="Створено з проблеми №${r.source_problem_id}">🔗 з проблеми</span>`
       : '';
-    return `<tr>
+    return `<tr data-record-id="${escHtmlAttr(String(r.id))}">
       <td style="font-family:var(--mono);font-size:11px;color:var(--c-muted)">${r.n||(i+1)}</td>
       <td style="font-size:11px;max-width:120px">${r.description||r.desc||'—'}${sourceBadge}</td>
       ${editCell(i,'corrective','action', r.description||r.action||'', 'Написати дію')}
@@ -2410,8 +2414,21 @@ async function submitForm() {
     };
     const mapping2 = tableMap2[section];
     if (!mapping2) throw new Error('Невідома секція: ' + section);
-    await supaPost(mapping2.table, mapping2.row(data));
+    const insertedRows2 = await supaPost(mapping2.table, mapping2.row(data));
+    const insertedRow2 = Array.isArray(insertedRows2) ? insertedRows2[0] : null;
     sessionStorage.removeItem('dash_' + team);
+
+    // 🔔 Нова ескалація → поточній команді
+    if (section === 'escalations') {
+      await createNotification(
+        team,
+        'escalation',
+        'Нова ескалація',
+        `${data.desc || ''}`.slice(0, 200),
+        'escalation',
+        insertedRow2?.id
+      );
+    }
 
     msg.textContent = '✓ Збережено!';
     msg.className = 'form-msg success';
@@ -2706,16 +2723,19 @@ async function submitQuickAdd() {
     const mapping = tableMap[section];
     if (!mapping) throw new Error('Невідома секція: ' + section);
 
-    await supaPost(mapping.table, mapping.row(data));
+    const insertedRows = await supaPost(mapping.table, mapping.row(data));
+    const insertedRow = Array.isArray(insertedRows) ? insertedRows[0] : null;
     sessionStorage.removeItem('dash_' + team);
 
-    // 🔔 Сповіщення при створенні зауваження → команді на чий дашборд подали
+    // 🔔 Нове зауваження → команді, на чий дашборд його подали
     if (section === 'comments' && data.source && data.source !== team) {
-      // Команда-автор (data.source) подала зауваження на дашборд команди (team)
-      // Сповіщаємо команду на чий дашборд подали
-      createNotification(team, 'comment',
+      await createNotification(
+        team,
+        'comment',
         `Нове зауваження від ${data.source}`,
-        `${data.author || ''}: ${(data.text || data.desc || '').slice(0, 200)}`
+        `${data.author || ''}: ${(data.text || data.desc || '').slice(0, 200)}`,
+        'comment',
+        insertedRow?.id
       );
     }
 
@@ -2952,21 +2972,28 @@ async function submitProposal() {
   btn.disabled = true; btn.textContent = 'Збереження...';
   msg.textContent = ''; msg.style.color = '';
   try {
-    await supaPost('proposals', {
+    const insertedProposalRows = await supaPost('proposals', {
       from_team: team,
       author_id: authorId || null,
       author_name: authorName || null,
       text: text,
       status: 'submitted'
     });
+    const insertedProposal = Array.isArray(insertedProposalRows)
+      ? insertedProposalRows[0]
+      : null;
     msg.textContent = '✓ Пропозицію подано'; msg.style.color = 'var(--c-green)';
     document.getElementById('propFormText').value = '';
 
     // 🔔 Сповіщення: нова пропозиція → всі команди (крім своєї)
     const otherTeams = TEAMS_LIST.filter(t => t !== team);
-    createNotificationBulk(otherTeams, 'proposal',
+    await createNotificationBulk(
+      otherTeams,
+      'proposal',
       `Нова пропозиція від ${team}`,
-      `${authorName || 'Учасник'}: ${text.slice(0, 200)}`
+      `${authorName || 'Учасник'}: ${text.slice(0, 200)}`,
+      'proposal',
+      insertedProposal?.id
     );
 
     await loadProposals();
@@ -3123,14 +3150,14 @@ async function saveProposalStatus() {
     if (prop && prop.from_team) {
       const statusLabel = PROP_STATUS_LABEL[newStatus] || newStatus;
       if (newStatus !== prop.status) {
-        createNotification(prop.from_team, 'proposal_status',
+        await createNotification(prop.from_team, 'proposal_status',
           `Статус пропозиції змінено: ${statusLabel}`,
           `"${(prop.text||'').slice(0, 150)}"`,
           'proposal', currentPropId
         );
       }
       if (adminComment && adminComment !== prop.admin_comment) {
-        createNotification(prop.from_team, 'proposal_comment',
+        await createNotification(prop.from_team, 'proposal_comment',
           `Коментар керівництва до вашої пропозиції`,
           adminComment.slice(0, 200),
           'proposal', currentPropId
@@ -3374,6 +3401,7 @@ async function renderWalletDetails(team) {
 let notifData = [];
 let notifVisible = false;
 let notifPollTimer = null;
+let notifRequestId = 0;
 
 const NOTIF_ICONS = {
   comment:          '💬',
@@ -3387,40 +3415,74 @@ const NOTIF_ICONS = {
   default:          '🔔',
 };
 
-// Створення сповіщення
+function normalizeNotifTeam(team) {
+  const value = String(team || '').trim();
+  return TEAMS_LIST.includes(value) ? value : null;
+}
+
+// Створює одне сповіщення і ЧЕКАЄ його запису в Supabase.
 async function createNotification(forTeam, type, title, message, linkType, linkId) {
-  if (!forTeam) return;
+  const team = normalizeNotifTeam(forTeam);
+  if (!team) {
+    console.warn('Notification skipped: unknown team', forTeam);
+    return false;
+  }
+
+  const payload = {
+    for_team: team,
+    type: String(type || 'default'),
+    title: String(title || '').slice(0, 200),
+    message: String(message || '').slice(0, 500),
+    link_type: linkType ? String(linkType) : null,
+    link_id: linkId != null ? linkId : null,
+    is_read: false,
+  };
+
   try {
-    await supaPost('notifications', {
-      for_team: forTeam,
-      type: type,
-      title: title,
-      message: (message || '').slice(0, 500),
-      link_type: linkType || null,
-      link_id: linkId || null,
-      is_read: false,
-    });
+    const rows = await supaPost('notifications', payload);
+    return Array.isArray(rows) ? rows.length > 0 : true;
   } catch(e) {
-    console.warn('Notification create failed:', e.message);
+    console.warn('Notification create failed:', e.message, payload);
+    return false;
   }
 }
 
-// Масове створення (для кількох команд одразу)
+// Створює повідомлення всім потрібним командам паралельно.
 async function createNotificationBulk(teams, type, title, message, linkType, linkId) {
-  for (const team of teams) {
-    await createNotification(team, type, title, message, linkType, linkId);
-  }
+  const uniqueTeams = [...new Set((teams || [])
+    .map(normalizeNotifTeam)
+    .filter(Boolean))];
+
+  if (!uniqueTeams.length) return [];
+
+  return Promise.all(
+    uniqueTeams.map(team =>
+      createNotification(team, type, title, message, linkType, linkId)
+    )
+  );
 }
 
-// Завантаження сповіщень поточної команди
+// Завантаження сповіщень поточної команди.
+// Старі відповіді від попередньої команди ігноруються.
 async function loadNotifications() {
   const team = getSelectedTeam();
+  const requestId = ++notifRequestId;
+
   try {
-    const rows = await supaGet('notifications', `for_team=eq.${encodeURIComponent(team)}&order=created_at.desc&limit=50`);
-    notifData = rows || [];
+    const rows = await supaGet(
+      'notifications',
+      `for_team=eq.${encodeURIComponent(team)}&order=created_at.desc&limit=50`
+    );
+
+    if (requestId !== notifRequestId || getSelectedTeam() !== team) {
+      return;
+    }
+
+    notifData = Array.isArray(rows) ? rows : [];
     updateNotifBadge();
     if (notifVisible) renderNotifList();
   } catch(e) {
+    if (requestId !== notifRequestId || getSelectedTeam() !== team) return;
     console.warn('Notifications load failed:', e.message);
   }
 }
@@ -3428,19 +3490,23 @@ async function loadNotifications() {
 function updateNotifBadge() {
   const badge = document.getElementById('notifBadge');
   if (!badge) return;
+
   const unread = notifData.filter(n => !n.is_read).length;
   badge.textContent = unread > 99 ? '99+' : String(unread);
   badge.style.display = unread > 0 ? 'flex' : 'none';
 }
 
-function toggleNotifications() {
+async function toggleNotifications() {
   notifVisible = !notifVisible;
+
   const panel = document.getElementById('notifPanel');
   if (!panel) return;
+
   panel.style.display = notifVisible ? 'flex' : 'none';
+
   if (notifVisible) {
-    loadNotifications();
     renderNotifList();
+    await loadNotifications();
   }
 }
 
@@ -3450,11 +3516,12 @@ function closeNotifications() {
   if (panel) panel.style.display = 'none';
 }
 
-// Закриваємо панель при кліку поза нею
 document.addEventListener('click', e => {
   if (!notifVisible) return;
+
   const panel = document.getElementById('notifPanel');
   const btn = document.getElementById('notifBtn');
+
   if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
     closeNotifications();
   }
@@ -3473,7 +3540,8 @@ function renderNotifList() {
     const icon = NOTIF_ICONS[n.type] || NOTIF_ICONS.default;
     const cls = n.is_read ? 'notif-item read' : 'notif-item unread';
     const ago = timeAgo(n.created_at);
-    return `<div class="${cls}" onclick="onNotifClick(${n.id})" data-id="${n.id}">
+
+    return `<div class="${cls}" onclick="onNotifClick(${JSON.stringify(n.id)})" data-id="${escHtmlAttr(String(n.id))}">
       <div class="notif-icon">${icon}</div>
       <div class="notif-body">
         <div class="notif-title">${escHtml(n.title)}</div>
@@ -3486,32 +3554,97 @@ function renderNotifList() {
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
+
   const d = new Date(dateStr);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
+  if (isNaN(d.getTime())) return '';
+
+  const diff = Math.max(0, Math.floor((new Date() - d) / 1000));
+
   if (diff < 60) return 'щойно';
   if (diff < 3600) return `${Math.floor(diff/60)} хв тому`;
   if (diff < 86400) return `${Math.floor(diff/3600)} год тому`;
   if (diff < 604800) return `${Math.floor(diff/86400)} дн тому`;
+
   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
 }
 
+// Позначення прочитаним + перехід до пов'язаного запису.
 async function onNotifClick(id) {
-  // Позначаємо як прочитане
+  const n = notifData.find(x => String(x.id) === String(id));
+  if (!n) return;
+
+  const teamAtClick = getSelectedTeam();
+
   try {
-    await supaPatch('notifications', `id=eq.${id}`, { is_read: true });
-    const n = notifData.find(x => x.id === id);
-    if (n) n.is_read = true;
-    updateNotifBadge();
-    renderNotifList();
-  } catch(e) {}
+    if (!n.is_read) {
+      await supaPatch(
+        'notifications',
+        `id=eq.${encodeURIComponent(String(id))}`,
+        { is_read: true }
+      );
+
+      if (getSelectedTeam() === teamAtClick) {
+        n.is_read = true;
+        updateNotifBadge();
+        renderNotifList();
+      }
+    }
+  } catch(e) {
+    console.warn('Notification read failed:', e.message);
+  }
+
+  try {
+    const linkType = n.link_type;
+    const linkId = n.link_id;
+
+    if (linkType === 'proposal' && linkId != null) {
+      const proposalId = Number(linkId);
+      if (Number.isFinite(proposalId)) {
+        if (!allProposals.length) await loadProposals();
+        closeNotifications();
+        openProposalDetail(proposalId);
+      }
+      return;
+    }
+
+    if (linkId != null) {
+      const sectionMap = {
+        comment: 'commentsList',
+        corrective: 'corrBody',
+        escalation: 'escalBody',
+      };
+
+      const containerId = sectionMap[linkType];
+      if (containerId) {
+        const target = findRowByRecordId(containerId, linkId);
+
+        if (target) {
+          closeNotifications();
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('search-highlighted');
+          setTimeout(() => target.classList.remove('search-highlighted'), 2000);
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Notification navigation failed:', e.message);
+  }
 }
 
 async function markAllNotifRead() {
   const team = getSelectedTeam();
+  const requestIdAtStart = notifRequestId;
+
   try {
-    await supaPatch('notifications', `for_team=eq.${encodeURIComponent(team)}&is_read=eq.false`, { is_read: true });
-    notifData.forEach(n => n.is_read = true);
+    await supaPatch(
+      'notifications',
+      `for_team=eq.${encodeURIComponent(team)}&is_read=eq.false`,
+      { is_read: true }
+    );
+
+    if (requestIdAtStart !== notifRequestId || getSelectedTeam() !== team) return;
+
+    notifData.forEach(n => { n.is_read = true; });
     updateNotifBadge();
     renderNotifList();
   } catch(e) {
@@ -3519,7 +3652,6 @@ async function markAllNotifRead() {
   }
 }
 
-// Polling кожні 60 секунд
 function startNotifPolling() {
   clearInterval(notifPollTimer);
   notifPollTimer = setInterval(() => loadNotifications(), 60000);
