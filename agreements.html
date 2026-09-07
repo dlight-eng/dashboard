@@ -227,6 +227,101 @@ async function sbFetch(path, opts = {}) {
   return text ? JSON.parse(text) : [];
 }
 
+// ── СПОВІЩЕННЯ ПРО ЗМІНИ ПАРТНЕРСЬКИХ УГОД ──
+async function createAgreementNotification(forTeam, title, message, linkId = null) {
+  if (!forTeam || !TEAMS.includes(forTeam)) return false;
+  try {
+    await sbFetch('notifications', {
+      method: 'POST',
+      body: JSON.stringify({
+        for_team: forTeam,
+        type: 'agreement_change',
+        title: title,
+        message: String(message || '').slice(0, 500),
+        link_type: 'agreement',
+        link_id: linkId || null,
+        is_read: false
+      }),
+      prefer: 'return=minimal'
+    });
+    return true;
+  } catch (e) {
+    console.warn('Notification create failed:', e.message);
+    return false;
+  }
+}
+
+function getNotificationActorTeam() {
+  // Якщо сторінка відкрита з дашборда — пробуємо взяти поточну команду.
+  const keys = ['selectedTeam', 'selected_team', 'currentTeam', 'current_team'];
+  for (const key of keys) {
+    try {
+      const value = sessionStorage.getItem(key) || localStorage.getItem(key);
+      if (value && TEAMS.includes(value)) return value;
+    } catch (e) {}
+  }
+  return null;
+}
+
+function buildAgreementChangeMessage(teamA, teamB, before, after) {
+  const changes = [];
+  const oldItems = [...(before?.itemsAB || []), ...(before?.itemsBA || [])];
+  const newItems = [...(after?.itemsAB || []), ...(after?.itemsBA || [])];
+
+  if (oldItems.length !== newItems.length) {
+    changes.push(`зобов'язань: ${oldItems.length} → ${newItems.length}`);
+  }
+
+  const oldAccepted = oldItems.filter(x => x.acceptedUs && x.acceptedPartner).length;
+  const newAccepted = newItems.filter(x => x.acceptedUs && x.acceptedPartner).length;
+  if (oldAccepted !== newAccepted) {
+    changes.push(`повністю підписаних: ${oldAccepted} → ${newAccepted}`);
+  }
+
+  const oldUs = oldItems.filter(x => x.acceptedUs).length;
+  const newUs = newItems.filter(x => x.acceptedUs).length;
+  if (oldUs !== newUs) {
+    changes.push(`підтверджень нашої сторони: ${oldUs} → ${newUs}`);
+  }
+
+  const oldPartner = oldItems.filter(x => x.acceptedPartner).length;
+  const newPartner = newItems.filter(x => x.acceptedPartner).length;
+  if (oldPartner !== newPartner) {
+    changes.push(`підтверджень партнера: ${oldPartner} → ${newPartner}`);
+  }
+
+  if ((before?.comment || '') !== (after?.comment || '')) {
+    changes.push('змінено примітку');
+  }
+
+  // Якщо змінився текст/дата зобов'язань, але кількість і прапорці залишились ті самі.
+  const oldDetails = oldItems.map(x => `${x.desc}|${x.date}`).join('||');
+  const newDetails = newItems.map(x => `${x.desc}|${x.date}`).join('||');
+  if (oldDetails !== newDetails && !changes.some(x => x.includes("зобов'язань"))) {
+    changes.push('змінено умови або строки зобов’язань');
+  }
+
+  return changes.length
+    ? `Зміни: ${changes.join('; ')}.`
+    : 'Змінено умови партнерської угоди.';
+}
+
+async function notifyAgreementChange(teamA, teamB, before, after, linkId = null) {
+  const actor = getNotificationActorTeam();
+  const recipients = actor && (actor === teamA || actor === teamB)
+    ? [actor === teamA ? teamB : teamA]
+    : [teamA, teamB];
+
+  const title = `Змінено партнерську угоду: ${teamA} ↔ ${teamB}`;
+  const message = buildAgreementChangeMessage(teamA, teamB, before, after);
+
+  await Promise.all(
+    [...new Set(recipients)].map(team =>
+      createAgreementNotification(team, title, message, linkId)
+    )
+  );
+}
+
 // Кеш
 const CACHE_TTL = 5 * 60 * 1000;
 function cacheGet(k) {
@@ -399,7 +494,7 @@ function renderOblRows(side) {
   const items = getItems(side);
   const body = document.getElementById('oblBody'+side);
   if (!body) return;
-  if (!items.length) { body.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Немає записів</td></tr>`; return; }
+  if (!items.length) { body.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--c-muted);font-size:12px">Немає зобов'язань</td></tr>`; return; }
   const editIdx = editingRow[side]??null;
   body.innerHTML = items.map((it,i)=>{
     const isEdit = editIdx===i;
@@ -489,13 +584,31 @@ async function saveCard() {
 
   msg.textContent='Збереження...'; msg.className='form-msg';
   try {
-    await saveSide(teamA, teamB, itemsAB, comment);
-    await saveSide(teamB, teamA, itemsBA, comment);
+    const beforeSnapshot = cardSnapshot;
+    const beforeState = beforeSnapshot ? JSON.parse(beforeSnapshot) : {
+      itemsAB: [], itemsBA: [], comment: ''
+    };
+
+    const savedAB = await saveSide(teamA, teamB, itemsAB, comment);
+    const savedBA = await saveSide(teamB, teamA, itemsBA, comment);
+
     cacheDel('sb_agr_v1');
     await loadMatrix(true);
     cardSnapshot = currentSnapshot;
+
+    // Надсилаємо сповіщення тільки після успішного запису обох напрямків.
+    // Для переходу зі сповіщення беремо id першого актуального рядка угоди.
+    const linkId = savedAB?.[0]?.id || savedBA?.[0]?.id || null;
+    await notifyAgreementChange(
+      teamA,
+      teamB,
+      beforeState,
+      { itemsAB, itemsBA, comment },
+      linkId
+    );
+
     msg.textContent='✓ Збережено!'; msg.className='form-msg success';
-    showToast('Угоду збережено','success');
+    showToast('Угоду збережено та сповіщення надіслано','success');
     setTimeout(()=>closeCard(),900);
   } catch(e) {
     msg.textContent='✕ '+e.message; msg.className='form-msg error';
@@ -517,8 +630,12 @@ async function saveSide(teamA, teamB, items, comment) {
     comment: i===0 ? comment : null,
     sort_order: i+1
   }));
-  if (!toInsert.length) return;
-  await sbFetch('agreements', { method:'POST', body:JSON.stringify(toInsert), prefer:'return=minimal' });
+  if (!toInsert.length) return [];
+  return await sbFetch('agreements', {
+    method:'POST',
+    body:JSON.stringify(toInsert),
+    prefer:'return=representation'
+  });
 }
 
 function toDateInput(d) {
