@@ -843,7 +843,14 @@ function applyMonthFilter(data) {
 
   function matchesPeriod(dateStr) {
     if (!dateStr || !mNum) return true;
-    const s = String(dateStr);
+    const s = String(dateStr).trim();
+    // Тижневий діапазон "07.07-13.07.2026"
+    const weekRange = s.match(/^(\d{1,2})\.(\d{1,2})-\d{1,2}\.\d{1,2}\.(\d{4})$/);
+    if (weekRange) {
+      if (parseInt(weekRange[2], 10) !== mNum) return false;
+      if (yNum && parseInt(weekRange[3], 10) !== yNum) return false;
+      return true;
+    }
     // Формат "dd.mm.yyyy"
     const p1 = s.split('.');
     if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
@@ -893,7 +900,7 @@ function applyMonthFilter(data) {
         const sample = String((chartArr[0] || {}).label || '');
         if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(sample) || /^\d{4}-\d{2}-\d{2}/.test(sample)) {
           period = 'daily';
-        } else if (/тиж|week|нед/i.test(sample)) {
+        } else if (/тиж|week|нед/i.test(sample) || /^\d{1,2}\.\d{1,2}-\d{1,2}\.\d{1,2}\.\d{4}$/.test(sample)) {
           period = 'weekly';
         } else if (/^\d{4}$/.test(sample)) {
           period = 'yearly';
@@ -925,7 +932,14 @@ function applyMonthFilter(data) {
   // matchesPeriod з можливістю ігнорувати місяць (для місячних графіків)
   function matchesPeriod(dateStr, ignoreMonth) {
     if (!dateStr) return true;
-    const s = String(dateStr);
+    const s = String(dateStr).trim();
+    // Тижневий діапазон "07.07-13.07.2026"
+    const weekRange = s.match(/^(\d{1,2})\.(\d{1,2})-\d{1,2}\.\d{1,2}\.(\d{4})$/);
+    if (weekRange) {
+      if (!ignoreMonth && mNum !== null && parseInt(weekRange[2], 10) !== mNum) return false;
+      if (yNum !== null && parseInt(weekRange[3], 10) !== yNum) return false;
+      return true;
+    }
     // Формат "dd.mm.yyyy"
     const p1 = s.split('.');
     if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
@@ -1014,7 +1028,15 @@ function renderMeta(meta) {
 // Витягує {month, year} з рядка дати (підтримує "dd.mm.yyyy" і "yyyy-mm-dd")
 function extractPeriod(str) {
   if (!str) return null;
-  const s = String(str);
+  const s = String(str).trim();
+  // Тижневий формат "07.07-13.07.2026" — беремо місяць з першої дати
+  const weekMatch = s.match(/^(\d{1,2})\.(\d{1,2})-\d{1,2}\.\d{1,2}\.(\d{4})$/);
+  if (weekMatch) {
+    const m = parseInt(weekMatch[2], 10);
+    const y = parseInt(weekMatch[3], 10);
+    return { month: m, year: y };
+  }
+  // dd.mm.yyyy
   const p1 = s.split('.');
   if (p1.length >= 2 && /^\d{1,2}$/.test(p1[1])) {
     const m = parseInt(p1[1], 10);
@@ -1022,6 +1044,7 @@ function extractPeriod(str) {
     const y = (p1[2] && /^\d{4}$/.test(p1[2])) ? parseInt(p1[2], 10) : null;
     return { month: m, year: y };
   }
+  // yyyy-mm-dd
   const p2 = s.match(/^(\d{4})-(\d{2})-\d{2}/);
   if (p2) return { month: parseInt(p2[2], 10), year: parseInt(p2[1], 10) };
   return null;
@@ -1318,14 +1341,16 @@ function renderUserChart(idx, fullData) {
   chartData.sort((a, b) => {
     const parseD = s => {
       const str = String(s).trim();
-      // "Тиждень 4", "Week 4", "Тиж 4" — сортуємо по номеру
-      const wkMatch = str.match(/(\d+)/);
+      // Тижневий діапазон "07.07-13.07.2026" — сортуємо по першій даті
+      const weekRange = str.match(/^(\d{1,2})\.(\d{1,2})-\d{1,2}\.\d{1,2}\.(\d{4})$/);
+      if (weekRange) return new Date(+weekRange[3], +weekRange[2]-1, +weekRange[1]).getTime();
       // дд.мм.рррр
       const p = str.split('.');
       if (p.length === 3 && p[2].length === 4) return new Date(+p[2], +p[1]-1, +p[0]).getTime();
       // yyyy-mm-dd
       if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str).getTime();
       // "Тиждень N" або просто число
+      const wkMatch = str.match(/(\d+)/);
       if (wkMatch) return +wkMatch[1];
       return 0;
     };
@@ -1764,10 +1789,9 @@ function openChartDataAdd(chartIdx) {
       hint = '📅 Щоденний графік — вводіть дату кожного дня';
       break;
     case 'weekly':
-      const weekNum = Math.ceil(now.getDate() / 7);
-      defaultLabel = `Тиж.${weekNum} ${currentMonthName}`;
-      placeholder = 'Тиж.1 Липень або 01-07.07';
-      hint = '📅 Щотижневий графік — один запис на тиждень';
+      defaultLabel = `${dd}.${mm}.${yyyy}`;
+      placeholder = 'Оберіть будь-який день тижня';
+      hint = '📅 Щотижневий графік — оберіть дату, тиждень визначиться автоматично';
       break;
     case 'monthly':
       defaultLabel = `${currentMonthName} ${yyyy}`;
@@ -1781,11 +1805,10 @@ function openChartDataAdd(chartIdx) {
       break;
   }
 
-  // Для щоденного графіка — нативний date picker
-  const isDaily = (period === 'daily');
-  const inputType = isDaily ? 'date' : 'text';
-  // Для date input потрібен формат yyyy-mm-dd
-  const inputValue = isDaily ? `${yyyy}-${mm}-${dd}` : defaultLabel;
+  // Для щоденного і щотижневого — нативний date picker
+  const useDatePicker = (period === 'daily' || period === 'weekly');
+  const inputType = useDatePicker ? 'date' : 'text';
+  const inputValue = useDatePicker ? `${yyyy}-${mm}-${dd}` : defaultLabel;
 
   document.getElementById('quickAddBody').innerHTML = `
     <div class="form-section">
@@ -1815,11 +1838,28 @@ window.submitQuickAdd = async function() {
   const msg = document.getElementById('quickAddMsg');
   let label = document.getElementById('cd_label')?.value.trim();
   const value = document.getElementById('cd_value')?.value;
+  const chartCfg = chartConfigs[idx] || {};
+  const chartPeriod = chartCfg.period || 'monthly';
 
-  // Конвертуємо date picker формат yyyy-mm-dd → dd.mm.yyyy
+  // Конвертуємо date picker формат yyyy-mm-dd
   if (label && /^\d{4}-\d{2}-\d{2}$/.test(label)) {
-    const [y, m, d] = label.split('-');
-    label = `${d}.${m}.${y}`;
+    if (chartPeriod === 'weekly') {
+      // Для тижневого — конвертуємо в діапазон тижня: "07.07-13.07.2026"
+      const picked = new Date(label);
+      const day = picked.getDay(); // 0=Нд, 1=Пн
+      const mondayOffset = day === 0 ? -6 : 1 - day;
+      const monday = new Date(picked);
+      monday.setDate(picked.getDate() + mondayOffset);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const fmt = d => `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+      const yr = sunday.getFullYear();
+      label = `${fmt(monday)}-${fmt(sunday)}.${yr}`;
+    } else {
+      // Для щоденного — dd.mm.yyyy
+      const [y, m, d] = label.split('-');
+      label = `${d}.${m}.${y}`;
+    }
   }
 
   if (!label) { msg.textContent = '✕ Введіть мітку'; msg.className='form-msg error'; return; }
