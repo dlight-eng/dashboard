@@ -158,15 +158,51 @@ body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-siz
 .wallet-member .m-row:first-of-type{border-top:none}
 .wallet-member .m-row span:last-child{font-weight:600}
 .wallet-member .m-cash{color:var(--c-green)}
-.wallet-history-block{margin-top:20px;padding-top:16px;border-top:1px solid var(--c-border)}
-.wallet-history-block .wh-title{font-size:12px;font-weight:600;margin-bottom:8px;color:var(--c-muted);letter-spacing:.5px;text-transform:uppercase;font-family:var(--mono)}
-.wallet-history-row{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px dashed var(--c-border)}
-.wallet-history-row .wh-month{font-family:var(--mono);font-size:11px;color:var(--c-text)}
-.wallet-history-row .wh-place{font-family:var(--mono);font-size:11px}
-.wallet-history-row.place-1 .wh-place{color:#d4a300;font-weight:600}
-.wallet-history-row.place-2 .wh-place{color:#7a7a7a;font-weight:600}
-.wallet-history-row .wh-cash{font-family:var(--mono);font-size:11px;color:var(--c-green)}
+/* Wallet history */
+.wallet-history-block{margin-top:24px;background:var(--c-surface);border-radius:10px;padding:16px;border:1px solid var(--c-border)}
+.wallet-history-block .wh-title{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--c-muted);letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
+.wallet-history-row{display:grid;grid-template-columns:120px 1fr 1fr auto;align-items:center;padding:8px 10px;border-radius:6px;font-size:13px;color:var(--c-text);border-bottom:1px solid rgba(255,255,255,.05)}
+.wallet-history-row:last-child{border-bottom:none}
+.wallet-history-row.place-1{background:rgba(46,204,113,.12)}
+.wallet-history-row.place-2{background:rgba(52,152,219,.1)}
+.wallet-history-row.zero{opacity:.55}
+.wallet-history-row .wh-month{font-weight:600;font-family:var(--mono);font-size:12px}
+.wallet-history-row .wh-place{font-family:var(--mono);font-size:12px}
+.wallet-history-row.place-1 .wh-place{color:#d4a300;font-weight:700}
+.wallet-history-row.place-2 .wh-place{color:#7a7a7a;font-weight:700}
+.wallet-history-row .wh-cash{font-family:var(--mono);font-size:12px;color:var(--c-green);font-weight:700;text-align:right;min-width:60px}
 .wallet-history-row.zero .wh-cash{color:var(--c-muted)}
+/* Wallet deductions */
+.wallet-deductions{margin-top:16px;background:var(--c-surface);border-radius:10px;padding:16px;border:1px solid var(--c-border)}
+.wd-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--c-muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono)}
+.wd-row{display:grid;grid-template-columns:90px 1fr auto 30px;align-items:center;padding:6px 8px;font-size:12px;color:var(--c-text);border-bottom:1px solid rgba(255,255,255,.05);gap:8px}
+.wd-row:last-child{border-bottom:none}
+.wd-amount{font-weight:700;color:#e74c3c;white-space:nowrap;font-family:var(--mono)}
+.wd-del{cursor:pointer;opacity:.5;font-size:14px}.wd-del:hover{opacity:1}
+.wallet-member .deduct-btn{margin-top:6px;font-size:11px;padding:3px 10px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer}
+.wallet-member .deduct-btn:hover{background:#c0392b}
+.wallet-member .m-balance{display:flex;justify-content:space-between;padding:2px 0;font-size:12px;border-top:1px dashed rgba(255,255,255,.1);margin-top:4px}
+.wallet-member .m-balance .bal-val{font-weight:700;color:#f1c40f}
+/* Deduction modal */
+.deduct-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;align-items:center;justify-content:center}
+.deduct-modal-overlay.open{display:flex}
+.deduct-modal{background:var(--c-surface);border-radius:12px;padding:24px;width:380px;max-width:92vw;color:var(--c-text)}
+.deduct-modal h4{margin:0 0 16px;font-size:15px}
+.deduct-modal label{display:block;font-size:12px;color:var(--c-muted);margin:8px 0 4px}
+.deduct-modal input,.deduct-modal textarea{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:6px;border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text);font-size:13px}
+.deduct-modal textarea{height:60px;resize:vertical}
+.deduct-modal .dm-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+.deduct-modal .dm-actions button{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600}
+.dm-cancel{background:var(--c-border);color:var(--c-text)}
+.dm-save{background:#e74c3c;color:#fff}.dm-save:hover{background:#c0392b}
+/* Password modal */
+.pwd-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10002;align-items:center;justify-content:center}
+.pwd-modal-overlay.open{display:flex}
+.pwd-modal{background:var(--c-surface);border-radius:12px;padding:24px;width:320px;max-width:90vw;color:var(--c-text);text-align:center}
+.pwd-modal input{width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text);font-size:14px;margin:12px 0;text-align:center}
+.pwd-modal .pm-err{color:#e74c3c;font-size:12px;min-height:16px}
+.pwd-modal .pm-actions{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.pwd-modal .pm-actions button{padding:8px 20px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600}
 
 /* Кнопка "Створити КД" в трекері проблем */
 .mkcd-btn{font-size:10px;font-family:var(--mono);padding:4px 8px;border-radius:4px;border:1px solid var(--c-border);background:var(--c-card);color:var(--c-blue);cursor:pointer;white-space:nowrap;transition:.15s}
