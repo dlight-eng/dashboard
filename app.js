@@ -3375,17 +3375,20 @@ async function openWalletModal() {
   document.getElementById('walletModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Фікс: примусово обмежити висоту правої панелі для прокрутки
+  // Фікс прокрутки: .modal=flex-column, grid всередині потребує обмеження висоти
   const walletPanel = document.getElementById('walletDetails').parentElement;
-  if (walletPanel) {
-    walletPanel.style.maxHeight = 'calc(92vh - 160px)';
-    walletPanel.style.overflowY = 'auto';
-  }
-  // Також фіксимо grid: min-height:0 для дітей
   const walletGrid = walletPanel ? walletPanel.parentElement : null;
   if (walletGrid) {
+    // Grid-контейнер: зробити flex-child з обмеженою висотою
+    walletGrid.style.flex = '1';
+    walletGrid.style.minHeight = '0';
     walletGrid.style.overflow = 'hidden';
-    Array.from(walletGrid.children).forEach(c => { c.style.minHeight = '0'; });
+    walletGrid.style.gridTemplateRows = '1fr';
+    // Кожна панель: дозволити стиснення і прокрутку
+    Array.from(walletGrid.children).forEach(c => {
+      c.style.minHeight = '0';
+      c.style.overflowY = 'auto';
+    });
   }
 
   // Переконаємось що дані лідерборду завантажені
