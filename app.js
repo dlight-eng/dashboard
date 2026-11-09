@@ -3375,6 +3375,13 @@ async function openWalletModal() {
   document.getElementById('walletModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 
+  // Фікс: CSS Grid дітям потрібен min-height:0 для overflow-y:auto
+  const walletGrid = document.querySelector('#walletModal .modal > div:last-child');
+  if (walletGrid && walletGrid.style.display === 'grid') {
+    walletGrid.style.overflow = 'hidden';
+    Array.from(walletGrid.children).forEach(c => c.style.minHeight = '0');
+  }
+
   // Переконаємось що дані лідерборду завантажені
   if (!lbRawData) {
     document.getElementById('walletDetails').innerHTML =
