@@ -3375,11 +3375,17 @@ async function openWalletModal() {
   document.getElementById('walletModal').classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Фікс: CSS Grid дітям потрібен min-height:0 для overflow-y:auto
-  const walletGrid = document.querySelector('#walletModal .modal > div:last-child');
-  if (walletGrid && walletGrid.style.display === 'grid') {
+  // Фікс: примусово обмежити висоту правої панелі для прокрутки
+  const walletPanel = document.getElementById('walletDetails').parentElement;
+  if (walletPanel) {
+    walletPanel.style.maxHeight = 'calc(92vh - 160px)';
+    walletPanel.style.overflowY = 'auto';
+  }
+  // Також фіксимо grid: min-height:0 для дітей
+  const walletGrid = walletPanel ? walletPanel.parentElement : null;
+  if (walletGrid) {
     walletGrid.style.overflow = 'hidden';
-    Array.from(walletGrid.children).forEach(c => c.style.minHeight = '0');
+    Array.from(walletGrid.children).forEach(c => { c.style.minHeight = '0'; });
   }
 
   // Переконаємось що дані лідерборду завантажені
