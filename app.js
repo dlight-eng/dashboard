@@ -3199,8 +3199,177 @@ async function deleteProposal() {
 // ════════════════════════════════════════════════════════════
 // 💰 ГАМАНЕЦЬ
 // ════════════════════════════════════════════════════════════
+const WALLET_PASSWORD = 'dlight2026'; // Пароль для списань
+let walletUnlocked = false; // Чи введений пароль у цій сесії
 let walletSelectedTeam = null;
 let walletMembersCache = {}; // team -> [members]
+let walletDeductionsCache = {}; // team -> [{id, member_name, amount, reason, date}]
+
+// Завантажити списання для команди
+async function loadDeductions(team) {
+  if (walletDeductionsCache[team]) return walletDeductionsCache[team];
+  try {
+    const rows = await supaGet('wallet_deductions', `team=eq.${encodeURIComponent(team)}&select=id,member_name,amount,reason,date&order=date.desc`);
+    walletDeductionsCache[team] = rows || [];
+  } catch(e) {
+    walletDeductionsCache[team] = [];
+  }
+  return walletDeductionsCache[team];
+}
+
+// Загальна сума списань для конкретного учасника
+function getMemberDeductions(team, memberName) {
+  const deductions = walletDeductionsCache[team] || [];
+  return deductions.filter(d => d.member_name === memberName);
+}
+
+function getMemberTotalDeducted(team, memberName) {
+  return getMemberDeductions(team, memberName).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+}
+
+// Модалка введення пароля
+function walletPromptPassword() {
+  return new Promise((resolve) => {
+    // Якщо вже розблоковано — пропустити
+    if (walletUnlocked) { resolve(true); return; }
+
+    let overlay = document.getElementById('pwdModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'pwdModalOverlay';
+      overlay.className = 'pwd-modal-overlay';
+      overlay.innerHTML = `
+        <div class="pwd-modal">
+          <div style="font-size:24px;margin-bottom:8px">🔒</div>
+          <div style="font-weight:600;font-size:14px">Введіть пароль</div>
+          <input type="password" id="pwdInput" placeholder="Пароль..." autocomplete="off">
+          <div class="pm-err" id="pwdErr"></div>
+          <div class="pm-actions">
+            <button class="dm-cancel" id="pwdCancel">Скасувати</button>
+            <button class="dm-save" id="pwdOk">Підтвердити</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    overlay.classList.add('open');
+    const inp = document.getElementById('pwdInput');
+    const err = document.getElementById('pwdErr');
+    inp.value = '';
+    err.textContent = '';
+    setTimeout(() => inp.focus(), 100);
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      document.getElementById('pwdOk').onclick = null;
+      document.getElementById('pwdCancel').onclick = null;
+      inp.onkeydown = null;
+    }
+
+    function attempt() {
+      if (inp.value === WALLET_PASSWORD) {
+        walletUnlocked = true;
+        cleanup();
+        resolve(true);
+      } else {
+        err.textContent = 'Невірний пароль';
+        inp.value = '';
+        inp.focus();
+      }
+    }
+
+    document.getElementById('pwdOk').onclick = attempt;
+    document.getElementById('pwdCancel').onclick = () => { cleanup(); resolve(false); };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') attempt(); if (e.key === 'Escape') { cleanup(); resolve(false); } };
+  });
+}
+
+// Модалка створення списання
+function openDeductionModal(team, memberName) {
+  let overlay = document.getElementById('deductModalOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'deductModalOverlay';
+    overlay.className = 'deduct-modal-overlay';
+    overlay.innerHTML = `
+      <div class="deduct-modal">
+        <h4 id="deductTitle">💳 Списання</h4>
+        <label>Сума (₴)</label>
+        <input type="number" id="deductAmount" min="1" placeholder="500">
+        <label>Причина</label>
+        <textarea id="deductReason" placeholder="Наприклад: преміювання, подарунок..."></textarea>
+        <label>Дата</label>
+        <input type="date" id="deductDate">
+        <div class="dm-actions">
+          <button class="dm-cancel" onclick="closeDeductionModal()">Скасувати</button>
+          <button class="dm-save" id="deductSaveBtn">Списати</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('deductTitle').textContent = `💳 Списання — ${memberName}`;
+  document.getElementById('deductAmount').value = '';
+  document.getElementById('deductReason').value = '';
+  document.getElementById('deductDate').value = new Date().toISOString().slice(0,10);
+
+  document.getElementById('deductSaveBtn').onclick = () => saveDeduction(team, memberName);
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('deductAmount').focus(), 100);
+}
+
+function closeDeductionModal() {
+  const o = document.getElementById('deductModalOverlay');
+  if (o) o.classList.remove('open');
+}
+
+async function saveDeduction(team, memberName) {
+  const amount = parseFloat(document.getElementById('deductAmount').value);
+  const reason = document.getElementById('deductReason').value.trim();
+  const date = document.getElementById('deductDate').value;
+
+  if (!amount || amount <= 0) { alert('Введіть суму'); return; }
+  if (!date) { alert('Оберіть дату'); return; }
+
+  try {
+    await supa('wallet_deductions', '', 'POST', {
+      team, member_name: memberName, amount, reason: reason || null, date
+    });
+    // Скинути кеш і перемалювати
+    delete walletDeductionsCache[team];
+    closeDeductionModal();
+    renderWalletDetails(team);
+  } catch(e) {
+    alert('Помилка збереження: ' + e.message);
+  }
+}
+
+async function deleteDeduction(id, team) {
+  if (!confirm('Видалити цей запис списання?')) return;
+  try {
+    await supa('wallet_deductions', `id=eq.${id}`, 'DELETE');
+    delete walletDeductionsCache[team];
+    renderWalletDetails(team);
+  } catch(e) {
+    alert('Помилка: ' + e.message);
+  }
+}
+
+// Кнопка списання (з перевіркою пароля)
+async function onDeductClick(team, memberName) {
+  const ok = await walletPromptPassword();
+  if (!ok) return;
+  openDeductionModal(team, memberName);
+}
+
+// Видалення списання (з перевіркою пароля)
+async function onDeleteDeductClick(id, team) {
+  const ok = await walletPromptPassword();
+  if (!ok) return;
+  await deleteDeduction(id, team);
+}
 
 async function openWalletModal() {
   document.getElementById('walletModal').classList.add('open');
@@ -3343,6 +3512,9 @@ async function renderWalletDetails(team) {
     </div>
   `;
 
+  // Завантажимо списання
+  const deductions = await loadDeductions(team);
+
   // Учасники
   const perPerson = w.totalMoneyPerPerson;
   // Бали і лайти показуємо однаковими для кожного учасника (не діляться)
@@ -3355,15 +3527,21 @@ async function renderWalletDetails(team) {
   } else {
     membersHtml = `<div class="wallet-member-list">
       ${members.map(m => {
-        const initials = (m.name||'').split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+        const mName = m.name || '—';
+        const initials = mName.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
         const photo = m.photo ? `<img src="${API_URL}?action=photo&url=${encodeURIComponent(m.photo)}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initials}'">` : initials;
+        const totalDeducted = getMemberTotalDeducted(team, mName);
+        const balance = perPerson - totalDeducted;
         return `<div class="wallet-member">
           <div class="wallet-avatar">${photo}</div>
-          <div class="m-name">${escHtml(m.name||'—')}</div>
+          <div class="m-name">${escHtml(mName)}</div>
           <div class="m-pos">${escHtml(m.position||'')}</div>
           <div class="m-row"><span>Бали:</span><span>${pointsPerPerson}</span></div>
           <div class="m-row"><span>Лайти:</span><span>${likesPerPerson}</span></div>
-          <div class="m-row"><span>Гроші:</span><span class="m-cash">₴${perPerson}</span></div>
+          <div class="m-row"><span>Нараховано:</span><span class="m-cash">₴${perPerson}</span></div>
+          ${totalDeducted > 0 ? `<div class="m-row"><span>Списано:</span><span style="color:#e74c3c;font-weight:600">-₴${totalDeducted}</span></div>` : ''}
+          <div class="m-balance"><span>Залишок:</span><span class="bal-val">₴${balance}</span></div>
+          <button class="deduct-btn" onclick="onDeductClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">💳 Списати</button>
         </div>`;
       }).join('')}
     </div>`;
@@ -3374,7 +3552,7 @@ async function renderWalletDetails(team) {
   if (w.history.length) {
     historyHtml = `
       <div class="wallet-history-block">
-        <div class="wh-title">📅 Історія по місяцях</div>
+        <div class="wh-title">📅 Історія нарахувань по місяцях</div>
         ${w.history.map(h => {
           const placeText = h.place === 1 ? '🥇 1 місце (100%)' :
                             h.place === 2 ? '🥈 2 місце (50%)' :
@@ -3391,7 +3569,29 @@ async function renderWalletDetails(team) {
     `;
   }
 
-  box.innerHTML = summary + membersHtml + historyHtml;
+  // Блок списань
+  let deductHtml = '';
+  if (deductions.length) {
+    deductHtml = `
+      <div class="wallet-deductions">
+        <div class="wd-title">
+          <span>💳 Історія списань</span>
+          <span style="font-size:12px;font-weight:600;color:#e74c3c">Всього: ₴${deductions.reduce((s,d) => s + (parseFloat(d.amount)||0), 0)}</span>
+        </div>
+        ${deductions.map(d => {
+          const dateStr = d.date ? d.date.split('-').reverse().join('.') : '';
+          return `<div class="wd-row">
+            <span style="font-family:var(--mono);font-size:11px">${dateStr}</span>
+            <span>${escHtml(d.member_name)}${d.reason ? ' — ' + escHtml(d.reason) : ''}</span>
+            <span class="wd-amount">-₴${d.amount}</span>
+            <span class="wd-del" onclick="onDeleteDeductClick(${d.id},'${escHtmlAttr(team)}')" title="Видалити">🗑</span>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  box.innerHTML = summary + membersHtml + historyHtml + deductHtml;
 }
 
 // ════════════════════════════════════════════════════════════
