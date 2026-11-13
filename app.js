@@ -649,6 +649,10 @@ function addMemberFromB24(id, name, position, photo) {
 function escHtmlAttr(str) {
   return String(str||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 }
+// Екранування для вставки в JS-рядок всередині onclick (обробляє апострофи, лапки, бекслеші)
+function escJsStr(str) {
+  return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,'\\x27').replace(/"/g,'\\x22').replace(/\n/g,'\\n');
+}
 
 function escHtml(str) {
   return String(str||'')
@@ -3506,7 +3510,7 @@ function renderWalletTeamList() {
     const w = calcTeamWallet(team);
     const isActive = team === walletSelectedTeam;
     const isZero = w.totalMoneyPerPerson === 0;
-    return `<div class="wallet-team-item ${isActive ? 'active' : ''} ${isZero ? 'zero' : ''}" onclick="selectWalletTeam('${escHtmlAttr(team)}')">
+    return `<div class="wallet-team-item ${isActive ? 'active' : ''} ${isZero ? 'zero' : ''}" onclick="selectWalletTeam('${escJsStr(team)}')">
       <span>${escHtml(team)}</span>
       <span class="wt-cash">${w.totalMoneyPerPerson > 0 ? '₴'+w.totalMoneyPerPerson : '—'}</span>
     </div>`;
@@ -3593,8 +3597,8 @@ async function renderWalletDetails(team) {
           ${totalDeducted > 0 ? `<div class="m-row"><span>Списано:</span><span style="color:#e74c3c;font-weight:600">-₴${totalDeducted}</span></div>` : ''}
           <div class="m-balance"><span>Залишок:</span><span class="bal-val">₴${balance}</span></div>
           <div style="display:flex;gap:6px">
-            <button class="deduct-btn" onclick="onDeductClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">💳 Списати</button>
-            <button class="deduct-btn" style="background:#e8f5e9;color:#27ae60;border-color:#a5d6a7" onclick="onAddClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">➕ Додати</button>
+            <button class="deduct-btn" onclick="onDeductClick('${escJsStr(team)}','${escJsStr(mName)}')">💳 Списати</button>
+            <button class="deduct-btn" style="background:#e8f5e9;color:#27ae60;border-color:#a5d6a7" onclick="onAddClick('${escJsStr(team)}','${escJsStr(mName)}')">➕ Додати</button>
           </div>
         </div>`;
       }).join('')}
@@ -3645,7 +3649,7 @@ async function renderWalletDetails(team) {
             <span style="font-family:var(--mono);font-size:11px">${dateStr}</span>
             <span>${isAdd ? '➕' : '💳'} ${escHtml(d.member_name)}${d.reason ? ' — ' + escHtml(d.reason) : ''}</span>
             <span class="wd-amount" style="color:${isAdd ? '#27ae60' : '#e74c3c'}">${isAdd ? '+' : '-'}₴${Math.abs(amt)}</span>
-            <span class="wd-del" onclick="onDeleteDeductClick(${d.id},'${escHtmlAttr(team)}')" title="Видалити">🗑</span>
+            <span class="wd-del" onclick="onDeleteDeductClick(${d.id},'${escJsStr(team)}')" title="Видалити">🗑</span>
           </div>`;
         }).join('')}
       </div>
