@@ -3285,8 +3285,14 @@ function walletPromptPassword() {
   });
 }
 
-// Модалка створення списання
-function openDeductionModal(team, memberName) {
+// Модалка створення запису (списання або додавання)
+// mode: 'deduct' | 'add'
+let walletModalMode = 'deduct';
+
+function openDeductionModal(team, memberName, mode) {
+  walletModalMode = mode || 'deduct';
+  const isAdd = walletModalMode === 'add';
+
   let overlay = document.getElementById('deductModalOverlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -3294,28 +3300,45 @@ function openDeductionModal(team, memberName) {
     overlay.className = 'deduct-modal-overlay';
     overlay.innerHTML = `
       <div class="deduct-modal">
-        <h4 id="deductTitle">💳 Списання</h4>
+        <h4 id="deductTitle"></h4>
         <label>Сума (₴)</label>
         <input type="number" id="deductAmount" min="1" placeholder="500">
         <label>Причина</label>
-        <textarea id="deductReason" placeholder="Наприклад: преміювання, подарунок..."></textarea>
+        <textarea id="deductReason" placeholder=""></textarea>
         <label>Дата</label>
         <input type="date" id="deductDate">
         <div class="dm-actions">
           <button class="dm-cancel" onclick="closeDeductionModal()">Скасувати</button>
-          <button class="dm-save" id="deductSaveBtn">Списати</button>
+          <button id="deductSaveBtn"></button>
         </div>
       </div>
     `;
     document.body.appendChild(overlay);
   }
 
-  document.getElementById('deductTitle').textContent = `💳 Списання — ${memberName}`;
+  const titleEl = document.getElementById('deductTitle');
+  const saveBtn = document.getElementById('deductSaveBtn');
+  const reasonEl = document.getElementById('deductReason');
+
+  if (isAdd) {
+    titleEl.textContent = `➕ Додати кошти — ${memberName}`;
+    saveBtn.textContent = 'Додати';
+    saveBtn.className = 'dm-save';
+    saveBtn.style.background = '#27ae60';
+    reasonEl.placeholder = 'Наприклад: ручне коригування, бонус...';
+  } else {
+    titleEl.textContent = `💳 Списання — ${memberName}`;
+    saveBtn.textContent = 'Списати';
+    saveBtn.className = 'dm-save';
+    saveBtn.style.background = '';
+    reasonEl.placeholder = 'Наприклад: преміювання, подарунок...';
+  }
+
   document.getElementById('deductAmount').value = '';
-  document.getElementById('deductReason').value = '';
+  reasonEl.value = '';
   document.getElementById('deductDate').value = new Date().toISOString().slice(0,10);
 
-  document.getElementById('deductSaveBtn').onclick = () => saveDeduction(team, memberName);
+  saveBtn.onclick = () => saveDeduction(team, memberName);
   overlay.classList.add('open');
   setTimeout(() => document.getElementById('deductAmount').focus(), 100);
 }
@@ -3326,18 +3349,20 @@ function closeDeductionModal() {
 }
 
 async function saveDeduction(team, memberName) {
-  const amount = parseFloat(document.getElementById('deductAmount').value);
+  const rawAmount = parseFloat(document.getElementById('deductAmount').value);
   const reason = document.getElementById('deductReason').value.trim();
   const date = document.getElementById('deductDate').value;
 
-  if (!amount || amount <= 0) { alert('Введіть суму'); return; }
+  if (!rawAmount || rawAmount <= 0) { alert('Введіть суму'); return; }
   if (!date) { alert('Оберіть дату'); return; }
+
+  // Додавання зберігаємо як від'ємне значення в таблиці
+  const amount = walletModalMode === 'add' ? -rawAmount : rawAmount;
 
   try {
     await supa('wallet_deductions', '', 'POST', {
       team, member_name: memberName, amount, reason: reason || null, date
     });
-    // Скинути кеш і перемалювати
     delete walletDeductionsCache[team];
     closeDeductionModal();
     renderWalletDetails(team);
@@ -3347,7 +3372,7 @@ async function saveDeduction(team, memberName) {
 }
 
 async function deleteDeduction(id, team) {
-  if (!confirm('Видалити цей запис списання?')) return;
+  if (!confirm('Видалити цей запис?')) return;
   try {
     await supa('wallet_deductions', `id=eq.${id}`, 'DELETE');
     delete walletDeductionsCache[team];
@@ -3361,10 +3386,17 @@ async function deleteDeduction(id, team) {
 async function onDeductClick(team, memberName) {
   const ok = await walletPromptPassword();
   if (!ok) return;
-  openDeductionModal(team, memberName);
+  openDeductionModal(team, memberName, 'deduct');
 }
 
-// Видалення списання (з перевіркою пароля)
+// Кнопка додавання (з перевіркою пароля)
+async function onAddClick(team, memberName) {
+  const ok = await walletPromptPassword();
+  if (!ok) return;
+  openDeductionModal(team, memberName, 'add');
+}
+
+// Видалення запису (з перевіркою пароля)
 async function onDeleteDeductClick(id, team) {
   const ok = await walletPromptPassword();
   if (!ok) return;
@@ -3533,7 +3565,6 @@ async function renderWalletDetails(team) {
 
   // Учасники
   const perPerson = w.totalMoneyPerPerson;
-  // Бали і лайти показуємо однаковими для кожного учасника (не діляться)
   const pointsPerPerson = w.totalPoints;
   const likesPerPerson  = w.totalLikes;
 
@@ -3546,8 +3577,11 @@ async function renderWalletDetails(team) {
         const mName = m.name || '—';
         const initials = mName.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
         const photo = m.photo ? `<img src="${API_URL}?action=photo&url=${encodeURIComponent(m.photo)}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initials}'">` : initials;
-        const totalDeducted = getMemberTotalDeducted(team, mName);
-        const balance = perPerson - totalDeducted;
+        const memberDeductions = getMemberDeductions(team, mName);
+        // Від'ємні amount = додавання, додатні = списання
+        const totalAdded = memberDeductions.filter(d => d.amount < 0).reduce((s,d) => s + Math.abs(d.amount), 0);
+        const totalDeducted = memberDeductions.filter(d => d.amount > 0).reduce((s,d) => s + d.amount, 0);
+        const balance = perPerson + totalAdded - totalDeducted;
         return `<div class="wallet-member">
           <div class="wallet-avatar">${photo}</div>
           <div class="m-name">${escHtml(mName)}</div>
@@ -3555,9 +3589,13 @@ async function renderWalletDetails(team) {
           <div class="m-row"><span>Бали:</span><span>${pointsPerPerson}</span></div>
           <div class="m-row"><span>Лайти:</span><span>${likesPerPerson}</span></div>
           <div class="m-row"><span>Нараховано:</span><span class="m-cash">₴${perPerson}</span></div>
+          ${totalAdded > 0 ? `<div class="m-row"><span>Додано:</span><span style="color:#27ae60;font-weight:600">+₴${totalAdded}</span></div>` : ''}
           ${totalDeducted > 0 ? `<div class="m-row"><span>Списано:</span><span style="color:#e74c3c;font-weight:600">-₴${totalDeducted}</span></div>` : ''}
           <div class="m-balance"><span>Залишок:</span><span class="bal-val">₴${balance}</span></div>
-          <button class="deduct-btn" onclick="onDeductClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">💳 Списати</button>
+          <div style="display:flex;gap:6px">
+            <button class="deduct-btn" onclick="onDeductClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">💳 Списати</button>
+            <button class="deduct-btn" style="background:#e8f5e9;color:#27ae60;border-color:#a5d6a7" onclick="onAddClick('${escHtmlAttr(team)}','${escHtmlAttr(mName)}')">➕ Додати</button>
+          </div>
         </div>`;
       }).join('')}
     </div>`;
@@ -3585,21 +3623,28 @@ async function renderWalletDetails(team) {
     `;
   }
 
-  // Блок списань
+  // Блок історії операцій (списання + додавання)
   let deductHtml = '';
   if (deductions.length) {
+    const totalDeducted = deductions.filter(d => d.amount > 0).reduce((s,d) => s + d.amount, 0);
+    const totalAdded = deductions.filter(d => d.amount < 0).reduce((s,d) => s + Math.abs(d.amount), 0);
     deductHtml = `
       <div class="wallet-deductions">
         <div class="wd-title">
-          <span>💳 Історія списань</span>
-          <span style="font-size:12px;font-weight:600;color:#e74c3c">Всього: ₴${deductions.reduce((s,d) => s + (parseFloat(d.amount)||0), 0)}</span>
+          <span>💰 Історія операцій</span>
+          <span style="font-size:12px;font-weight:600">
+            ${totalAdded > 0 ? '<span style="color:#27ae60">+₴'+totalAdded+'</span> ' : ''}
+            ${totalDeducted > 0 ? '<span style="color:#e74c3c">-₴'+totalDeducted+'</span>' : ''}
+          </span>
         </div>
         ${deductions.map(d => {
           const dateStr = d.date ? d.date.split('-').reverse().join('.') : '';
+          const amt = parseFloat(d.amount) || 0;
+          const isAdd = amt < 0;
           return `<div class="wd-row">
             <span style="font-family:var(--mono);font-size:11px">${dateStr}</span>
-            <span>${escHtml(d.member_name)}${d.reason ? ' — ' + escHtml(d.reason) : ''}</span>
-            <span class="wd-amount">-₴${d.amount}</span>
+            <span>${isAdd ? '➕' : '💳'} ${escHtml(d.member_name)}${d.reason ? ' — ' + escHtml(d.reason) : ''}</span>
+            <span class="wd-amount" style="color:${isAdd ? '#27ae60' : '#e74c3c'}">${isAdd ? '+' : '-'}₴${Math.abs(amt)}</span>
             <span class="wd-del" onclick="onDeleteDeductClick(${d.id},'${escHtmlAttr(team)}')" title="Видалити">🗑</span>
           </div>`;
         }).join('')}
