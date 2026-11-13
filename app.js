@@ -649,9 +649,9 @@ function addMemberFromB24(id, name, position, photo) {
 function escHtmlAttr(str) {
   return String(str||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 }
-// Екранування для вставки в JS-рядок всередині onclick (обробляє апострофи, лапки, бекслеші)
+// Екранування для onclick — кодуємо все через URI, в обробнику декодуємо
 function escJsStr(str) {
-  return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,'\\x27').replace(/"/g,'\\x22').replace(/\n/g,'\\n');
+  return encodeURIComponent(String(str||''));
 }
 
 function escHtml(str) {
@@ -3388,6 +3388,8 @@ async function deleteDeduction(id, team) {
 
 // Кнопка списання (з перевіркою пароля)
 async function onDeductClick(team, memberName) {
+  team = decodeURIComponent(team);
+  memberName = decodeURIComponent(memberName);
   const ok = await walletPromptPassword();
   if (!ok) return;
   openDeductionModal(team, memberName, 'deduct');
@@ -3395,6 +3397,8 @@ async function onDeductClick(team, memberName) {
 
 // Кнопка додавання (з перевіркою пароля)
 async function onAddClick(team, memberName) {
+  team = decodeURIComponent(team);
+  memberName = decodeURIComponent(memberName);
   const ok = await walletPromptPassword();
   if (!ok) return;
   openDeductionModal(team, memberName, 'add');
@@ -3402,6 +3406,7 @@ async function onAddClick(team, memberName) {
 
 // Видалення запису (з перевіркою пароля)
 async function onDeleteDeductClick(id, team) {
+  team = decodeURIComponent(team);
   const ok = await walletPromptPassword();
   if (!ok) return;
   await deleteDeduction(id, team);
@@ -3518,6 +3523,7 @@ function renderWalletTeamList() {
 }
 
 function selectWalletTeam(team) {
+  team = decodeURIComponent(team);
   walletSelectedTeam = team;
   renderWalletTeamList();
   renderWalletDetails(team);
