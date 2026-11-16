@@ -3,7 +3,7 @@ const SUPA_URL = 'https://ejljwgxdgoaejwaffxdv.supabase.co';
 const SUPA_KEY = 'sb_publishable_0PZhEVmTnywUa11GNgW9NQ_QkEaCYcE';
 // Worker використовується тільки для B24 фото і синхронізації
 const API_URL  = 'https://dlight-dashboard.romashykhin.workers.dev';
-const TEAMS_LIST = ['Беркут','Бухгалтерія','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Маркетинг','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тестова','Тойота','Фіксики'];
+const TEAMS_LIST = ['Беркут','Бухгалтерія','Диспетчерська','Ефективність','Кулібіни','Локомотив','Майстри ланцюгів','Маркетинг','Портал знань','Ремкоплект','Синергія','Склад','Техкомпас','Тестова','Тойота','Фіксики'];
 
 // Supabase REST API хелпер
 async function supa(table, params = '', method = 'GET', body = null) {
@@ -2834,7 +2834,7 @@ async function saveMissionEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); closeSearchModal(); }
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); closeSearchModal(); closeAdminComments(); }
 });
 
 // БАГ 7: красиві спливаючі підказки (заміна нативного title)
@@ -3663,6 +3663,165 @@ async function renderWalletDetails(team) {
   }
 
   box.innerHTML = summary + membersHtml + historyHtml + deductHtml;
+}
+
+// ════════════════════════════════════════════════════════════
+// 📋 АДМІН-ПАНЕЛЬ ЗАУВАЖЕНЬ (всі команди)
+// ════════════════════════════════════════════════════════════
+let adminCommentsData = []; // [{...comment, _team}]
+const ADMIN_COMMENTS_PASSWORD = 'dlight2026';
+let adminCommentsUnlocked = false;
+
+async function openAdminComments() {
+  // Запит пароля
+  if (!adminCommentsUnlocked) {
+    const ok = await new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-backdrop open';
+      overlay.style.zIndex = '10001';
+      overlay.innerHTML = `
+        <div class="modal" style="max-width:360px;width:90%">
+          <div class="modal-header">
+            <div class="modal-title">🔒 Пароль адміністратора</div>
+            <button class="modal-close" onclick="this.closest('.modal-backdrop').remove()">✕</button>
+          </div>
+          <div style="padding:18px">
+            <input type="password" id="acPwdInput" class="field-input" placeholder="Введіть пароль" style="width:100%;margin-bottom:12px"
+                   onkeydown="if(event.key==='Enter')this.parentNode.querySelector('button').click()">
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="hdr-btn" onclick="this.closest('.modal-backdrop').remove()">Скасувати</button>
+              <button class="submit-btn" id="acPwdOk">Увійти</button>
+            </div>
+            <div id="acPwdErr" style="color:var(--c-red);font-size:11px;margin-top:8px"></div>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      setTimeout(() => document.getElementById('acPwdInput')?.focus(), 100);
+      overlay.querySelector('.modal-close').onclick = () => { overlay.remove(); resolve(false); };
+      overlay.querySelector('.hdr-btn').onclick = () => { overlay.remove(); resolve(false); };
+      document.getElementById('acPwdOk').onclick = () => {
+        if (document.getElementById('acPwdInput').value === ADMIN_COMMENTS_PASSWORD) {
+          overlay.remove();
+          adminCommentsUnlocked = true;
+          resolve(true);
+        } else {
+          document.getElementById('acPwdErr').textContent = 'Невірний пароль';
+        }
+      };
+    });
+    if (!ok) return;
+  }
+
+  document.getElementById('adminCommentsModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  // Populate team filter
+  const teamFilter = document.getElementById('acFilterTeam');
+  if (teamFilter.options.length <= 1) {
+    TEAMS_LIST.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      teamFilter.appendChild(opt);
+    });
+  }
+
+  // Load all comments
+  await loadAdminComments();
+}
+
+function closeAdminComments() {
+  document.getElementById('adminCommentsModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+async function loadAdminComments() {
+  document.getElementById('acBody').innerHTML = '<div style="text-align:center;color:var(--c-muted);padding:60px 20px;font-size:12px">Завантаження зауважень з усіх команд...</div>';
+  adminCommentsData = [];
+
+  try {
+    const promises = TEAMS_LIST.map(async team => {
+      const enc = encodeURIComponent(team);
+      const rows = await supaGet('comments', `team=eq.${enc}&select=*&order=created_at.desc`);
+      return (rows || []).map(r => ({ ...r, _team: team, text: r.description || r.text || '' }));
+    });
+    const results = await Promise.all(promises);
+    adminCommentsData = results.flat().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } catch (e) {
+    document.getElementById('acBody').innerHTML = `<div style="color:var(--c-red);padding:20px">Помилка: ${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  renderAdminComments();
+}
+
+async function adminChangeStatus(id, team, selectEl) {
+  const newStatus = selectEl.value;
+  selectEl.disabled = true;
+  try {
+    await supaPatch('comments', `id=eq.${id}`, { status: newStatus });
+    // Update local cache
+    const item = adminCommentsData.find(c => c.id === id);
+    if (item) item.status = newStatus;
+    showToast('Статус оновлено', 'success');
+    // Also invalidate team session cache
+    sessionStorage.removeItem('dash_' + team);
+  } catch (e) {
+    showToast('Помилка: ' + e.message, 'error');
+  }
+  selectEl.disabled = false;
+  renderAdminComments();
+}
+
+function renderAdminComments() {
+  const statusFilter = document.getElementById('acFilterStatus').value;
+  const teamFilter = document.getElementById('acFilterTeam').value;
+
+  let filtered = adminCommentsData;
+  if (statusFilter) filtered = filtered.filter(c => c.status === statusFilter);
+  if (teamFilter) filtered = filtered.filter(c => c._team === teamFilter);
+
+  document.getElementById('acCount').textContent = `${filtered.length} з ${adminCommentsData.length} записів`;
+
+  const STATUS_COLORS = { done: '#22c55e', wip: '#3b82f6', over: '#ef4444', wait: '#f59e0b' };
+
+  if (!filtered.length) {
+    document.getElementById('acBody').innerHTML = '<div style="text-align:center;color:var(--c-muted);padding:40px 20px;font-size:12px">Немає зауважень за обраним фільтром</div>';
+    return;
+  }
+
+  document.getElementById('acBody').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:#f6f7fb;text-align:left">
+          <th style="padding:8px 10px;font-weight:600;font-size:11px;color:var(--c-muted);white-space:nowrap">Команда</th>
+          <th style="padding:8px 10px;font-weight:600;font-size:11px;color:var(--c-muted);white-space:nowrap">Від кого</th>
+          <th style="padding:8px 10px;font-weight:600;font-size:11px;color:var(--c-muted)">Зміст</th>
+          <th style="padding:8px 10px;font-weight:600;font-size:11px;color:var(--c-muted);white-space:nowrap">Дата</th>
+          <th style="padding:8px 10px;font-weight:600;font-size:11px;color:var(--c-muted);white-space:nowrap">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(c => {
+          const sc = STATUS_COLORS[c.status] || '#999';
+          const commentBadge = c.comment ? `<div style="font-size:10px;color:var(--c-muted);background:#fff4c2;padding:2px 6px;border-radius:3px;margin-top:4px;border-left:2px solid #d4a017;max-width:300px;white-space:pre-wrap"><b>💬</b> ${escHtml(c.comment)}</div>` : '';
+          return `<tr style="border-bottom:1px solid var(--c-border)">
+            <td style="padding:8px 10px;font-family:var(--mono);font-size:11px;white-space:nowrap;vertical-align:top">${escHtml(c._team)}</td>
+            <td style="padding:8px 10px;font-size:11px;white-space:nowrap;vertical-align:top">${escHtml(c.author || c.from_team || '—')}</td>
+            <td style="padding:8px 10px;max-width:350px;vertical-align:top">
+              <div style="white-space:pre-wrap;word-break:break-word">${escHtml(c.text)}</div>
+              ${commentBadge}
+            </td>
+            <td style="padding:8px 10px;font-family:var(--mono);font-size:10px;color:var(--c-muted);white-space:nowrap;vertical-align:top">${c.date || '—'}</td>
+            <td style="padding:8px 10px;vertical-align:top">
+              <select style="font-size:11px;padding:3px 6px;border:1px solid var(--c-border);border-radius:4px;background:white;border-left:3px solid ${sc};min-width:90px"
+                      onchange="adminChangeStatus(${c.id},'${escJsStr(c._team)}',this)">
+                ${['done','wip','over','wait'].map(s => `<option value="${s}"${s===c.status?' selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+              </select>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
 // ════════════════════════════════════════════════════════════
