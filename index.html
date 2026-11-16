@@ -215,7 +215,7 @@
       <div class="header-divider"></div>
       <div class="brand-name" id="hTeamName"></div>
       <select class="month-select" id="teamSelect" onchange="onTeamChange()">
-        <option>Беркут</option><option>Бухгалтерія</option><option>Ефективність</option>
+        <option>Беркут</option><option>Бухгалтерія</option><option>Диспетчерська</option><option>Ефективність</option>
         <option>Кулібіни</option><option>Локомотив</option><option>Майстри ланцюгів</option>
         <option>Маркетинг</option><option>Портал знань</option><option>Ремкоплект</option>
         <option>Синергія</option><option>Склад</option><option>Техкомпас</option>
@@ -238,6 +238,7 @@
       <button class="hdr-btn" onclick="openSearchModal()" title="Ctrl+K">🔍 Пошук</button>
       <button class="hdr-btn" id="lbTabBtn" onclick="toggleLeaderboard()">🏆 Плюшка</button>
       <button class="hdr-btn" onclick="location.href='proposals.html'">💡 Пропозиції</button>
+      <button class="hdr-btn" onclick="openAdminComments()">📋 Зауваження</button>
       <button class="hdr-btn" onclick="openWalletModal()">💰 Гаманець</button>
       <button class="hdr-btn" onclick="location.href='agreements.html'">🤝 Угоди</button>
     </div>
@@ -724,6 +725,35 @@
 </div>
 
 <!-- ════════════════════════════════════════════════ -->
+<!-- 📋 АДМІН-ПАНЕЛЬ ЗАУВАЖЕНЬ                         -->
+<!-- ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="adminCommentsModal">
+  <div class="modal" style="max-width:1100px;width:96%;max-height:92vh">
+    <div class="modal-header">
+      <div class="modal-title">📋 Зауваження — всі команди</div>
+      <button class="modal-close" onclick="closeAdminComments()">✕</button>
+    </div>
+    <div style="padding:10px 18px;background:#f6f7fb;border-bottom:1px solid var(--c-border);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select class="field-input" id="acFilterStatus" onchange="renderAdminComments()" style="min-height:34px;padding:4px 8px;font-size:12px;width:auto">
+        <option value="">Всі статуси</option>
+        <option value="wait">Очікує</option>
+        <option value="wip">В роботі</option>
+        <option value="over">Прострочено</option>
+        <option value="done">Вирішено</option>
+      </select>
+      <select class="field-input" id="acFilterTeam" onchange="renderAdminComments()" style="min-height:34px;padding:4px 8px;font-size:12px;width:auto">
+        <option value="">Всі команди</option>
+      </select>
+      <span id="acCount" style="font-family:var(--mono);font-size:11px;color:var(--c-muted);margin-left:auto"></span>
+    </div>
+    <div style="overflow-y:auto;max-height:calc(92vh - 120px);padding:12px 18px">
+      <div id="acBody">
+        <div style="text-align:center;color:var(--c-muted);padding:60px 20px;font-size:12px">Завантаження...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════════════════ -->
 <!-- 🔔 ПАНЕЛЬ СПОВІЩЕНЬ                              -->
 <!-- ════════════════════════════════════════════════ -->
