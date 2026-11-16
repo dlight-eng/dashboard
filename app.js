@@ -3293,9 +3293,14 @@ function walletPromptPassword() {
 // mode: 'deduct' | 'add'
 let walletModalMode = 'deduct';
 
-function openDeductionModal(team, memberName, mode) {
+// editData: {id, amount, reason, date} — якщо передано, це режим редагування
+let walletEditId = null; // id запису, що редагується (null = новий)
+
+function openDeductionModal(team, memberName, mode, editData) {
   walletModalMode = mode || 'deduct';
+  walletEditId = editData ? editData.id : null;
   const isAdd = walletModalMode === 'add';
+  const isEdit = !!editData;
 
   let overlay = document.getElementById('deductModalOverlay');
   if (!overlay) {
@@ -3324,23 +3329,35 @@ function openDeductionModal(team, memberName, mode) {
   const saveBtn = document.getElementById('deductSaveBtn');
   const reasonEl = document.getElementById('deductReason');
 
-  if (isAdd) {
+  if (isEdit) {
+    titleEl.textContent = `✏️ Редагування — ${memberName}`;
+    saveBtn.textContent = 'Зберегти';
+    saveBtn.className = 'dm-save';
+    saveBtn.style.background = '#3b82f6';
+    reasonEl.placeholder = 'Причина';
+    // Заповнюємо поля з існуючими даними
+    document.getElementById('deductAmount').value = Math.abs(editData.amount);
+    reasonEl.value = editData.reason || '';
+    document.getElementById('deductDate').value = editData.date || new Date().toISOString().slice(0,10);
+  } else if (isAdd) {
     titleEl.textContent = `➕ Додати кошти — ${memberName}`;
     saveBtn.textContent = 'Додати';
     saveBtn.className = 'dm-save';
     saveBtn.style.background = '#27ae60';
     reasonEl.placeholder = 'Наприклад: ручне коригування, бонус...';
+    document.getElementById('deductAmount').value = '';
+    reasonEl.value = '';
+    document.getElementById('deductDate').value = new Date().toISOString().slice(0,10);
   } else {
     titleEl.textContent = `💳 Списання — ${memberName}`;
     saveBtn.textContent = 'Списати';
     saveBtn.className = 'dm-save';
     saveBtn.style.background = '';
     reasonEl.placeholder = 'Наприклад: преміювання, подарунок...';
+    document.getElementById('deductAmount').value = '';
+    reasonEl.value = '';
+    document.getElementById('deductDate').value = new Date().toISOString().slice(0,10);
   }
-
-  document.getElementById('deductAmount').value = '';
-  reasonEl.value = '';
-  document.getElementById('deductDate').value = new Date().toISOString().slice(0,10);
 
   saveBtn.onclick = () => saveDeduction(team, memberName);
   overlay.classList.add('open');
@@ -3364,9 +3381,20 @@ async function saveDeduction(team, memberName) {
   const amount = walletModalMode === 'add' ? -rawAmount : rawAmount;
 
   try {
-    await supa('wallet_deductions', '', 'POST', {
-      team, member_name: memberName, amount, reason: reason || null, date
-    });
+    if (walletEditId) {
+      // Режим редагування — PATCH існуючого запису
+      await supaPatch('wallet_deductions', `id=eq.${walletEditId}`, {
+        amount, reason: reason || null, date, member_name: memberName
+      });
+      showToast('Запис оновлено', 'success');
+    } else {
+      // Новий запис — POST
+      await supa('wallet_deductions', '', 'POST', {
+        team, member_name: memberName, amount, reason: reason || null, date
+      });
+      showToast(walletModalMode === 'add' ? 'Кошти додано' : 'Списання збережено', 'success');
+    }
+    walletEditId = null;
     delete walletDeductionsCache[team];
     closeDeductionModal();
     renderWalletDetails(team);
@@ -3410,6 +3438,18 @@ async function onDeleteDeductClick(id, team) {
   const ok = await walletPromptPassword();
   if (!ok) return;
   await deleteDeduction(id, team);
+}
+
+// Редагування запису (з перевіркою пароля)
+async function onEditDeductClick(id, team, memberName, amount, reason, date) {
+  team = decodeURIComponent(team);
+  memberName = decodeURIComponent(memberName);
+  reason = decodeURIComponent(reason);
+  const ok = await walletPromptPassword();
+  if (!ok) return;
+  const amt = parseFloat(amount);
+  const mode = amt < 0 ? 'add' : 'deduct';
+  openDeductionModal(team, memberName, mode, { id, amount: amt, reason, date });
 }
 
 async function openWalletModal() {
@@ -3655,6 +3695,7 @@ async function renderWalletDetails(team) {
             <span style="font-family:var(--mono);font-size:11px">${dateStr}</span>
             <span>${isAdd ? '➕' : '💳'} ${escHtml(d.member_name)}${d.reason ? ' — ' + escHtml(d.reason) : ''}</span>
             <span class="wd-amount" style="color:${isAdd ? '#27ae60' : '#e74c3c'}">${isAdd ? '+' : '-'}₴${Math.abs(amt)}</span>
+            <span class="wd-del" onclick="onEditDeductClick(${d.id},'${escJsStr(team)}','${escJsStr(d.member_name)}',${d.amount},'${escJsStr(d.reason||'')}','${d.date||''}')" title="Редагувати" style="cursor:pointer">✏️</span>
             <span class="wd-del" onclick="onDeleteDeductClick(${d.id},'${escJsStr(team)}')" title="Видалити">🗑</span>
           </div>`;
         }).join('')}
@@ -3755,6 +3796,7 @@ async function loadAdminComments() {
 }
 
 async function adminChangeStatus(id, team, selectEl) {
+  team = decodeURIComponent(team);
   const newStatus = selectEl.value;
   selectEl.disabled = true;
   try {
