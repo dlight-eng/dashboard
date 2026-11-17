@@ -247,7 +247,7 @@
   <!-- ЛІДЕРБОРД ПЛЮШКА -->
   <div id="leaderboardPanel" style="display:none">
     <!-- БЛОК ПРАВИЛ — статичний, поза lbContent -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:0">
       <div id="rulesBlock" onclick="openRules()" class="lb-rules-block" style="margin-bottom:0">
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-size:26px">📋</span>
@@ -267,6 +267,16 @@
           </div>
         </div>
         <div style="font-size:20px;color:#f5c518;opacity:.6">→</div>
+      </div>
+      <div onclick="openAlgorithm()" class="lb-rules-block" style="margin-bottom:0;background:linear-gradient(135deg,#2d4a1e 0%,#3d6b2e 100%)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:26px">🛒</span>
+          <div>
+            <div style="font-family:var(--mono);font-size:14px;font-weight:600;color:#8edd65;letter-spacing:.5px">АЛГОРИТМ СПИСАННЯ</div>
+            <div style="font-family:var(--mono);font-size:10px;color:rgba(142,221,101,.65);margin-top:2px">Замовлення та видача подарунків</div>
+          </div>
+        </div>
+        <div style="font-size:20px;color:#8edd65;opacity:.6">→</div>
       </div>
     </div>
     <div id="lbContent"></div>
@@ -636,6 +646,19 @@
       </div>
       <div class="modal-body" style="padding:12px;text-align:center">
         <img src="img_54fb8d5cc9.png" alt="Нарахування балів" style="width:100%;height:auto;border-radius:6px;display:block;max-height:none">
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНЕ ВІКНО АЛГОРИТМ СПИСАННЯ -->
+  <div class="modal-backdrop" id="algorithmModal" onclick="if(event.target===this)closeAlgorithm()" style="align-items:flex-start;padding:16px">
+    <div class="modal" style="width:min(1200px,98vw);max-height:96vh;margin:auto">
+      <div class="modal-header">
+        <div class="modal-title">🛒 АЛГОРИТМ ЗАМОВЛЕННЯ ТА ВИДАЧІ ПОДАРУНКІВ</div>
+        <button class="modal-close" onclick="closeAlgorithm()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:12px;text-align:center">
+        <img src="img_algorithm.jpg" alt="Алгоритм списання" style="width:100%;height:auto;border-radius:6px;display:block;max-height:none">
       </div>
     </div>
   </div>
