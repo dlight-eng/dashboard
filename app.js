@@ -143,6 +143,14 @@ function closeCalc() {
   document.getElementById('calcModal').classList.remove('open');
   document.body.style.overflow = '';
 }
+function openAlgorithm() {
+  document.getElementById('algorithmModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeAlgorithm() {
+  document.getElementById('algorithmModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
 let lbSelectedPeriod = 'total'; // 'total' | 'Червень' | 'Липень' | ...
 
 function toggleLeaderboard() {
@@ -2834,7 +2842,7 @@ async function saveMissionEdit() {
 }
 
 document.addEventListener('keydown', e => {
-  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); closeSearchModal(); closeAdminComments(); }
+  if(e.key==='Escape') { closeModal(); closeChartSettings(); closeQuickAdd(); closeMissionEdit(); closeRules(); closeCalc(); closeAlgorithm(); closeChartEdit(); closeProposalsModal(); closeProposalDetail(); closeWalletModal(); closeSearchModal(); closeAdminComments(); }
 });
 
 // БАГ 7: красиві спливаючі підказки (заміна нативного title)
